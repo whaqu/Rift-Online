@@ -63,19 +63,19 @@ function orbBoom(b,primary){
   for(const e of MOBS){if(e.dead||e.spawning)continue;const dx=e.x-b.x,dz=e.z-b.z,d=Math.hypot(dx,dz);
     if(e===primary)dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});
     else if(d<rad+e.r)dealMob(e,b.dmg*.7,{kx:dx,kz:dz,kb:5,noProc:true})}
-  shockRing(b.x,b.z,rad,0x7fe8ff,.3);flashDisc(b.x,b.z,rad*.8,0x5ee7ff,.25);burst(b.x,1.2,b.z,14,0x5ee7ff,7,.45,6);sfx('boom');
+  const bc=b.col||0x5ee7ff;shockRing(b.x,b.z,rad,bc,.3);flashDisc(b.x,b.z,rad*.8,bc,.25);burst(b.x,1.2,b.z,14,bc,7,.45,6);sfx('boom');
 }
 function updatePB(dt){
   for(let i=PB.length-1;i>=0;i--){
     const b=PB[i];b.life-=dt;b.t+=dt;b.x+=b.vx*dt;b.z+=b.vz*dt;b.m.position.x=b.x;b.m.position.z=b.z;
-    if(b.kind==='orb'){emit(b.x,1.3,b.z,rnd(-.5,.5),rnd(-.5,.5),rnd(-.5,.5),.35,0x5ee7ff,0);b.m.scale.setScalar(1+Math.sin(b.t*30)*.1)}
+    if(b.kind==='orb'){emit(b.x,1.3,b.z,rnd(-.5,.5),rnd(-.5,.5),rnd(-.5,.5),.35,b.col,0);b.m.scale.setScalar(1+Math.sin(b.t*30)*.1)}
     else if(Math.random()<.5)emit(b.x,1.3,b.z,0,0,0,.2,b.col,0);
     let dead=false;
     for(const e of MOBS){
       if(e.dead||e.spawning||b.hit.indexOf(e)>=0)continue;
       const rr=e.r+b.r;if(d2(e.x,e.z,b.x,b.z)<rr*rr){
         if(b.kind==='orb'){orbBoom(b,e);dead=true;break}
-        dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});if(b.freeze)freezeMob(e,b.freeze);b.hit.push(e);b.pierce--;if(b.pierce<=0){dead=true;break}
+        dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});if(b.freeze)freezeMob(e,b.freeze);if(b.el)elemHit(e,b.el,b.eatk);b.hit.push(e);b.pierce--;if(b.pierce<=0){dead=true;break}
       }
     }
     if(!dead&&b.life<=0){if(b.kind==='orb')orbBoom(b,null);dead=true}
@@ -116,7 +116,8 @@ function updateEB(dt){
 /* ---------------- kill rewards (server-verified) ---------------- */
 const KB={};let KBn=0,KBt=0,claiming=false;
 function registerKill(m){
-  const k=m.zid+'|'+m.ml+'|'+(m.elite?1:0);KB[k]=(KB[k]||0)+1;KBn++;KBt=Math.max(KBt,0);
+  const k=m.zid+'|'+m.ml+'|'+(m.elite?1:0)+'|'+(m.golden?1:0);KB[k]=(KB[k]||0)+1;KBn++;KBt=Math.max(KBt,0);comboHit(m);
+  if(m.golden){UI.feedText('황금 슬라임 처치! 골드가 쏟아집니다','#ffd24a');shockRing(m.x,m.z,5,0xffd24a,.6);for(let i=0;i<40;i++)emit(m.x,1,m.z,rnd(-7,7),rnd(5,13),rnd(-7,7),1.1,0xffd24a,22);sfx('level')}
   const gold=Math.floor((2+m.ml*1.6)*(m.elite?5:1)),xp=(6+m.ml*4)*(m.elite?6:1);
   dmgNum(m.x,m.r*1.5+2.2,m.z,'+'+fmtN(xp)+' XP','xp');
   const n=Math.min(8,Math.ceil(gold/6));for(let i=0;i<n;i++)emit(m.x,1,m.z,rnd(-4,4),rnd(4,9),rnd(-4,4),.8,0xffd24a,22);
@@ -124,7 +125,7 @@ function registerKill(m){
 }
 async function flushKills(){
   if(claiming||!KBn||!SES.token)return;
-  const arr=[];for(const k in KB){const p=k.split('|');arr.push({z:+p[0],ml:+p[1],e:p[2]==='1',n:KB[k]})}
+  const arr=[];for(const k in KB){const p=k.split('|');arr.push({z:+p[0],ml:+p[1],e:p[2]==='1',g:p[3]==='1',n:KB[k]})}
   for(const k in KB)delete KB[k];KBn=0;claiming=true;KBt=0;
   const before=SES.pf.level;
   try{

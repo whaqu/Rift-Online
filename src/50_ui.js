@@ -1,7 +1,7 @@
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const UI={modal:null,rerender:null,sel:null,toastT:0,vgT:0,lastHud:0,lastMini:0,chatLines:[],trade:null,tradeTimer:0};
-const KCLS={warrior:'전사',mage:'마법사',archer:'궁수'};
+const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;return o})();
 
 UI.toast=function(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(UI.toastT);UI.toastT=setTimeout(()=>t.classList.remove('show'),ms||2200)};
 function vignette(){const v=$('vign');v.style.opacity='1';clearTimeout(UI.vgT);UI.vgT=setTimeout(()=>{v.style.opacity=(P&&!P.dead&&P.hp<S.maxHp*.25)?'.5':'0'},180)}
@@ -49,7 +49,7 @@ function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base
 function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</span>').join('')}
 function itemRow(it,o){
   o=o||{};const col=it.kind==='weapon'?TIER_COL[wTier(it.base)-1]:'#e4e6ec';let sub;
-  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls&&SES.pf.level>=wReq(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+' Lv.'+wReq(it.base)+'</span> · '+wStat(it)+' '+enchTags(it)}
+  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls;sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wStat(it)+' '+enchTags(it)}
   else{const p=POTIONS[it.base];sub=p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc}
   return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
@@ -98,7 +98,7 @@ function openShop(){
     if(tab==='buy'){
       h+='<div class="row" style="margin-bottom:6px"><span class="dim">수량</span>'+[1,5,10,20].map(n=>'<button class="btn sm '+(qty===n?'':'sec')+'" data-a="sqty" data-v="'+n+'">'+n+'</button>').join('')+'</div><div class="list" style="max-height:56vh">';
       for(const b of POTION_ORDER){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
-      for(const t of[2,3]){const b=pf.cls+'_'+t;h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(({warrior:'sword',mage:'staff',archer:'bow'})[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · Lv.'+wReq(b)+' 이상 · '+KCLS[pf.cls]+'</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
+      for(const t of[2,3,4]){const b=pf.cls+'_'+t;h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(WICON[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · '+KCLS[pf.cls]+' 전용'+'</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
       const items=myItems().filter(i=>!i.eq);
@@ -163,10 +163,10 @@ function openJob(){
   UI.page('전직 교관',()=>{
     const pf=SES.pf,cur=JOBS[pf.job],kids=JOB_KIDS(pf.job);
     let h='<div class="card" style="margin-bottom:10px"><div class="row sp"><div><span class="dim">현재 직업</span> <b style="font-size:16px">'+cur.name+'</b> <span class="dim">(Lv.'+pf.level+')</span></div><span class="gold">'+fmtG(pf.gold)+'</span></div>'
-      +'<div class="dim" style="margin-top:4px">'+(cur.tier?cur.desc:'1차 전직은 Lv.10, 2차 전직은 Lv.30부터 가능합니다.')+'</div></div>';
+      +'<div class="dim" style="margin-top:4px">'+(cur.tier?cur.desc:'1차 전직은 Lv.20, 2차 전직(각성)은 Lv.50부터 가능합니다.')+'</div></div>';
     if(!kids.length)h+='<div class="card">최종 직업입니다. 더 이상 전직할 수 없습니다.</div>';
     else{
-      h+='<div class="dim" style="margin-bottom:6px">'+(cur.tier===0?'1차 전직':'2차 전직')+' — 한 번 선택하면 되돌릴 수 없습니다.</div><div class="grid">';
+      h+='<div class="dim" style="margin-bottom:6px">'+(cur.tier===0?'1차 전직':'2차 전직')+' — 한 번 선택하면 되돌릴 수 없습니다.</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">';
       for(const id of kids){const j=JOBS[id],okL=pf.level>=j.req,okG=pf.gold>=j.price;
         h+='<div class="card"><div class="row sp"><b style="font-size:16px">'+j.name+'</b><span class="'+(okL?'':'red')+'">필요 Lv.'+j.req+'</span></div><div class="dim" style="margin:3px 0">'+j.desc+'</div><div style="font-size:12px;margin-bottom:3px">'+modText(j.m)+'</div><div style="font-size:12px;color:#9fc8ff">스킬(R): '+j.r.name+' — 쿨타임 '+j.r.cd+'초</div>'
           +'<div class="row sp" style="margin-top:8px"><span class="gold '+(okG?'':'red')+'">'+fmtG(j.price)+'</span><button class="btn sm" data-a="adv" data-v="'+id+'" '+(okL&&okG?'':'disabled')+'>전직</button></div></div>'}
@@ -297,7 +297,7 @@ function interact(){
 }
 
 /* ---------- HUD ---------- */
-const MENU=[['chat','채팅','Ent',()=>openChatInput()],['bag','가방','I',openInventory],['people','파티','P',openParty],['gear','설정','Esc',openSettings]];
+const MENU=[['chat','채팅','Ent',()=>openChatInput()],['bag','가방','I',openInventory],['people','파티','P',openParty],['gear','설정','Esc',openSettings],['star','일일','J',()=>openDaily()]];
 function buildHud(){
   const m=$('menu');m.innerHTML=MENU.map((b,i)=>'<div class="mbtn" data-i="'+i+'" title="'+b[1]+'">'+ic(b[0],'#e4e6ec',20)+'<small>'+b[2]+'</small></div>').join('');
   m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&!UI.modal)MENU[+t.dataset.i][3]()};
@@ -342,11 +342,11 @@ function updatePartyBars(){
 function drawMini(){
   const c=$('mini'),g=c.getContext&&c.getContext('2d');if(!g)return;const W=c.width,sc=W/2/(WORLD_R+4),cx=W/2;
   g.clearRect(0,0,W,W);g.save();g.beginPath();g.arc(cx,cx,W/2-1,0,TAU);g.clip();g.fillStyle='#10131b';g.fillRect(0,0,W,W);
-  const cols=['#6f8a56','#5fa84a','#4a4f58','#7a4a38','#4a4a8a'];
+  const cols=['#6f8a56','#5fa84a','#4a4f58','#7a4a38','#4a4a8a','#5a6678','#3a2a52'];
   for(let i=ZONES.length-1;i>=0;i--){g.fillStyle=cols[i];g.beginPath();g.arc(cx,cx,ZONES[i].r1*sc,0,TAU);g.fill()}
   g.fillStyle='#8c8678';g.beginPath();g.arc(cx,cx,19*sc,0,TAU);g.fill();
   const px=x=>cx+x*sc;
-  g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,px(m.z)-2,4,4)}}
+  g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(m.golden){g.fillStyle='#ffd24a';g.fillRect(px(m.x)-4,px(m.z)-4,8,8);g.fillStyle='#d9534f';continue}if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,px(m.z)-2,4,4)}}
   g.fillStyle='#6bd4ff';for(const k in NET.peers){const p=NET.peers[k];if(p.got){g.beginPath();g.arc(px(p.x),px(p.z),4,0,TAU);g.fill()}}
   g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),px(P.z),5,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
   g.restore();
@@ -355,8 +355,10 @@ function drawMini(){
 /* ---------- login ---------- */
 const LG={mode:'in',cls:'warrior'};
 function initLogin(){
-  $('clsgrid').innerHTML=['warrior','mage','archer'].map(k=>'<div class="c'+(k===LG.cls?' on':'')+'" data-k="'+k+'">'+ic(({warrior:'sword',mage:'staff',archer:'bow'})[k],'#d2a84a',28)+'<b>'+CLS[k].name+'</b><small>'+({warrior:'체력·근접',mage:'광역·원거리',archer:'연사·기동'})[k]+'</small></div>').join('');
-  $('clsgrid').onclick=e=>{const t=e.target.closest('.c');if(!t)return;LG.cls=t.dataset.k;loginPick(LG.cls);for(const c of $('clsgrid').children)c.classList.toggle('on',c===t)};
+  const desc=()=>{const d=$('clsdesc');if(d)d.innerHTML='<b>'+CLS[LG.cls].name+'</b> — '+CLS[LG.cls].blurb};
+  $('clsgrid').innerHTML=CLASSES.map(k=>'<div class="c'+(k===LG.cls?' on':'')+'" data-k="'+k+'">'+ic(WICON[k],'#d2a84a',24)+'<b>'+CLS[k].name+'</b></div>').join('');
+  $('clsgrid').onclick=e=>{const t=e.target.closest('.c');if(!t)return;LG.cls=t.dataset.k;loginPick(LG.cls);desc();for(const c of $('clsgrid').children)c.classList.toggle('on',c===t)};
+  desc();
   const setMode=m=>{LG.mode=m;$('tab-in').classList.toggle('on',m==='in');$('tab-up').classList.toggle('on',m==='up');$('clswrap').classList.toggle('hidden',m==='in');loginPick(m==='in'?'warrior':LG.cls);$('lgo').textContent=m==='in'?'접속':'캐릭터 생성';$('lmsg').textContent=''};
   $('tab-in').onclick=()=>setMode('in');$('tab-up').onclick=()=>setMode('up');
   const go=async()=>{

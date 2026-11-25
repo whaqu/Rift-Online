@@ -26,7 +26,7 @@ THREE.Mesh=Mesh;
 const els={};
 function el(id){
   const e={id,style:{},classList:{_s:new Set(),add(c){this._s.add(c)},remove(c){this._s.delete(c)},toggle(c,f){f?this._s.add(c):this._s.delete(c)},contains(c){return this._s.has(c)}},children:[],textContent:'',innerHTML:'',value:'',className:'',
-   appendChild(c){this.children.push(c);return c},remove(){},querySelector(){return el('q'+id)},addEventListener(){},get firstElementChild(){return el('f'+id)},get lastElementChild(){return el('l'+id)},focus(){},blur(){},getBoundingClientRect(){return{left:0,top:0,width:100,height:100}},setAttribute(){},click(){this.onclick&&this.onclick()},getContext(){return new Proxy({},{get:(t,k)=>(k==='createRadialGradient'||k==='createLinearGradient')?()=>({addColorStop(){}}):()=>{}})}};
+   appendChild(c){this.children.push(c);return c},removeChild(c){const i=this.children.indexOf(c);if(i>=0)this.children.splice(i,1);return c},remove(){},querySelector(){return el('q'+id)},addEventListener(){},get firstElementChild(){return el('f'+id)},get lastElementChild(){return el('l'+id)},focus(){},blur(){},getBoundingClientRect(){return{left:0,top:0,width:100,height:100}},setAttribute(){},click(){this.onclick&&this.onclick()},getContext(){return new Proxy({},{get:(t,k)=>(k==='createRadialGradient'||k==='createLinearGradient')?()=>({addColorStop(){}}):()=>{}})}};
   e.width=e.height=0;return e;
 }
 global.window=global;

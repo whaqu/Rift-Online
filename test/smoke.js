@@ -63,11 +63,20 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   console.log('claim ->',big.gold,big.xp,'lv',g.SES.pf.level);
   T(g.SES.pf.level>=10,'reached lv10 '+g.SES.pf.level);
   g.UI.close();
-  // job
-  const sgold=g.SES.pf.gold;
-  try{await g.API.call('advance','gladiator');T(g.SES.pf.job==='gladiator','job advanced')}catch(e){T(false,'advance '+e.message+' gold '+sgold+' lv '+g.SES.pf.level)}
+  // job: 1st at Lv20, 2nd at Lv50 (5 awakenings), cap 99
+  const dbk=()=>JSON.parse(localStorage.getItem('rw_local_db_v1'));
+  const setAcc=o=>{const d=dbk();Object.assign(d.acc[g.SES.name],o);localStorage.setItem('rw_local_db_v1',JSON.stringify(d))};
+  let lowE='';try{await g.API.call('advance','gladiator')}catch(e){lowE=e.message}T(lowE==='LOW_LEVEL','advance blocked below Lv20 '+lowE);
+  setAcc({level:20,gold:1e6});await g.API.call('claim',[]);
+  try{await g.API.call('advance','gladiator');T(g.SES.pf.job==='gladiator','job advanced')}catch(e){T(false,'advance '+e.message)}
   g.derive();T(g.S.atk>0&&g.skillOf&&true,'derive after job');
-  let bj='';try{await g.API.call('advance','bulwark')}catch(e){bj=e.message}T(bj==='BAD_JOB','wrong-branch job rejected');
+  let bj='';try{await g.API.call('advance','bulwark')}catch(e){bj=e.message}T(bj==='BAD_JOB','legacy/wrong-branch job rejected');
+  let l2='';try{await g.API.call('advance','gladiator_fire')}catch(e){l2=e.message}T(l2==='LOW_LEVEL','2nd job blocked below Lv50 '+l2);
+  setAcc({level:50});await g.API.call('claim',[]);
+  T(g.JOB_KIDS('gladiator').length===5,'five awakenings per 1st job');
+  await g.API.call('advance','gladiator_fire');T(g.SES.pf.job==='gladiator_fire','2nd advance');
+  g.derive();g.newPlayer();step(3);T(g.skillOf('r')&&g.skillOf('r').el==='fire','awakened R skill carries element');
+  T(g.S.atk>0,'derive 2nd job');
   // enhance + enchant
   const w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);
   let r;for(let i=0;i<2;i++){try{r=await g.API.call("enhance",w.id)}catch(e){}}
@@ -105,6 +114,31 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   step(5);
   vm.runInThisContext('onKillCredit({to:["'+g.SES.name+'"],z:1,ml:5,e:0,x:30,zz:0})');
   g.NET.party=null;g.NET.on=false;step(10);
+
+  // every class can be created, built, attacked and cast with
+  for(const c of g.CLASSES){
+    const nm='직'+c.slice(0,4);
+    const p2=await g.API.register(nm,'pw1234',c);T(p2.cls===c&&p2.items.some(i=>i.base===c+'_1'&&i.eq),'register '+c);
+    g.enterGame();g.P.x=60;g.P.z=0;step(30);
+    let thrown=null;try{g.doAttack();for(const k of['q','e']){g.P.cd[k]=0;g.trySkill(k)}step(40)}catch(e){thrown=e}T(!thrown,'attack+skills '+c+' '+(thrown&&thrown.stack));
+    for(const j of Object.keys(g.JOBS).filter(k=>g.JOBS[k].cls===c&&g.JOBS[k].tier===1)){
+      g.SES.pf.job=j;g.derive();g.buildPlayerModel();g.P.cd.r=0;let t2=null;try{g.trySkill('r');step(30)}catch(e){t2=e}T(!t2,'R skill '+j+' '+(t2&&t2.stack));
+      for(const el of['fire','ice','thunder','dark','holy']){g.SES.pf.job=j+'_'+el;g.derive();g.buildPlayerModel();g.P.cd.r=0;let t3=null;try{g.trySkill('r');step(20)}catch(e){t3=e}T(!t3,'awakened '+j+'_'+el+' '+(t3&&t3.stack))}
+    }
+  }
+  // day / night + daily + quests + events
+  {const d=await g.API.register('일일시험','pw1234','mage');g.enterGame();step(3);
+   T(d.daily&&d.daily.ready===true&&d.dq&&d.dq.q.length===3,'profile has daily + 3 quests');
+   const r=await g.API.call('daily');T(r.day===1&&g.SES.pf.daily.ready===false,'daily claimed');
+   let dup='';try{await g.API.call('daily')}catch(e){dup=e.message}T(dup==='ALREADY','daily only once');
+   let nr='';try{await g.API.call('dqClaim',0)}catch(e){nr=e.message}T(nr==='NOT_READY','quest not ready');
+   const dd=JSON.parse(localStorage.getItem('rw_local_db_v1'));dd.acc['일일시험'].dq.q.forEach(q=>q.p=q.t);localStorage.setItem('rw_local_db_v1',JSON.stringify(dd));
+   for(let i=0;i<3;i++)await g.API.call('dqClaim',i);await g.API.call('dqClaim',3);T(g.SES.pf.dq.b===true,'bonus chest claimed');
+   const nk=[];for(let p=0;p<1;p+=.05){nk.push(g.nightK(p))}T(Math.min(...nk)===0&&Math.max(...nk)===1,'night factor spans 0..1');
+   g.updateAtmo(1,1);step(10);T(g.huntInfo().on===true||g.huntInfo().on===false,'hunt info');
+   const gm=g.makeMobObj(9999,'slime',60,0,5,false,false,true);T(gm.golden&&gm.maxHp>0,'golden slime spawns');step(120);
+   const k0=g.SES.pf.gold;g.registerKill(gm);await g.flushKills();T(g.SES.pf.gold>k0,'golden kill paid');
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

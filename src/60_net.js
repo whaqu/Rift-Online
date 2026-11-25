@@ -72,7 +72,7 @@ function syncPeers(){
   for(const k in st){
     if(k===SES.name)continue;const m=st[k]&&st[k][st[k].length-1];if(!m)continue;seen[k]=1;let p=NET.peers[k];
     if(!p)p=NET.peers[k]={name:k,x:0,z:0,tx:0,tz:0,f:0,tf:0,moving:false,model:null,label:null,got:false,hp:100,dead:false,anim:Math.random()*5,cls:'warrior',job:'warrior',lv:1};
-    const c=['warrior','mage','archer'].includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c;
+    const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c;
     if(c!==p.cls||j!==p.job){p.cls=c;p.job=j;if(p.model){entG.remove(p.model.g);p.model=null}}
     p.lv=+m.lv||1;if(p.label)p.label.el.textContent=peerLabel(p);
   }
@@ -87,11 +87,11 @@ function onPos(d){
   p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
 }
-const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0};
+const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
   if(!d||!NET.peers[d.n]||!isFinite(+d.x)||!isFinite(+d.z))return;const col=+d.c||FXCOL[d.c]||0xffffff;
   if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
-  else if(d.k==='shot'){const vx=+d.vx||0,vz=+d.vz||0;const g=grp(+d.x,1.3,+d.z);g.add(glowS(d.v==='orb'?0x5ee7ff:0x6bffb0,d.v==='orb'?2.8:1.6,.8));entG.add(g);let t=0,x=+d.x,z=+d.z;addFx(.8,(k,dt)=>{x+=vx*dt;z+=vz*dt;g.position.x=x;g.position.z=z;emit(x,1.3,z,0,0,0,.2,0x9fe8ff,0)},()=>entG.remove(g))}
+  else if(d.k==='shot'){const vx=+d.vx||0,vz=+d.vz||0;const g=grp(+d.x,1.3,+d.z);g.add(glowS(+d.c||(d.v==='orb'?0x5ee7ff:0x6bffb0),d.v==='orb'?2.8:1.6,.8));entG.add(g);let t=0,x=+d.x,z=+d.z;addFx(.8,(k,dt)=>{x+=vx*dt;z+=vz*dt;g.position.x=x;g.position.z=z;emit(x,1.3,z,0,0,0,.2,0x9fe8ff,0)},()=>entG.remove(g))}
   else if(d.k==='nova'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,12),+d.c||0xffffff,.45)}
   else if(d.k==='ground'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,10),+d.c||0xffffff,.6)}
 }

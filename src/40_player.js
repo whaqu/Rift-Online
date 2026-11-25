@@ -114,7 +114,7 @@ function tryAttackInput(){
   if(P.dead||inTown(P.x,P.z)||UI.modal)return;
   const want=mouse.down||keys.j||mv.atk;
   let auto=false;
-  if(save.auto&&!want&&IS_TOUCH){const reach=S.cls==='warrior'?CLS.warrior.range*S.rangeMul+1.2:13;const m=nearestMob(reach);auto=!!m}
+  if(save.auto&&!want&&IS_TOUCH){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;const m=nearestMob(reach);auto=!!m}
   if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0)doAttack();
 }
 
@@ -133,24 +133,25 @@ function doAttack(){
   const a=aimDir(),f=Math.atan2(a.x,a.z);P.face=f;
   P.atkCd=1/effAps();P.atkAnim=0;P.atkDur=Math.min(.34,P.atkCd*.92);
   const atk=effAtk();
-  if(S.cls==='warrior'){
+  const sty=CLS[S.cls].sty;
+  if(sty.t==='melee'){
     P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;
-    const big=step===2,range=CLS.warrior.range*S.rangeMul*(big?1.28:1),arc=big?2.8:2.15,dmg=atk*(big?1.7:1);
-    P.vx+=a.x*(big?9:5);P.vz+=a.z*(big?9:5);
-    slashArc(P.x+a.x*.4,P.z+a.z*.4,f,range,arc,big?0xffd24a:0xbfe4ff,.26);
-    if(big)ringBurst(P.x+a.x*range*.7,.9,P.z+a.z*range*.7,10,0xffd24a,5,.35);
+    const big=step===2,range=sty.range*S.rangeMul*(big?1.28:1),arc=big?sty.big:sty.arc,dmg=atk*(big?sty.bigMul:1);
+    P.vx+=a.x*(big?sty.lunge*1.8:sty.lunge);P.vz+=a.z*(big?sty.lunge*1.8:sty.lunge);
+    slashArc(P.x+a.x*.4,P.z+a.z*.4,f,range,arc,big?sty.bigCol:sty.col,.26);
+    if(big)ringBurst(P.x+a.x*range*.7,.9,P.z+a.z*range*.7,10,sty.bigCol,5,.35);
     sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
-    hitArc(f,range,arc,dmg,big?11:6);
+    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb);
     for(const b of EB){const dx=b.x-P.x,dz=b.z-P.z,d=Math.hypot(dx,dz);if(d<range+.5&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<arc/2){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3);sfx('hit')}}
     netFx('slash',{x:P.x+a.x*.4,z:P.z+a.z*.4,f,r:range,a:arc,c:big?1:0});
-  }else if(S.cls==='mage'){
+  }else if(sty.kind==='orb'){
     sfx('magic');const sx=P.x+a.x*1.2,sz=P.z+a.z*1.2;
-    spawnPB({kind:'orb',x:sx,z:sz,vx:a.x*25,vz:a.z*25,r:.55,dmg:atk,life:1.3,pierce:0,splash:2.3*S.rangeMul});
-    burst(sx,1.6,sz,4,0x5ee7ff,3,.3,0);netFx('shot',{x:sx,z:sz,vx:a.x*25,vz:a.z*25,v:'orb'});
+    spawnPB({kind:'orb',x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:0,splash:sty.splash*S.rangeMul,col:sty.col});
+    burst(sx,1.6,sz,4,sty.col,3,.3,0);netFx('shot',{x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,v:'orb',c:sty.col});
   }else{
     sfx('shot');const sp=rnd(-.03,.03),cs=Math.cos(sp),sn=Math.sin(sp),dx=a.x*cs-a.z*sn,dz=a.x*sn+a.z*cs;
-    spawnPB({kind:'arrow',x:P.x+dx,z:P.z+dz,vx:dx*46,vz:dz*46,r:.4,dmg:atk,life:.85,pierce:1+S.pierce});
-    netFx('shot',{x:P.x+dx,z:P.z+dz,vx:dx*46,vz:dz*46,v:'arrow'});
+    spawnPB({kind:'arrow',x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:sty.pierce+S.pierce,col:sty.col});
+    netFx('shot',{x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,v:'arrow',c:sty.col});
   }
 }
 
@@ -161,13 +162,22 @@ function trySkill(slot){
   castSkill(sk,slot);
   P.cd[slot]=sk.cd;P.cdMax[slot]=sk.cd;P.atkAnim=0;P.atkDur=.35;
 }
+function elemHit(e,el,atk){
+  if(!el||!e||e.dead)return;
+  if(el==='fire')burnMob(e,atk*.35);
+  else if(el==='ice')freezeMob(e,1.5);
+  else if(el==='thunder'){let q=null,bd=36;for(const m of MOBS){if(m===e||m.dead||m.spawning)continue;const d=d2(m.x,m.z,e.x,e.z);if(d<bd){bd=d;q=m}}if(q){boltFx(e.x,e.z,q.x,q.z,0xfff2a0);dealMob(q,atk*.5,{noKb:true,noProc:true})}}
+  else if(el==='dark'){if(G.t-(P.elHT||0)>.15){P.elHT=G.t;healP(Math.max(1,Math.round(S.maxHp*.012)))}}
+}
 function castSkill(sk,slot){
-  const atk=effAtk(),a=aimDir(),col=sk.col||0xffffff;
+  const atk=effAtk(),a=aimDir(),col=sk.col||0xffffff,el=sk.el||null;
+  if(el==='holy'){P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*.14);shockRing(P.x,P.z,3,col,.5)}
+  if(el)ringBurst(P.x,.8,P.z,18,col,8,.5);
   if(sk.type==='nova'){
     const rg=sk.rad*S.rangeMul;
     if(sk.id==='w_q'){P.spinT=.5;P.iframes=Math.max(P.iframes,.35)}
     for(const e of MOBS){if(e.dead||e.spawning)continue;const dx=e.x-P.x,dz=e.z-P.z,d=Math.hypot(dx,dz);if(d<rg+e.r){
-      dealMob(e,atk*sk.dmg,{kx:dx/(d||1),kz:dz/(d||1),kb:sk.kb||8});if(sk.freeze)freezeMob(e,sk.freeze)}}
+      dealMob(e,atk*sk.dmg,{kx:dx/(d||1),kz:dz/(d||1),kb:sk.kb||8});if(sk.freeze)freezeMob(e,sk.freeze);elemHit(e,el,atk)}}
     for(const b of EB)if(d2(b.x,b.z,P.x,P.z)<rg*rg)b.life=0;
     if(sk.heal){const h=Math.round(S.maxHp*sk.heal);healP(h)}
     slashArc(P.x,P.z,0,rg,TAU-.01,col,.4);shockRing(P.x,P.z,rg+1,col,.5);flashDisc(P.x,P.z,rg,col,.5);ringBurst(P.x,.8,P.z,30,col,11,.55);
@@ -186,7 +196,7 @@ function castSkill(sk,slot){
         telegraph(tx,tz,sk.rad,sk.delay||.8,()=>{
           for(const e of MOBS){if(e.dead||e.spawning)continue;const d=Math.hypot(e.x-tx,e.z-tz);if(d<sk.rad+e.r){
             dealMob(e,atk*sk.dmg,{kx:(e.x-tx)/(d||1),kz:(e.z-tz)/(d||1),kb:9,noProc:false});
-            if(sk.burn)burnMob(e,atk*.25*sk.burn);if(sk.freeze)freezeMob(e,sk.freeze)}}
+            if(sk.burn)burnMob(e,atk*.25*sk.burn);if(sk.freeze)freezeMob(e,sk.freeze);elemHit(e,el,atk)}}
           shockRing(tx,tz,sk.rad+1,col,.5);flashDisc(tx,tz,sk.rad,col,.5);burst(tx,1,tz,40,col,12,.8,10);pillar(tx,tz,col,18,.5);sfx('boom');cam.shake=Math.max(cam.shake,.7);
         },col);
         if(sk.id==='m_q'||sk.id==='meteormage_r'||sk.id==='pyromancer_r'){const m=glow(col,5,.9);m.position.set(tx,22,tz);entG.add(m);addFx(sk.delay||.8,k=>{m.position.y=22*(1-k*k);m.scale.set(5+k*3,5+k*3,1)},()=>entG.remove(m))}
@@ -201,30 +211,30 @@ function castSkill(sk,slot){
       zone.material.opacity=.8*(1-k*.6);acc+=dt;
       while(acc>.11){acc-=.11;const a2=rnd(0,TAU),rr=Math.sqrt(Math.random())*rad,px=pt.x+Math.cos(a2)*rr,pz=pt.z+Math.sin(a2)*rr;
         for(let j=0;j<5;j++)emit(px,j*2.6,pz,0,-22,0,.28,col,0);burst(px,.3,pz,3,col,3,.25,6);
-        for(const e of MOBS){if(e.dead||e.spawning)continue;if(d2(e.x,e.z,px,pz)<(1.7+e.r)*(1.7+e.r))dealMob(e,dmg*.8,{noKb:true,crit:false,noProc:true})}
+        for(const e of MOBS){if(e.dead||e.spawning)continue;if(d2(e.x,e.z,px,pz)<(1.7+e.r)*(1.7+e.r)){dealMob(e,dmg*.8,{noKb:true,crit:false,noProc:true});if(el&&Math.random()<.35)elemHit(e,el,atk)}}
         sfx('hit')}
     },()=>{entG.remove(zone);zone.material.dispose()});
     sfx('shot');netFx('ground',{x:pt.x,z:pt.z,r:rad,c:col});
   }else if(sk.type==='volley'){
     const base=Math.atan2(a.x,a.z),n=sk.n,sp=sk.speed||46;
     for(let i=0;i<n;i++){const an=base+(i-(n-1)/2)*(sk.spread||0);
-      spawnPB({kind:'arrow',x:P.x+Math.sin(an),z:P.z+Math.cos(an),vx:Math.sin(an)*sp,vz:Math.cos(an)*sp,r:.5,dmg:atk*sk.dmg,life:.95,pierce:(sk.pierce||2)+S.pierce,col,freeze:sk.freeze})}
+      spawnPB({kind:'arrow',x:P.x+Math.sin(an),z:P.z+Math.cos(an),vx:Math.sin(an)*sp,vz:Math.cos(an)*sp,r:.5,dmg:atk*sk.dmg,life:.95,pierce:(sk.pierce||2)+S.pierce,col,freeze:sk.freeze,el,eatk:atk})}
     if(sk.back){P.dashDX=-a.x;P.dashDZ=-a.z;P.dashT=.14;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.25)}
     shockRing(P.x,P.z,3,col,.4);burst(P.x,1,P.z,14,col,6,.4,0);sfx('shot');sfx('dash');
     netFx('nova',{x:P.x,z:P.z,r:3,c:col});
   }else if(sk.type==='dash'){
     P.dashDX=a.x;P.dashDZ=a.z;P.dashT=sk.dist/46;P.dashSp=46;P.iframes=Math.max(P.iframes,sk.dist/46+.1);
-    P.dashHit={dmg:atk*sk.dmg,col,done:new Set()};sfx('dash');sfx('slash');cam.shake=Math.max(cam.shake,.3);
+    P.dashHit={dmg:atk*sk.dmg,col,done:new Set(),el,atk};sfx('dash');sfx('slash');cam.shake=Math.max(cam.shake,.3);
   }else if(sk.type==='chain'){
     let from={x:P.x,z:P.z},cur=nearestMob(18),used=new Set(),i=0;
-    while(cur&&i<sk.n){used.add(cur);boltFx(from.x,from.z,cur.x,cur.z,col);dealMob(cur,atk*sk.dmg,{noKb:true,noProc:true});from=cur;i++;
+    while(cur&&i<sk.n){used.add(cur);boltFx(from.x,from.z,cur.x,cur.z,col);dealMob(cur,atk*sk.dmg,{noKb:true,noProc:true});if(el&&el!=='thunder')elemHit(cur,el,atk);from=cur;i++;
       let best=null,bd=100;for(const q of MOBS){if(q.dead||q.spawning||used.has(q))continue;const d=d2(q.x,q.z,from.x,from.z);if(d<bd){bd=d;best=q}}cur=best}
     sfx('crit');sfx('boom');cam.shake=Math.max(cam.shake,.4);
   }
 }
 function dashStrike(dt){
   const h=P.dashHit;
-  for(const e of MOBS){if(e.dead||e.spawning||h.done.has(e))continue;if(d2(e.x,e.z,P.x,P.z)<(e.r+1.6)*(e.r+1.6)){h.done.add(e);dealMob(e,h.dmg,{kx:P.dashDX,kz:P.dashDZ,kb:9});slashArc(P.x,P.z,Math.atan2(P.dashDX,P.dashDZ),3,2.4,h.col,.2)}}
+  for(const e of MOBS){if(e.dead||e.spawning||h.done.has(e))continue;if(d2(e.x,e.z,P.x,P.z)<(e.r+1.6)*(e.r+1.6)){h.done.add(e);dealMob(e,h.dmg,{kx:P.dashDX,kz:P.dashDZ,kb:9});elemHit(e,h.el,h.atk);slashArc(P.x,P.z,Math.atan2(P.dashDX,P.dashDZ),3,2.4,h.col,.2)}}
   if(P.dashT<=0)P.dashHit=null;
 }
 function doDash(){

@@ -3,10 +3,11 @@ let loopOn=false;
 window.onKeyPress=(k,e)=>{
   if(!P)return;
   if(k==='escape'){if(UI.modal)UI.close();else openSettings();return}
-  if(UI.modal){if(k==='i'||k==='p')UI.close();return}
+  if(UI.modal){if(k==='i'||k==='p'||k==='j')UI.close();return}
   if(k==='enter'){openChatInput();return}
   if(k==='i')return openInventory();
   if(k==='p')return openParty();
+  if(k==='j')return openDaily();
   if((k==='e'||k==='f')&&nearNpc()){interact();return}
   if(k==='e')return trySkill('e');
   if(k==='q')return trySkill('q');
@@ -29,6 +30,7 @@ function enterGame(){
   UI.feedText(SES.mode==='online'?'접속했습니다':'오프라인 모드 (이 기기에만 저장)','#9fc8ff');
   if(first)UI.toast(IS_TOUCH?'상점에서 물약을 구입하고, 필드로 나가 몬스터를 사냥하세요':'상점(E)에서 물약을 구입하고, 마을 밖으로 나가 사냥하세요',4200);
   if(!IS_TOUCH)canvas.focus();
+  dailyOnEnter();
 }
 
 
@@ -36,22 +38,24 @@ function enterGame(){
 const LOGIN={g:null,heroes:{},sel:'warrior',on:true,t:0};
 function buildLoginScene(){
   if(LOGIN.g)scene.remove(LOGIN.g);
-  const g=new THREE.Group();scene.add(g);LOGIN.g=g;
-  const xs={warrior:-2.5,mage:0,archer:2.5};
-  for(const k of['warrior','mage','archer']){
-    const h=makeHeroFor(k,null,CLS[k].col);h.g.position.set(xs[k],0,11+(k==='mage'?.9:0));g.add(h.g);
-    const gl=glow(CLS[k].col,5,.0);gl.position.set(0,.2,0);h.g.add(gl);h.sel=gl;LOGIN.heroes[k]=h;h.sc=1;
-  }
+  const g=new THREE.Group();scene.add(g);LOGIN.g=g;LOGIN.heroes={};
+  loginPick(LOGIN.sel||'warrior');
 }
-function loginPick(k){LOGIN.sel=k}
+function getLoginHero(k){
+  if(!LOGIN.heroes[k]){
+    const h=makeHeroFor(k,null,CLS[k].col);h.g.position.set(0,0,11.4);h.g.visible=false;LOGIN.g.add(h.g);
+    const gl=glow(CLS[k].col,5,.4);gl.position.set(0,.2,0);h.g.add(gl);h.sel=gl;h.sc=1.28;LOGIN.heroes[k]=h;
+  }
+  return LOGIN.heroes[k];
+}
+function loginPick(k){LOGIN.sel=k;if(LOGIN.g)getLoginHero(k)}
 function loginScene(dt){
   if(!LOGIN.g||!LOGIN.on)return;
   LOGIN.t+=dt;const a=Math.sin(LOGIN.t*.18)*.4,cx=0,cz=11.5,dist=8,h=3;
   for(const k in LOGIN.heroes){const o=LOGIN.heroes[k],sel=k===LOGIN.sel;
-    o.sc+=((sel?1.14:.96)-o.sc)*Math.min(1,dt*5);o.g.scale.set(o.sc,o.sc,o.sc);
-    o.g.rotation.y=lerpAng(o.g.rotation.y,a*.8,dt*3);
-    o.sel.material.opacity+=((sel?.55:0)-o.sel.material.opacity)*Math.min(1,dt*5);
-    animHeroFor(o,LOGIN.t+(k==='mage'?1:k==='archer'?2:0),0,sel?Math.max(0,Math.sin(LOGIN.t*2.2)*.6)-.1:-1,false,1);
+    if(o.g.visible!==sel)o.g.visible=sel;if(!sel)continue;
+    o.g.scale.set(o.sc,o.sc,o.sc);o.g.rotation.y=lerpAng(o.g.rotation.y,a*.8,dt*3);
+    animHeroFor(o,LOGIN.t,0,Math.max(0,Math.sin(LOGIN.t*2.2)*.6)-.1,false,1);
   }
   cam.x=cx;cam.z=cz;updateCam(dt,cx,cz,true);
   camera.position.set(cx+Math.sin(a)*dist,h,cz+Math.cos(a)*dist);camera.lookAt(cx,1.5,cz);camera.updateMatrixWorld();
@@ -109,5 +113,5 @@ async function boot(){
     if(s&&s.mode===mode&&s.name&&s.token){await API.resume(s.name,s.token);enterGame()}
   }catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}}
 }
-if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,hurtPlayer,respawn,KB};
+if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj};
 else boot();

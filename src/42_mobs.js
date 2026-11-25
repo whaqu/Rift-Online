@@ -11,14 +11,15 @@ const MTYPES=Object.keys(MDEF);
 let mobSeq=1,spawnT=0;
 let mobLabels=[];
 
-function makeMobObj(id,type,x,z,ml,elite,ghost){
-  const d=MDEF[type],zn=zoneAt(x,z),mk=d.mk(),g=mk.g,sc=(d.scale||1)*(elite?1.55:1);
+function makeMobObj(id,type,x,z,ml,elite,ghost,gold){
+  const d=MDEF[type],zn=zoneAt(x,z),mk=gold?makeSlime(0xffd24a):d.mk(),g=mk.g,sc=(d.scale||1)*(elite?1.55:gold?1.25:1);
   g.scale.set(sc,sc,sc);g.position.set(x,d.fly||0,z);entG.add(g);
-  const maxHp=Math.round(mobHp(ml)*d.hpM*(elite?10:1));
+  const maxHp=Math.round(mobHp(ml)*d.hpM*(elite?10:gold?3:1));
   const m={id,type,def:d,x,z,tx:x,tz:z,kx:0,kz:0,face:rnd(0,TAU),hp:maxHp,maxHp,ml,zid:zn.id,elite:!!elite,r:d.r*(elite?1.5:1),spd:d.spd*(elite?.9:1),
-    dmg:mobDmg(ml)*d.dmgM*(elite?1.5:1),m:mk,mats:cloneMats(g),dead:false,spawning:true,sp:.35,age:rnd(0,3),cd:rnd(.6,1.6),state:'chase',st:0,hitCd:0,flash:0,freeze:0,burnT:0,burnD:0,burnTick:0,
+    dmg:mobDmg(ml)*d.dmgM*(elite?1.5:1),m:mk,mats:cloneMats(g),golden:!!gold,dead:false,spawning:true,sp:.35,age:rnd(0,3),cd:rnd(.6,1.6),state:'chase',st:0,hitCd:0,flash:0,freeze:0,burnT:0,burnD:0,burnTick:0,
     ph:rnd(0,6),fly:d.fly||0,warn:false,tintKey:'',strafe:Math.random()<.5?1:-1,moving:false,ghost:!!ghost,wt:0,wx:0,wz:0,aggro:null,scale:sc};
-  if(elite){const gl=glow(0xffd24a,5.5,.5);gl.position.set(0,1.2,0);g.add(gl)}
+  if(elite||gold){const gl=glow(0xffd24a,gold?4.5:5.5,.5);gl.position.set(0,1.2,0);g.add(gl)}
+  if(gold){m.spd=d.spd*1.9;m.dmg=0;m.gAge=0;if(!ghost)UI.feedText('황금 슬라임이 나타났습니다! 잡으면 골드 대박','#ffd24a')}
   MOBS.push(m);return m;
 }
 function removeMob(m,fx){
@@ -46,8 +47,8 @@ function spawnPack(A){
     if(dist<24||dist>WORLD_R-4||blocked(x,z,1.6))continue;
     const zn=zoneAt(x,z);if(!zn.id)continue;
     let tooClose=false;for(const q of A)if(d2(x,z,q.x,q.z)<15*15)tooClose=true;if(tooClose)continue;
-    const type=pick(zn.types),elite=Math.random()<.035,n=elite?1:(zn.id===4?rndi(1,2):rndi(1,3));
-    for(let i=0;i<n;i++){const px=x+rnd(-3,3),pz=z+rnd(-3,3);if(blocked(px,pz,1)||Math.hypot(px,pz)<22)continue;makeMobObj(mobSeq++,type,px,pz,Math.max(1,mobLevel(px,pz)),elite,false)}
+    const hw=huntInfo().on,gold=!hw&&zn.id>=1&&Math.random()<.014&&!MOBS.some(q=>q.golden&&!q.dead),elite=!gold&&Math.random()<(hw?.14:isNight()?.05:.035),type=gold?'slime':pick(zn.types),n=(elite||gold)?1:(zn.id>=4?rndi(1,2):rndi(1,3));
+    for(let i=0;i<n;i++){const px=x+rnd(-3,3),pz=z+rnd(-3,3);if(blocked(px,pz,1)||Math.hypot(px,pz)<22)continue;makeMobObj(mobSeq++,type,px,pz,Math.max(1,mobLevel(px,pz)),elite,false,gold)}
     return;
   }
 }
@@ -86,6 +87,7 @@ function stepM(m,dx,dz,sp,dt){m.x+=dx*sp*dt;m.z+=dz*sp*dt}
 function faceM(m,dx,dz,dt,rate){m.face=lerpAng(m.face,Math.atan2(dx,dz),1-Math.exp(-dt*(rate||10)))}
 function updateMobAuth(m,dt,T){
   m.age+=dt;m.hitCd-=dt;m.cd-=dt;if(m.flash>0)m.flash-=dt;
+  if(m.golden&&m.age>42){removeMob(m,true);UI.feedText('황금 슬라임이 도망쳤습니다','#9aa0b8');return}
   if(m.spawning){m.sp-=dt;if(m.sp<=0)m.spawning=false}
   if(m.burnT>0){m.burnT-=dt;m.burnTick-=dt;if(m.burnTick<=0){m.burnTick=.5;m.hp-=m.burnD*.5;m.flash=.05;dmgNum(m.x,m.r*1.5+1.2,m.z,fmtN(m.burnD*.5),'burn');if(m.hp<=0){killMob(m);return}}
     if(Math.random()<dt*14)emit(m.x+rnd(-.4,.4),rnd(.5,1.8),m.z+rnd(-.4,.4),0,2,0,.5,0xff7a2a,0)}
@@ -110,7 +112,7 @@ function aiMob(m,dt,nt,sp){
     case 'slime':{
       if(m.hop===undefined)m.hop=0;
       if(m.cd<=0){m.cd=rnd(1,1.5);m.hop=.38}
-      if(m.hop>0){m.hop-=dt;stepM(m,dx,dz,m.spd*2.7,dt);faceM(m,dx,dz,dt,14);m.moving=true}
+      if(m.hop>0){m.hop-=dt;if(m.golden){stepM(m,-dx,-dz,m.spd*2.2,dt);faceM(m,-dx,-dz,dt,14)}else{stepM(m,dx,dz,m.spd*2.7,dt);faceM(m,dx,dz,dt,14)}m.moving=true}
       break}
     case 'bat':{
       if(m.state==='chase'){const an=Math.atan2(dx,dz)+Math.sin(m.age*3.2+m.ph)*.85;stepM(m,Math.sin(an),Math.cos(an),m.spd,dt);faceM(m,Math.sin(an),Math.cos(an),dt,12);m.moving=true;

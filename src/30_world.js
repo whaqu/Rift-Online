@@ -62,7 +62,7 @@ function emblemTex(){
   g.globalAlpha=.45;g.lineWidth=2;for(let i=0;i<12;i++){const a=i/12*TAU;g.beginPath();g.moveTo(Math.cos(a)*100,Math.sin(a)*100);g.lineTo(Math.cos(a)*150,Math.sin(a)*150);g.stroke()}
   return new THREE.CanvasTexture(c);
 }
-const ZCOL=[0x8fe8ff,0x8fe8ff,0x9fb0ff,0xff7a3a,0xc06bff];
+const ZCOL=[0x8fe8ff,0x8fe8ff,0x9fb0ff,0xff7a3a,0xc06bff,0xffe27a,0xff3dd0];
 function onPath(x,z){const d=Math.hypot(x,z);if(d>17&&d<64)return Math.abs(x)<3.6||Math.abs(z)<3.6;return x>0&&Math.abs(z)<3.6&&d<162}
 WORLD.wisps=[];WORLD.ponds=[];WORLD.cracks=null;WORLD.emblem=null;WORLD.pulse=[];
 
@@ -107,7 +107,7 @@ function buildWorld(){
       const uv=geo.attributes&&geo.attributes.uv;if(uv&&uv.count){for(let i=0;i<uv.count;i++)uv.setY(i,uv.getY(i)*len/9)}
       const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:pt,transparent:true,roughness:1,depthWrite:false}));
       m.position.set(Math.sin(th)*(r0+len/2),.03,Math.cos(th)*(r0+len/2));m.rotation.y=th;m.receiveShadow=true;worldG.add(m)};
-    mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,142)}
+    mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,228)}
   /* gates */
   const stoneG=M(0x8a8798,{roughness:.9}),darkG=M(0x55526a,{roughness:.9});
   const gate=(x,z,th,col,sc)=>{
@@ -122,7 +122,7 @@ function buildWorld(){
   };
   WORLD.gems=[];
   [0,Math.PI/2,Math.PI,-Math.PI/2].forEach(th=>gate(Math.sin(th)*20.8,Math.cos(th)*20.8,th,0x8fe8ff,.9));
-  for(const zi of[2,3,4])gate(ZONES[zi].r0,0,Math.PI/2,ZCOL[zi],1.1);
+  for(const zi of[2,3,4,5,6])gate(ZONES[zi].r0,0,Math.PI/2,ZCOL[zi],1.1);
   /* ponds */
   [[38,-26,5.5],[-30,36,6.5],[-44,-38,5]].forEach(pd=>{
     const [x,z,r]=pd;
@@ -183,6 +183,17 @@ function buildWorld(){
     const cols=[0x7a7aff,0xb06bff,0x5ee7ff,0xff6bd0];
     placeIn(4,N,1.2,(i,x,z)=>{const s=.8+R()*1.6;const cc2=cols[Math.floor(R()*4)];instSet(cr,i,x,s*1.6,z,s*.6,s*1.7,s*.6,R()*6,cc2);if(i%4===0){const g=glow(cc2,s*4.2,.4);g.position.set(x,s*1.6,z);worldG.add(g);WORLD.pulse.push({s:g,b:.4,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
 
+  // z5 thunder plateau: stone spires with charged tips
+  {const N=110,sp=instMesh(new THREE.CylinderGeometry(.35,.9,1,5),M(0xffffff,{roughness:.9}),N),tp=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x8a7a20,emissiveIntensity:.9,roughness:.3}),N);let k=0;
+    placeIn(5,N,1.1,(i,x,z)=>{const s=.8+R()*1.3,h=3+R()*5;instSet(sp,i,x,h*.5,z,s,h,s,R()*6,pick([0x4a5568,0x56627a,0x3a4558]));instSet(tp,i,x,h+.3,z,.35*s,.5*s,.35*s,R()*6,0xffe27a);
+      if(i%5===0){const g=glow(0xffe27a,s*3.4,.4);g.position.set(x,h+.3,z);worldG.add(g);WORLD.pulse.push({s:g,b:.4,ph:R()*6})}addObst(x,z,.6*s+.3);k=i+1});
+    sp.count=tp.count=k;instDone(sp);instDone(tp);
+    const rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),50);let kk=0;placeIn(5,50,1.2,(i,x,z)=>{const s=.7+R()*1.1;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x6a7488);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
+  // z6 void rift: floating shards + magenta fissures
+  {const N=110,cr=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x6a1a8a,emissiveIntensity:.9,roughness:.3}),N);let k=0;
+    placeIn(6,N,1.2,(i,x,z)=>{const s=.9+R()*1.9,y=s*1.8+R()*2.5;instSet(cr,i,x,y,z,s*.55,s*1.6,s*.55,R()*6,pick([0x8a2ad0,0xff3dd0,0x5a3aa8,0x2a1a4a]));
+      if(i%3===0){const g=glow(0xff3dd0,s*4.6,.38);g.position.set(x,y,z);worldG.add(g);WORLD.pulse.push({s:g,b:.38,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
+
   /* ground cover */
   try{
   const cover=(zi,n,geo,mat,fn)=>{const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=false;let k=0;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);k=i+1});m.count=k;instDone(m);return m};
@@ -200,6 +211,10 @@ function buildWorld(){
   {const N=140,cm=instMesh(new THREE.PlaneGeometry(.35,1),new THREE.MeshBasicMaterial({color:0xff6a1a,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
     placeIn(3,N,.05,(i,x,z)=>{const s=1.5+R()*3.5;_dm.position.set(x,.09,z);_dm.rotation.set(-Math.PI/2,0,R()*TAU);_dm.scale.set(.6+R()*.8,s,1);_dm.updateMatrix();cm.setMatrixAt(i,_dm.matrix);k=i+1});cm.count=k;instDone(cm);WORLD.cracks=cm}
   cover(4,340,new THREE.ConeGeometry(.2,1.2,4),M(0xffffff,{roughness:.3,emissive:0x303090,emissiveIntensity:.9}),(m,i,x,z)=>{const s=.6+R()*1.3;instSet(m,i,x,.5*s,z,s,s,s,R()*6,pick([0x7a7aff,0xb06bff,0x5ee7ff,0xff6bd0]))});
+  cover(5,420,new THREE.ConeGeometry(.2,1.0,4),M(0xffffff,{roughness:1}),(m,i,x,z)=>{const s=.6+R()*1.1;instSet(m,i,x,.45*s,z,s,s,s,R()*6,pick([0x56627a,0x6a7a94,0x445066]))});
+  {const N=120,cm=instMesh(new THREE.PlaneGeometry(.3,1),new THREE.MeshBasicMaterial({color:0xff3dd0,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
+    placeIn(6,N,.05,(i,x,z)=>{const s=2+R()*5;_dm.position.set(x,.09,z);_dm.rotation.set(-Math.PI/2,0,R()*TAU);_dm.scale.set(.6+R()*.8,s,1);_dm.updateMatrix();cm.setMatrixAt(i,_dm.matrix);k=i+1});cm.count=k;instDone(cm);WORLD.cracks2=cm}
+  cover(6,360,new THREE.ConeGeometry(.2,1.2,4),M(0xffffff,{roughness:.3,emissive:0x501070,emissiveIntensity:.9}),(m,i,x,z)=>{const s=.6+R()*1.3;instSet(m,i,x,.5*s,z,s,s,s,R()*6,pick([0x8a2ad0,0xff3dd0,0x5a3aa8]))});
   }catch(e){console.error('deco2',e)}
   /* far mountains */
   {const N=48,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
@@ -210,16 +225,22 @@ const ATMO=[
   {bg:0x93b8d4,sky:0xdfeeff,gr:0x6a7a5a,hi:1.0,sun:1.0,sc:0xfff0d0,rc:0x9ab8ff,ri:.4,fd:.0050},
   {bg:0x56627a,sky:0xa8b8d8,gr:0x3a4050,hi:.88,sun:.75,sc:0xc0ccff,rc:0x6a8aff,ri:.55,fd:.0078},
   {bg:0x7a4636,sky:0xffb89a,gr:0x4a2a24,hi:.92,sun:.85,sc:0xffb480,rc:0xff6a3a,ri:.6,fd:.0068},
-  {bg:0x2c2a5a,sky:0x9a8aff,gr:0x20204a,hi:.92,sun:.7,sc:0xd0c0ff,rc:0x8a6aff,ri:.65,fd:.0062}
+  {bg:0x2c2a5a,sky:0x9a8aff,gr:0x20204a,hi:.92,sun:.7,sc:0xd0c0ff,rc:0x8a6aff,ri:.65,fd:.0062},
+  {bg:0x3a4658,sky:0xaab8d0,gr:0x2a3446,hi:.86,sun:.66,sc:0xcfe0ff,rc:0xffe27a,ri:.7,fd:.0068},
+  {bg:0x1c1030,sky:0x8a5aaa,gr:0x180e2c,hi:.8,sun:.55,sc:0xd0a0ff,rc:0xff5ad8,ri:.8,fd:.0074}
 ];
 const _ac={bg:new THREE.Color(0x8fb4d8),sky:new THREE.Color(0xdfeeff),gr:new THREE.Color(0x6a7a5a),sc:new THREE.Color(0xfff0d0),rc:new THREE.Color(0x9ab8ff),hi:1,sun:1,ri:.4,fd:.0046},_ct=new THREE.Color();
+const _nb=new THREE.Color(),_ns=new THREE.Color(),_ng=new THREE.Color(),_nsc=new THREE.Color(),_nrc=new THREE.Color();
 function updateAtmo(dt,zi){
   const a=ATMO[zi],k=1-Math.exp(-dt*1.5);
   _ct.set(a.bg);_ac.bg.lerp(_ct,k);_ct.set(a.sky);_ac.sky.lerp(_ct,k);_ct.set(a.gr);_ac.gr.lerp(_ct,k);_ct.set(a.sc);_ac.sc.lerp(_ct,k);_ct.set(a.rc);_ac.rc.lerp(_ct,k);
   _ac.hi+=(a.hi-_ac.hi)*k;_ac.sun+=(a.sun-_ac.sun)*k;_ac.ri+=(a.ri-_ac.ri)*k;_ac.fd+=(a.fd-_ac.fd)*k;
-  if(scene.background&&scene.background.copy)scene.background.copy(_ac.bg);
-  if(scene.fog){if(scene.fog.color&&scene.fog.color.copy)scene.fog.color.copy(_ac.bg);scene.fog.density=_ac.fd}
-  hemi.color.copy(_ac.sky);hemi.groundColor.copy(_ac.gr);hemi.intensity=_ac.hi;sun.intensity=_ac.sun;sun.color.copy(_ac.sc);rim.color.copy(_ac.rc);rim.intensity=_ac.ri;
+  const nk=nightK();   // 0 = day .. 1 = deep night, follows the shared 16 min clock
+  _nb.copy(_ac.bg).lerp(_ct.set(0x0b1233),nk*.8);_ns.copy(_ac.sky).lerp(_ct.set(0x34478c),nk*.8);_ng.copy(_ac.gr).lerp(_ct.set(0x0e1530),nk*.7);
+  _nsc.copy(_ac.sc).lerp(_ct.set(0x93a8ff),nk*.85);_nrc.copy(_ac.rc).lerp(_ct.set(0xb4c4ff),nk*.5);
+  if(scene.background&&scene.background.copy)scene.background.copy(_nb);
+  if(scene.fog){if(scene.fog.color&&scene.fog.color.copy)scene.fog.color.copy(_nb);scene.fog.density=_ac.fd*(1+.22*nk)}
+  hemi.color.copy(_ns);hemi.groundColor.copy(_ng);hemi.intensity=_ac.hi*(1-.5*nk);sun.intensity=_ac.sun*(1-.7*nk);sun.color.copy(_nsc);rim.color.copy(_nrc);rim.intensity=_ac.ri*(1+.5*nk);
 }
 function updateWorldFx(dt,t){
   if(WORLD.emblem)WORLD.emblem.rotation.z=t*.05;
@@ -228,4 +249,5 @@ function updateWorldFx(dt,t){
   for(const g of (WORLD.gems||[]))g.rotation.y=t*1.2;
   for(const w of WORLD.ponds)w.material.emissiveIntensity=.5+Math.sin(t*1.5)*.12;
   if(WORLD.cracks)WORLD.cracks.material.opacity=.5+Math.sin(t*2.4)*.15;
+  if(WORLD.cracks2)WORLD.cracks2.material.opacity=.5+Math.sin(t*2.0+1)*.18;
 }

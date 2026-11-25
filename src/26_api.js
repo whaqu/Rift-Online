@@ -27,18 +27,32 @@ const LocalAPI=(()=>{
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
   const wr=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
-  const xpNeed=l=>30+9*l*l;
+  const xpNeed=l=>30+7*l*l;
   const jobOK=id=>JOBS[id];
+  const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
+  const yday=()=>new Date(Date.now()+9*3600e3-864e5).toISOString().slice(0,10);
+  const hashS=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h};
+  function dqEnsure(a){
+    const d=today();if(a.dq&&a.dq.d===d)return a.dq;
+    const zmax=a.level>=60?6:a.level>=40?5:a.level>=26?4:a.level>=16?3:a.level>=8?2:1,h=hashS(a.name+d);
+    const q=[{k:'any',z:0,t:50+(h%5)*10,p:0,c:false},{k:'zone',z:1+(Math.floor(h/7)%zmax),t:30+(Math.floor(h/11)%4)*5,p:0,c:false}];
+    q.push(Math.floor(h/13)%2===0?{k:'elite',z:0,t:2+Math.floor(h/17)%3,p:0,c:false}:{k:'potion',z:0,t:4+Math.floor(h/17)%4,p:0,c:false});
+    return a.dq={d,q,b:false};
+  }
+  function dqProg(a,k,z,n){const dq=dqEnsure(a);for(const q of dq.q)if(q.k===k&&(k!=='zone'||q.z===z)&&!q.c)q.p=Math.min(q.t,q.p+n)}
   function pf(a){
+    const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
+      daily:{ready:a.last_daily!==d,streak:es,day:dd},dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed}))};
   }
-  function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');return a}
+  function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
   function give(n,kind,base,q){
     if(kind==='potion'){const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}}
     const it={id:db.nid++,owner:n,kind,base,enh:0,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(it);return it;
   }
-  function applyXp(a,x){a.xp+=x;while(a.level<40&&a.xp>=xpNeed(a.level)){a.xp-=xpNeed(a.level);a.level++}if(a.level>=40)a.xp=0}
+  function applyXp(a,x){a.xp+=x;while(a.level<99&&a.xp>=xpNeed(a.level)){a.xp-=xpNeed(a.level);a.level++}if(a.level>=99)a.xp=0}
+  const isNightL=()=>{const p=((Date.now()/1000)%DAYLEN)/DAYLEN;return p>=.55&&p<.95};
   const rnd01=Math.random;
   // seed a few fake market listings so the auction house isn't empty offline
   function seedMarket(){
@@ -52,7 +66,7 @@ const LocalAPI=(()=>{
     register(name,pass,cls){
       rd();seedMarket();
       if(!/^[가-힣A-Za-z0-9_]{2,10}$/.test(name||''))E('BAD_NAME');if(!pass||pass.length<4)E('BAD_PASS');
-      if(!['warrior','mage','archer'].includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
+      if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
       const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
       const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5);wr();
       return{token:a.token,profile:pf(a)};
@@ -60,23 +74,42 @@ const LocalAPI=(()=>{
     login(name,pass){rd();seedMarket();const a=db.acc[name];if(!a||a.pass!==pass)E('BAD_LOGIN');a.token='t'+Math.random().toString(36).slice(2);wr();return{token:a.token,profile:pf(a)}},
     load(n,t){rd();return pf(auth(n,t))},
     claim(n,t,kills){
-      rd();const a=auth(n,t);let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
+      rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
+      if(!a.gq_ts||Date.now()-a.gq_ts>30*60e3){a.gq_n=0;a.gq_ts=Date.now()}
+      const zc=[0,0,0,0,0,0,0];let ec=0;
       for(const k of kills||[]){
-        const z=clamp(k.z|0||1,1,4),el=!!k.e;let nn=Math.min(30,k.n|0,Math.floor(tk));if(nn<=0)continue;
-        const lo=[1,8,16,26][z-1],hi=[10,18,28,42][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
-        tk-=nn;got+=nn;xx+=nn*(6+ml*4)*(el?6:1);gx+=Math.floor(nn*(2+ml*1.6)*(el?5:1));
+        const z=clamp(k.z|0||1,1,6),el=!!k.e,gl=!!k.g;let nn=Math.min(30,k.n|0,Math.floor(tk));if(nn<=0)continue;
+        const lo=[1,8,16,26,40,60][z-1],hi=[10,18,28,42,62,99][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
+        tk-=nn;got+=nn;zc[z]+=nn;if(el)ec+=nn;xx+=Math.floor(nn*(6+ml*4)*(el?6:1)*nm);gx+=Math.floor(nn*(2+ml*1.6)*(el?5:1)*nm);
+        if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
-          if(rnd01()<(el?.3:.035)){const tier=clamp(Math.round(ml/5+rnd01()*1.6-.6),1,8),cls=['warrior','mage','archer'][Math.floor(rnd01()*3)];const b=cls+'_'+tier;give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          if(rnd01()<(el?.3:.035)*(night?1.4:1)){const tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8),cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)];const b=cls+'_'+tier;give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
-      a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;applyXp(a,xx);wr();
-      return{gold:gx,xp:xx,n:got,drops,profile:pf(a)};
+      a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;
+      if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=6;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
+      applyXp(a,xx);wr();
+      return{gold:gx,xp:xx,n:got,drops,night,profile:pf(a)};
+    },
+    daily(n,t){
+      rd();const a=auth(n,t),d=today();if(a.last_daily===d)E('ALREADY');
+      const ns=a.last_daily===yday()?(a.streak||0)+1:1,dy=((ns-1)%7)+1,base=500+a.level*60,pot=a.level>=16?'hp2':'hp1';let rg=0;
+      if(dy===1)rg=base;else if(dy===2)give(n,'potion',pot,5);else if(dy===3)rg=base*2;else if(dy===4){give(n,'potion','atk',3);give(n,'potion','def',3)}
+      else if(dy===5){give(n,'potion',pot,8);rg=base}else if(dy===6){rg=base*3;give(n,'potion','spd',3)}else{rg=base*6;give(n,'potion','hp3',5);give(n,'potion','atk',5)}
+      a.gold+=rg;a.streak=ns;a.last_daily=d;wr();return{day:dy,gold:rg,profile:pf(a)};
+    },
+    dqClaim(n,t,idx){
+      rd();const a=auth(n,t),dq=dqEnsure(a),pot=a.level>=16?'hp2':'hp1';let rg,rx;
+      if(idx>=0&&idx<=2){const q=dq.q[idx];if(!q||q.p<q.t||q.c)E('NOT_READY');q.c=true;rg=400+a.level*90;rx=Math.floor(xpNeed(a.level)*.2);a.gold+=rg;give(n,'potion',pot,3)}
+      else if(idx===3){if(dq.b)E('ALREADY');if(dq.q.filter(q=>q.c).length<3)E('NOT_READY');dq.b=true;rg=(400+a.level*90)*3;rx=Math.floor(xpNeed(a.level)*.5);a.gold+=rg;give(n,'potion','atk',2);give(n,'potion','def',2);give(n,'potion',pot,5)}
+      else E('BAD_ARGS');
+      applyXp(a,rx);wr();return{gold:rg,xp:rx,profile:pf(a)};
     },
     buy(n,t,base,q){
       rd();const a=auth(n,t);q=clamp(q|0||1,1,99);
       if(POTIONS[base]){const p=POTIONS[base].price*q;if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'potion',base,q)}
-      else if(/^(warrior|mage|archer)_[23]$/.test(base)){const p=WVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'weapon',base,1)}
+      else if(new RegExp('^('+CLASSES.join('|')+')_[2-4]$').test(base)){const p=WVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'weapon',base,1)}
       else E('NOT_SOLD');
       wr();return pf(a);
     },
@@ -87,12 +120,12 @@ const LocalAPI=(()=>{
     },
     equip(n,t,id){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='weapon'&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
-      if(wCls(it.base)!==a.cls)E('WRONG_CLASS');if(a.level<wReq(it.base))E('LOW_LEVEL');
+      if(wCls(it.base)!==a.cls)E('WRONG_CLASS');
       db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});it.eq=true;wr();return pf(a);
     },
     usePotion(n,t,base){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone&&i.qty>0);if(!it)E('NO_POTION');
-      it.qty--;if(it.qty<=0)it.gone=true;wr();return{ok:true,profile:pf(a)};
+      it.qty--;if(it.qty<=0)it.gone=true;dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
     },
     enhance(n,t,id){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='weapon'&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
@@ -114,7 +147,7 @@ const LocalAPI=(()=>{
       a.gold-=cost;wr();return{result:res,cost,profile:pf(a)};
     },
     advance(n,t,job){
-      rd();const a=auth(n,t);const j=JOBS[job];if(!j||!j.tier||j.cls!==a.cls||j.parent!==a.job)E('BAD_JOB');
+      rd();const a=auth(n,t);const j=JOBS[job];if(!j||!(j.tier===1||j.tier===2)||j.cls!==a.cls||j.parent!==a.job)E('BAD_JOB');
       if(a.level<j.req)E('LOW_LEVEL');if(a.gold<j.price)E('NO_GOLD');a.gold-=j.price;a.job=job;wr();return pf(a);
     },
     aucList(kind,cls){
@@ -139,11 +172,11 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',enhance:'rw_enhance',enchant:'rw_enchant',advance:'rw_advance',
+const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',enhance:'rw_enhance',enchant:'rw_enchant',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel'};
 const ARGS={
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
-  enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),advance:a=>({p_job:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
+  enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
   tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]})
 };
