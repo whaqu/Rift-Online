@@ -143,13 +143,43 @@ const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff
 const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a];
 const wTier=b=>+(String(b).split('_')[1]||1);
 const wCls=b=>String(b).split('_')[0];
+const wType=b=>{const p=String(b).split('_')[2];return p&&/^\d$/.test(p)?+p:0};
+/* weapon kinds: every class has 3 (balanced / heavy / swift), same tier ladder */
+const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의'];
+const WTYPES={warrior:['대검','쌍검'],mage:['마도서','완드'],archer:['석궁','속사궁'],rogue:['쌍낫','표창'],cleric:['전투 철퇴','성배'],lancer:['미늘창','단창'],monk:['건틀릿','발톱'],gunner:['산탄총','쌍권총'],summoner:['정령서','인형'],darknight:['참마도','단도']};
+const WTMOD=[{n:'균형형',d:'균형 잡힌 기본형',atk:1,aps:1,crit:0},{n:'강타형',d:'공격력 +15%, 공격 속도 -12%',atk:1.15,aps:.88,crit:0},{n:'속공형',d:'공격력 -10%, 공격 속도 +15%, 치명타 +4%',atk:.9,aps:1.15,crit:.04}];
+/* armor: 4 slots x 3 materials. base id = slot_tier_material (e.g. body_3_plate) */
+const ASLOTS=['helm','body','gloves','boots'],ASLOT_N={helm:'투구',body:'갑옷',gloves:'장갑',boots:'신발'},ASLOT_W={helm:.6,body:1,gloves:.45,boots:.45};
+const ASETS={plate:{n:'판금',def:1.25,hp:2,d:'방어와 체력 특화'},leather:{n:'가죽',def:1,hp:1.5,d:'기동과 치명타'},cloth:{n:'비단',def:.7,hp:1.2,d:'공격력과 공격 속도'}};
+const ASET_KEYS=['plate','leather','cloth'];
+const ADEF=[6,14,26,42,64,92,128,172],AVALUE=[60,500,2000,7000,22000,60000,170000,480000];
+const APFX=['낡은','견습','병사의','룬 각인','미스릴','용린','폭풍의','영겁의'];
+const ANOUN={plate:{helm:'투구',body:'판금 갑옷',gloves:'철장갑',boots:'철제 장화'},leather:{helm:'가죽 모자',body:'가죽 조끼',gloves:'가죽 장갑',boots:'가죽 장화'},cloth:{helm:'두건',body:'로브',gloves:'비단 장갑',boots:'천 신발'}};
+const aSlot=b=>String(b).split('_')[0],aSet=b=>String(b).split('_')[2]||'cloth';
+const armorName=b=>APFX[wTier(b)-1]+' '+ANOUN[aSet(b)][aSlot(b)];
+const armorDef=(b,enh)=>Math.round(ADEF[wTier(b)-1]*ASLOT_W[aSlot(b)]*ASETS[aSet(b)].def*(1+(enh||0)*.09));
+const armorHp=(b,enh)=>Math.round(armorDef(b,enh)*ASETS[aSet(b)].hp*1.6);
+const SETB={plate:['최대 체력 +8%','피해 감소 +6%'],leather:['이동 속도 +4%','치명타 +6%, 공격 속도 +6%'],cloth:['공격력 +6%','공격력 +8%, 흡혈 +2%']};
+function armorBonus(pieces){
+  const o={def:0,hp:0,atk:0,aps:0,spd:0,crit:0,armor:0,hpPct:0,vamp:0,cnt:{plate:0,leather:0,cloth:0}};
+  for(const it of pieces){
+    const b=it.base,st=aSet(b);o.def+=armorDef(b,it.enh);o.hp+=armorHp(b,it.enh);o.cnt[st]++;
+    if(st==='leather'){o.spd+=.006;o.crit+=.008}else if(st==='cloth'){o.atk+=.015;o.aps+=.01}
+  }
+  if(o.cnt.plate>=2)o.hpPct+=.08;if(o.cnt.plate>=4)o.armor+=.06;
+  if(o.cnt.leather>=2)o.spd+=.04;if(o.cnt.leather>=4){o.crit+=.06;o.aps+=.06}
+  if(o.cnt.cloth>=2)o.atk+=.06;if(o.cnt.cloth>=4){o.atk+=.08;o.vamp+=.02}
+  return o;
+}
+const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>WNAMES[wCls(b)][wTier(b)-1];
+const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
 const WVALUE=[100,900,3500,12000,38000,110000,320000,900000];
-const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b)));
+const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
+const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
-const sellValue=it=>it.kind==='weapon'?Math.floor(WVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
+const sellValue=it=>it.kind==='armor'?Math.floor(AVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
 
 const POTIONS={
   hp1:{name:'하급 체력 물약',kind:'hp',pct:.35,price:40,col:'#ff5a6a'},
@@ -172,14 +202,17 @@ const ENCH={
 };
 const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
-  {id:1,name:'초원',r0:19,r1:62,lo:1,hi:10,types:['slime','slime','bat'],ground:0x5fa84a,alt:0x4f9a40},
-  {id:2,name:'망자의 숲',r0:62,r1:100,lo:8,hi:18,types:['skel','skel','archer'],ground:0x4a4f58,alt:0x3e4350},
-  {id:3,name:'화염 황무지',r0:100,r1:132,lo:16,hi:28,types:['bomber','skel','archer','bat'],ground:0x7a4a38,alt:0x6a3c30},
-  {id:4,name:'수정 협곡',r0:132,r1:166,lo:26,hi:42,types:['golem','archer','bomber'],ground:0x4a4a8a,alt:0x3a3a78},
-  {id:5,name:'뇌우 고원',r0:166,r1:206,lo:40,hi:62,types:['golem','bomber','archer','bat'],ground:0x5a6678,alt:0x4a5668},
-  {id:6,name:'공허의 균열',r0:206,r1:248,lo:60,hi:99,types:['golem','skel','archer','bomber'],ground:0x3a2a52,alt:0x2e2044}
+  {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat'],ground:0x5fa84a,alt:0x4f9a40},
+  {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer'],ground:0x4a4f58,alt:0x3e4350},
+  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat'],ground:0x7a4a38,alt:0x6a3c30},
+  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber'],ground:0x4a4a8a,alt:0x3a3a78},
+  {id:5,name:'뇌우 고원',r0:246,r1:308,lo:40,hi:62,types:['golem','bomber','archer','bat'],ground:0x5a6678,alt:0x4a5668},
+  {id:6,name:'공허의 균열',r0:308,r1:372,lo:60,hi:72,types:['golem','skel','archer','bomber'],ground:0x3a2a52,alt:0x2e2044},
+  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['skel','golem','archer','bat'],ground:0xcfe0ee,alt:0xb4cbe0},
+  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['golem','bomber','archer','skel'],ground:0xc8a468,alt:0xb48f55},
+  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['golem','archer','bomber','bat'],ground:0xd8d4e8,alt:0xbfb8dc}
 ];
-const WORLD_R=246;
+const WORLD_R=576;
 /* day / night: one cycle = 16 min on the shared wall clock, night is phase [.55,.95) (same rule as the server) */
 const DAYLEN=960;
 const dayPhase=()=>((Date.now()/1000)%DAYLEN)/DAYLEN;
@@ -218,6 +251,10 @@ const ICONS={
   arrowup:'<path d="M12 3l8 9h-5v9H9v-9H4l8-9z"/>',
   burst:'<path d="M12 1l2.2 6.3L20 4l-3.3 5.8L23 12l-6.3 2.2L20 20l-5.8-3.3L12 23l-2.2-6.3L4 20l3.3-5.8L1 12l6.3-2.2L4 4l5.8 3.3z"/>',
   rain:'<path d="M4 2h2v9h2.5L5 17 1.5 11H4V2zm7 5h2v9h2.5L12 22l-3.5-6H11V7zm7-5h2v9h2.5L19 17l-3.5-6H18V2z"/>',
+  helm:'<path d="M12 3C7 3 4 7 4 12v3h3v-2h10v2h3v-3c0-5-3-9-8-9zm-2 7h4v2h-4v-2z"/>',
+  body:'<path d="M8 3L3 6l2 4 2-1v11h10V9l2 1 2-4-5-3c-.5 1.500-1.800 2.500-4 2.500S8.500 4.500 8 3z"/>',
+  gloves:'<path d="M7 4h2v5h1V3h2v6h1V4h2v6h1V6h2v9c0 3-2 6-6 6h-1c-3 0-5-2-5-5V4z"/>',
+  boots:'<path d="M8 3h6v8l5 3c1 .6 1.500 1.500 1.500 3v2H5v-3c0-1 .3-1.800 1-2.500L8 11V3z"/>',
   spear:'<path d="M3 20.5L16.5 7l-1.500-1.500L17 2l5 5-3.500 1.500L17 7 3.500 22 3 20.500z"/>',
   fist:'<path d="M6 9a3 3 0 013-3h7a3 3 0 013 3v6a5 5 0 01-5 5h-3a5 5 0 01-5-5V9zm3 0v3h8V9H9zm0 5v1h8v-1H9z"/>',
   gun:'<path d="M2 7h16l4 3v3h-8l-1.500 7H8.500l1-7H2V7z"/>',
@@ -230,11 +267,11 @@ function ico(svg,col){return '<span class="ico" style="--tc:'+col+'">'+svg+'</sp
 function ic(n,col,sz){return '<svg class="ic" viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="'+(col||'currentColor')+'">'+(ICONS[n]||'')+'</svg>'}
 function itemIcon(it){
   if(it.kind==='potion'){const p=POTIONS[it.base],c=p?p.col:'#fff';return ico(ic('potion',c,26),c)}
-  const c=TIER_COL[wTier(it.base)-1];return ico(ic(WICON[wCls(it.base)],c,26),c);
+  const c=TIER_COL[wTier(it.base)-1];if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
-  return wName(it.base)+(it.enh>0?' +'+it.enh:'');
+  return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}

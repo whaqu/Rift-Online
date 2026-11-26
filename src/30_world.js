@@ -62,15 +62,16 @@ function emblemTex(){
   g.globalAlpha=.45;g.lineWidth=2;for(let i=0;i<12;i++){const a=i/12*TAU;g.beginPath();g.moveTo(Math.cos(a)*100,Math.sin(a)*100);g.lineTo(Math.cos(a)*150,Math.sin(a)*150);g.stroke()}
   return new THREE.CanvasTexture(c);
 }
-const ZCOL=[0x8fe8ff,0x8fe8ff,0x9fb0ff,0xff7a3a,0xc06bff,0xffe27a,0xff3dd0];
-function onPath(x,z){const d=Math.hypot(x,z);if(d>17&&d<64)return Math.abs(x)<3.6||Math.abs(z)<3.6;return x>0&&Math.abs(z)<3.6&&d<162}
+const ZCOL=[0x8fe8ff,0x8fe8ff,0x9fb0ff,0xff7a3a,0xc06bff,0xffe27a,0xff3dd0,0xbfe6ff,0xffc060,0xfff0b0];
+const ZS=[0,1.5,1.8,2.4,2.8,2.3,2.2,1,1,1],sc=(n,zi)=>Math.round(n*ZS[zi]);
+function onPath(x,z){const d=Math.hypot(x,z);if(d>17&&d<64)return Math.abs(x)<3.6||Math.abs(z)<3.6;return x>0&&Math.abs(z)<3.6&&d<WORLD_R}
 WORLD.wisps=[];WORLD.ponds=[];WORLD.cracks=null;WORLD.emblem=null;WORLD.pulse=[];
 
 function buildWorld(){
   clearGroup(worldG);WORLD.obst.length=0;WORLD.grid={};WORLD.lava.length=0;WORLD.wisps.length=0;WORLD.ponds.length=0;WORLD.pulse.length=0;WORLD.cracks=null;WORLD.emblem=null;
   const R=mulberry(20240611);
   /* ground */
-  const SIZE=(WORLD_R+14)*2,SEG=96;
+  const SIZE=(WORLD_R+14)*2,SEG=220;
   const geo=new THREE.PlaneGeometry(SIZE,SIZE,SEG,SEG);geo.rotateX(-Math.PI/2);
   const pos=geo.attributes.position;
   if(pos){
@@ -107,7 +108,7 @@ function buildWorld(){
       const uv=geo.attributes&&geo.attributes.uv;if(uv&&uv.count){for(let i=0;i<uv.count;i++)uv.setY(i,uv.getY(i)*len/9)}
       const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:pt,transparent:true,roughness:1,depthWrite:false}));
       m.position.set(Math.sin(th)*(r0+len/2),.03,Math.cos(th)*(r0+len/2));m.rotation.y=th;m.receiveShadow=true;worldG.add(m)};
-    mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,228)}
+    mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,WORLD_R-12)}
   /* gates */
   const stoneG=M(0x8a8798,{roughness:.9}),darkG=M(0x55526a,{roughness:.9});
   const gate=(x,z,th,col,sc)=>{
@@ -122,7 +123,7 @@ function buildWorld(){
   };
   WORLD.gems=[];
   [0,Math.PI/2,Math.PI,-Math.PI/2].forEach(th=>gate(Math.sin(th)*20.8,Math.cos(th)*20.8,th,0x8fe8ff,.9));
-  for(const zi of[2,3,4,5,6])gate(ZONES[zi].r0,0,Math.PI/2,ZCOL[zi],1.1);
+  for(const zi of[2,3,4,5,6,7,8,9])gate(ZONES[zi].r0,0,Math.PI/2,ZCOL[zi],1.1);
   /* ponds */
   [[38,-26,5.5],[-30,36,6.5],[-44,-38,5]].forEach(pd=>{
     const [x,z,r]=pd;
@@ -164,60 +165,81 @@ function buildWorld(){
   const free=(x,z)=>Math.hypot(x,z)>21&&Math.hypot(x,z)<WORLD_R-3&&!onPath(x,z);
   const placeIn=(zi,n,rad,fn)=>{const zn=ZONES[zi];let c=0,tries=0;while(c<n&&tries++<n*20){const a=R()*TAU,r=zn.r0+2+R()*(zn.r1-zn.r0-4),x=Math.cos(a)*r,z=Math.sin(a)*r;if(!free(x,z))continue;let ok=true;for(const o of WORLD.obst){if(Math.abs(o.x-x)<8&&Math.abs(o.z-z)<8&&d2(x,z,o.x,o.z)<(o.r+rad+.6)*(o.r+rad+.6)){ok=false;break}}if(!ok)continue;fn(c++,x,z)}return c};
   // z1 trees
-  {const N=190,tr=instMesh(new THREE.CylinderGeometry(.25,.4,2,6),M(0x6b4a2b),N),cn=instMesh(new THREE.ConeGeometry(1.5,3.6,7),M(0xffffff),N),cn2=instMesh(new THREE.ConeGeometry(1.1,2.8,7),M(0xffffff),N);let k=0;
+  {const N=sc(190,1),tr=instMesh(new THREE.CylinderGeometry(.25,.4,2,6),M(0x6b4a2b),N),cn=instMesh(new THREE.ConeGeometry(1.5,3.6,7),M(0xffffff),N),cn2=instMesh(new THREE.ConeGeometry(1.1,2.8,7),M(0xffffff),N);let k=0;
     const cols=[0x3e8a44,0x4a9a48,0x2e7a3e,0x56a850];
     placeIn(1,N,1.2,(i,x,z)=>{const s=.8+R()*.8,c=cols[Math.floor(R()*4)];instSet(tr,i,x,s*1,z,s,s,s,0);instSet(cn,i,x,s*3.2,z,s,s,s,R()*6,c);instSet(cn2,i,x,s*5.0,z,s,s,s,R()*6,c);addObst(x,z,.6*s+.2);k=i+1});
     tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
-    const rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),40);let kk=0;placeIn(1,40,1.2,(i,x,z)=>{const s=.7+R()*1.0;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x8a8f98);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
+    const NR=sc(40,1),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),NR);let kk=0;placeIn(1,NR,1.2,(i,x,z)=>{const s=.7+R()*1.0;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x8a8f98);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
   // z2 dead forest
-  {const N=170,tr=instMesh(new THREE.CylinderGeometry(.14,.36,4.4,5),M(0x2a2a30),N),br=instMesh(new THREE.ConeGeometry(.9,2.2,5),M(0x3a3a44),N);let k=0;
+  {const N=sc(170,2),tr=instMesh(new THREE.CylinderGeometry(.14,.36,4.4,5),M(0x2a2a30),N),br=instMesh(new THREE.ConeGeometry(.9,2.2,5),M(0x3a3a44),N);let k=0;
     placeIn(2,N,1,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,s*2.2,z,s,s,s,0);instSet(br,i,x,s*4.2,z,s,s*.8,s,R()*6);addObst(x,z,.5*s+.2);k=i+1});tr.count=br.count=k;instDone(tr);instDone(br);
-    const gs=instMesh(new THREE.BoxGeometry(.9,1.4,.3),M(0x8a8f9a),70);let kk=0;placeIn(2,70,.8,(i,x,z)=>{const s=.8+R()*.5;instSet(gs,i,x,.7*s,z,s,s,s,R()*6);addObst(x,z,.55);kk=i+1});gs.count=kk;instDone(gs)}
+    const NR=sc(70,2),gs=instMesh(new THREE.BoxGeometry(.9,1.4,.3),M(0x8a8f9a),NR);let kk=0;placeIn(2,NR,.8,(i,x,z)=>{const s=.8+R()*.5;instSet(gs,i,x,.7*s,z,s,s,s,R()*6);addObst(x,z,.55);kk=i+1});gs.count=kk;instDone(gs)}
   // z3 volcanic
-  {const N=130,rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff,{roughness:1}),N);let k=0;
+  {const N=sc(130,3),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff,{roughness:1}),N);let k=0;
     placeIn(3,N,1.4,(i,x,z)=>{const s=.8+R()*1.6;instSet(rk,i,x,s*.55,z,s,s*(.8+R()*.8),s,R()*6,pick([0x3a2a2a,0x4a3030,0x2a2024]));addObst(x,z,s*.95);k=i+1});rk.count=k;instDone(rk);
-    for(let i=0;i<26;i++){const a=R()*TAU,r=ZONES[3].r0+4+R()*(ZONES[3].r1-ZONES[3].r0-8),x=Math.cos(a)*r,z=Math.sin(a)*r,s=2+R()*3;
+    for(let i=0,NL=sc(26,3);i<NL;i++){const a=R()*TAU,r=ZONES[3].r0+4+R()*(ZONES[3].r1-ZONES[3].r0-8),x=Math.cos(a)*r,z=Math.sin(a)*r,s=2+R()*3;
       const m=new THREE.Mesh(shared.discG,flatMat(0xff5a1a,.55));m.rotation.x=-Math.PI/2;m.position.set(x,.1,z);m.scale.set(s,s,s);worldG.add(m);const g=glow(0xff6a2a,s*2.6,.28);g.position.set(x,.8,z);worldG.add(g);WORLD.lava.push({x,z,s,m})}}
   // z4 crystals
-  {const N=120,cr=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x4040a0,emissiveIntensity:.8,roughness:.3}),N);let k=0;
+  {const N=sc(120,4),cr=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x4040a0,emissiveIntensity:.8,roughness:.3}),N);let k=0;
     const cols=[0x7a7aff,0xb06bff,0x5ee7ff,0xff6bd0];
     placeIn(4,N,1.2,(i,x,z)=>{const s=.8+R()*1.6;const cc2=cols[Math.floor(R()*4)];instSet(cr,i,x,s*1.6,z,s*.6,s*1.7,s*.6,R()*6,cc2);if(i%4===0){const g=glow(cc2,s*4.2,.4);g.position.set(x,s*1.6,z);worldG.add(g);WORLD.pulse.push({s:g,b:.4,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
 
   // z5 thunder plateau: stone spires with charged tips
-  {const N=110,sp=instMesh(new THREE.CylinderGeometry(.35,.9,1,5),M(0xffffff,{roughness:.9}),N),tp=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x8a7a20,emissiveIntensity:.9,roughness:.3}),N);let k=0;
+  {const N=sc(110,5),sp=instMesh(new THREE.CylinderGeometry(.35,.9,1,5),M(0xffffff,{roughness:.9}),N),tp=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x8a7a20,emissiveIntensity:.9,roughness:.3}),N);let k=0;
     placeIn(5,N,1.1,(i,x,z)=>{const s=.8+R()*1.3,h=3+R()*5;instSet(sp,i,x,h*.5,z,s,h,s,R()*6,pick([0x4a5568,0x56627a,0x3a4558]));instSet(tp,i,x,h+.3,z,.35*s,.5*s,.35*s,R()*6,0xffe27a);
       if(i%5===0){const g=glow(0xffe27a,s*3.4,.4);g.position.set(x,h+.3,z);worldG.add(g);WORLD.pulse.push({s:g,b:.4,ph:R()*6})}addObst(x,z,.6*s+.3);k=i+1});
     sp.count=tp.count=k;instDone(sp);instDone(tp);
-    const rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),50);let kk=0;placeIn(5,50,1.2,(i,x,z)=>{const s=.7+R()*1.1;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x6a7488);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
+    const NR=sc(50,5),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),NR);let kk=0;placeIn(5,NR,1.2,(i,x,z)=>{const s=.7+R()*1.1;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x6a7488);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
   // z6 void rift: floating shards + magenta fissures
-  {const N=110,cr=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x6a1a8a,emissiveIntensity:.9,roughness:.3}),N);let k=0;
+  {const N=sc(110,6),cr=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x6a1a8a,emissiveIntensity:.9,roughness:.3}),N);let k=0;
     placeIn(6,N,1.2,(i,x,z)=>{const s=.9+R()*1.9,y=s*1.8+R()*2.5;instSet(cr,i,x,y,z,s*.55,s*1.6,s*.55,R()*6,pick([0x8a2ad0,0xff3dd0,0x5a3aa8,0x2a1a4a]));
       if(i%3===0){const g=glow(0xff3dd0,s*4.6,.38);g.position.set(x,y,z);worldG.add(g);WORLD.pulse.push({s:g,b:.38,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
 
+  // z7 frozen tundra: snowy pines + ice spires
+  {const N=230,tr=instMesh(new THREE.CylinderGeometry(.22,.36,1.6,5),M(0x4a3a30),N),cn=instMesh(new THREE.ConeGeometry(1.5,3.4,7),M(0xffffff),N),cn2=instMesh(new THREE.ConeGeometry(1,2.4,7),M(0xffffff),N);let k=0;
+    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,.8*s,z,s,s,s,0);instSet(cn,i,x,s*2.9,z,s,s,s,R()*6,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,s*4.7,z,s,s,s,R()*6,0xeaf4ff);addObst(x,z,.6*s+.2);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
+    const N2=130,ic=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x3a7aa8,emissiveIntensity:.7,roughness:.25}),N2);let k2=0;
+    placeIn(7,N2,1.2,(i,x,z)=>{const s=.9+R()*1.6;instSet(ic,i,x,s*1.5,z,s*.55,s*1.6,s*.55,R()*6,pick([0xbfe6ff,0x8ad0ff,0xe8f6ff]));if(i%5===0){const g=glow(0x9fe0ff,s*4,.35);g.position.set(x,s*1.5,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}addObst(x,z,s*.6);k2=i+1});ic.count=k2;instDone(ic)}
+  // z8 ancient desert ruins: broken columns, cacti, glowing obelisks
+  {const N=180,col=instMesh(new THREE.CylinderGeometry(.6,.75,1,7),M(0xffffff,{roughness:.95}),N),cap=instMesh(new THREE.BoxGeometry(1.7,.5,1.7),M(0xffffff,{roughness:.95}),N);let k=0;
+    placeIn(8,N,1.2,(i,x,z)=>{const s=.8+R()*.7,h=2+R()*5,c=pick([0xc9a96a,0xb8975a,0xd8bb80]);instSet(col,i,x,h*.5,z,s,h,s,R()*6,c);if(R()<.6)instSet(cap,i,x,h+.25,z,s,s,s,R()*6,c);else instSet(cap,i,x,-8,z,.01,.01,.01,0,c);addObst(x,z,.75*s+.2);k=i+1});col.count=cap.count=k;instDone(col);instDone(cap);
+    const N2=130,ca=instMesh(new THREE.CylinderGeometry(.28,.34,1,6),M(0xffffff,{roughness:1}),N2);let k2=0;
+    placeIn(8,N2,.8,(i,x,z)=>{const s=.8+R()*.8,h=1.4+R()*2.2;instSet(ca,i,x,h*.5,z,s,h,s,R()*6,pick([0x4f8a4a,0x5a9a52]));addObst(x,z,.4*s+.15);k2=i+1});ca.count=k2;instDone(ca);
+    const N3=36,ob=instMesh(new THREE.BoxGeometry(1,1,1),M(0xffffff,{emissive:0x8a6a10,emissiveIntensity:.8,roughness:.4}),N3);let k3=0;
+    placeIn(8,N3,1.2,(i,x,z)=>{const s=.7+R()*.6,h=3.5+R()*3;instSet(ob,i,x,h*.5,z,.9*s,h,.9*s,R()*6,0xffd45a);const g=glow(0xffd45a,s*5,.38);g.position.set(x,h*.8,z);worldG.add(g);WORLD.pulse.push({s:g,b:.38,ph:R()*6});addObst(x,z,.8*s);k3=i+1});ob.count=k3;instDone(ob)}
+  // z9 sky sanctuary: marble columns + floating golden orbs
+  {const N=160,cl=instMesh(new THREE.CylinderGeometry(.5,.6,1,10),M(0xffffff,{roughness:.5}),N),cp=instMesh(new THREE.BoxGeometry(1.5,.4,1.5),M(0xffffff,{roughness:.5}),N);let k=0;
+    placeIn(9,N,1.2,(i,x,z)=>{const s=.8+R()*.6,h=3+R()*6,c=pick([0xf0eef8,0xe0dcf0,0xd8d0ee]);instSet(cl,i,x,h*.5,z,s,h,s,R()*6,c);instSet(cp,i,x,h+.2,z,s,s,s,R()*6,c);addObst(x,z,.6*s+.2);k=i+1});cl.count=cp.count=k;instDone(cl);instDone(cp);
+    const N2=120,or=instMesh(new THREE.IcosahedronGeometry(1,1),M(0xffffff,{emissive:0xb89a30,emissiveIntensity:.9,roughness:.3}),N2);let k2=0;
+    placeIn(9,N2,1,(i,x,z)=>{const s=.5+R()*.8,y=2.5+R()*4;instSet(or,i,x,y,z,s,s,s,R()*6,pick([0xffe27a,0xfff0b0,0xd8c8ff]));if(i%3===0){const g=glow(0xffe27a,s*5,.35);g.position.set(x,y,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}addObst(x,z,s*.7);k2=i+1});or.count=k2;instDone(or)}
+
   /* ground cover */
   try{
-  const cover=(zi,n,geo,mat,fn)=>{const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=false;let k=0;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);k=i+1});m.count=k;instDone(m);return m};
+  const cover=(zi,n,geo,mat,fn)=>{n=sc(n,zi);const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=false;let k=0;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);k=i+1});m.count=k;instDone(m);return m};
   const tm=M(0xffffff,{roughness:1}),gcols=[0x5a9a48,0x6aae52,0x4a8a40,0x7ab85a];
   cover(1,1700,new THREE.ConeGeometry(.17,.9,4),tm,(m,i,x,z)=>{const s=.7+R()*.9;instSet(m,i,x,.4*s,z,s,s,s,R()*6,gcols[Math.floor(R()*4)])});
   {const gl=[0x4a7a3a,0x58884a];const n=420,m=instMesh(new THREE.ConeGeometry(.17,.9,4),tm,n);m.castShadow=false;let k=0;
     for(let i=0;i<n;i++){const a=R()*TAU,r=19+R()*5,x=Math.cos(a)*r,z=Math.sin(a)*r;if(onPath(x,z))continue;const s=.6+R()*.7;instSet(m,k++,x,.4*s,z,s,s,s,R()*6,gl[i&1])}m.count=k;instDone(m)}
-  {const N=420,fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff,0xff8a4a],st=instMesh(new THREE.CylinderGeometry(.025,.025,.42,3),M(0x3f7a38),N),hd=instMesh(new THREE.IcosahedronGeometry(.17,0),M(0xffffff,{emissive:0x222222}),N);st.castShadow=hd.castShadow=false;let k=0;
+  {const N=sc(420,1),fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff,0xff8a4a],st=instMesh(new THREE.CylinderGeometry(.025,.025,.42,3),M(0x3f7a38),N),hd=instMesh(new THREE.IcosahedronGeometry(.17,0),M(0xffffff,{emissive:0x222222}),N);st.castShadow=hd.castShadow=false;let k=0;
     placeIn(1,N,.05,(i,x,z)=>{const s=.8+R()*.6;instSet(st,i,x,.21*s,z,s,s,s,0);instSet(hd,i,x,.46*s,z,s,s,s,R()*6,fc[Math.floor(R()*5)]);k=i+1});st.count=hd.count=k;instDone(st);instDone(hd)}
   cover(2,900,new THREE.ConeGeometry(.15,.8,4),tm,(m,i,x,z)=>{const s=.6+R()*1.0;instSet(m,i,x,.4*s,z,s,s*(.8+R()*.8),s,R()*6,R()<.5?0x6a6a78:0x55556a)});
-  {const N=110,cap=instMesh(new THREE.SphereGeometry(.42,7,5),M(0xffffff,{emissive:0x6a5acd,emissiveIntensity:.9,roughness:.5}),N),stm=instMesh(new THREE.CylinderGeometry(.1,.14,.5,5),M(0xd8d4c0),N);cap.castShadow=stm.castShadow=false;let k=0;
+  {const N=sc(110,2),cap=instMesh(new THREE.SphereGeometry(.42,7,5),M(0xffffff,{emissive:0x6a5acd,emissiveIntensity:.9,roughness:.5}),N),stm=instMesh(new THREE.CylinderGeometry(.1,.14,.5,5),M(0xd8d4c0),N);cap.castShadow=stm.castShadow=false;let k=0;
     placeIn(2,N,.5,(i,x,z)=>{const s=.7+R()*1.1;instSet(cap,i,x,.55*s,z,s,s*.6,s,0,[0x7a8aff,0xb07aff,0x6ad8ff][Math.floor(R()*3)]);instSet(stm,i,x,.25*s,z,s,s,s,0);if(i%4===0){const g=glow(0x8a8aff,2.6*s,.35);g.position.set(x,.8*s,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}k=i+1;addObst(x,z,.35*s)});cap.count=stm.count=k;instDone(cap);instDone(stm)}
-  for(let i=0;i<26;i++){const a=R()*TAU,r=ZONES[2].r0+4+R()*(ZONES[2].r1-ZONES[2].r0-8),x=Math.cos(a)*r,z=Math.sin(a)*r;if(onPath(x,z))continue;const g=glow(0x9fe0ff,1.7,.55);g.position.set(x,1.4,z);worldG.add(g);WORLD.wisps.push({s:g,x,z,ph:R()*6})}
+  for(let i=0,NW=sc(26,2);i<NW;i++){const a=R()*TAU,r=ZONES[2].r0+4+R()*(ZONES[2].r1-ZONES[2].r0-8),x=Math.cos(a)*r,z=Math.sin(a)*r;if(onPath(x,z))continue;const g=glow(0x9fe0ff,1.7,.55);g.position.set(x,1.4,z);worldG.add(g);WORLD.wisps.push({s:g,x,z,ph:R()*6})}
   cover(3,420,new THREE.ConeGeometry(.22,1.3,4),M(0xffffff,{roughness:1,emissive:0x401008,emissiveIntensity:.6}),(m,i,x,z)=>{const s=.6+R()*1.2;instSet(m,i,x,.5*s,z,s,s*(.7+R()*1.1),s,R()*6,pick([0x3a2220,0x4a2a24,0x2e1c1c]))});
-  {const N=140,cm=instMesh(new THREE.PlaneGeometry(.35,1),new THREE.MeshBasicMaterial({color:0xff6a1a,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
+  {const N=sc(140,3),cm=instMesh(new THREE.PlaneGeometry(.35,1),new THREE.MeshBasicMaterial({color:0xff6a1a,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
     placeIn(3,N,.05,(i,x,z)=>{const s=1.5+R()*3.5;_dm.position.set(x,.09,z);_dm.rotation.set(-Math.PI/2,0,R()*TAU);_dm.scale.set(.6+R()*.8,s,1);_dm.updateMatrix();cm.setMatrixAt(i,_dm.matrix);k=i+1});cm.count=k;instDone(cm);WORLD.cracks=cm}
   cover(4,340,new THREE.ConeGeometry(.2,1.2,4),M(0xffffff,{roughness:.3,emissive:0x303090,emissiveIntensity:.9}),(m,i,x,z)=>{const s=.6+R()*1.3;instSet(m,i,x,.5*s,z,s,s,s,R()*6,pick([0x7a7aff,0xb06bff,0x5ee7ff,0xff6bd0]))});
   cover(5,420,new THREE.ConeGeometry(.2,1.0,4),M(0xffffff,{roughness:1}),(m,i,x,z)=>{const s=.6+R()*1.1;instSet(m,i,x,.45*s,z,s,s,s,R()*6,pick([0x56627a,0x6a7a94,0x445066]))});
-  {const N=120,cm=instMesh(new THREE.PlaneGeometry(.3,1),new THREE.MeshBasicMaterial({color:0xff3dd0,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
+  {const N=sc(120,6),cm=instMesh(new THREE.PlaneGeometry(.3,1),new THREE.MeshBasicMaterial({color:0xff3dd0,transparent:true,opacity:.6,blending:THREE.AdditiveBlending,depthWrite:false,side:THREE.DoubleSide}),N);cm.castShadow=false;let k=0;
     placeIn(6,N,.05,(i,x,z)=>{const s=2+R()*5;_dm.position.set(x,.09,z);_dm.rotation.set(-Math.PI/2,0,R()*TAU);_dm.scale.set(.6+R()*.8,s,1);_dm.updateMatrix();cm.setMatrixAt(i,_dm.matrix);k=i+1});cm.count=k;instDone(cm);WORLD.cracks2=cm}
   cover(6,360,new THREE.ConeGeometry(.2,1.2,4),M(0xffffff,{roughness:.3,emissive:0x501070,emissiveIntensity:.9}),(m,i,x,z)=>{const s=.6+R()*1.3;instSet(m,i,x,.5*s,z,s,s,s,R()*6,pick([0x8a2ad0,0xff3dd0,0x5a3aa8]))});
+  cover(7,900,new THREE.ConeGeometry(.17,.8,4),tm,(m,i,x,z)=>{const s=.6+R()*1.0;instSet(m,i,x,.4*s,z,s,s,s,R()*6,pick([0xeaf4ff,0xcfe0ee,0xa8c8e0]))});
+  cover(8,800,new THREE.ConeGeometry(.2,.9,4),tm,(m,i,x,z)=>{const s=.6+R()*1.0;instSet(m,i,x,.4*s,z,s,s,s,R()*6,pick([0xb89a58,0xa88a48,0xc8aa68]))});
+  cover(9,800,new THREE.ConeGeometry(.2,1.1,4),M(0xffffff,{roughness:.4,emissive:0x6a5a20,emissiveIntensity:.8}),(m,i,x,z)=>{const s=.6+R()*1.1;instSet(m,i,x,.5*s,z,s,s,s,R()*6,pick([0xfff0b0,0xffffff,0xd8c8ff]))});
   }catch(e){console.error('deco2',e)}
   /* far mountains */
-  {const N=48,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
+  {const N=130,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
 }
 
 const ATMO=[
@@ -227,7 +249,10 @@ const ATMO=[
   {bg:0x7a4636,sky:0xffb89a,gr:0x4a2a24,hi:.92,sun:.85,sc:0xffb480,rc:0xff6a3a,ri:.6,fd:.0068},
   {bg:0x2c2a5a,sky:0x9a8aff,gr:0x20204a,hi:.92,sun:.7,sc:0xd0c0ff,rc:0x8a6aff,ri:.65,fd:.0062},
   {bg:0x3a4658,sky:0xaab8d0,gr:0x2a3446,hi:.86,sun:.66,sc:0xcfe0ff,rc:0xffe27a,ri:.7,fd:.0068},
-  {bg:0x1c1030,sky:0x8a5aaa,gr:0x180e2c,hi:.8,sun:.55,sc:0xd0a0ff,rc:0xff5ad8,ri:.8,fd:.0074}
+  {bg:0x1c1030,sky:0x8a5aaa,gr:0x180e2c,hi:.8,sun:.55,sc:0xd0a0ff,rc:0xff5ad8,ri:.8,fd:.0074},
+  {bg:0xa8c4dc,sky:0xeaf4ff,gr:0x8aa0b8,hi:1.02,sun:.95,sc:0xe8f0ff,rc:0xbfe0ff,ri:.5,fd:.0072},
+  {bg:0xd8b88a,sky:0xffe2b0,gr:0x8a6a44,hi:1.05,sun:1.1,sc:0xffd89a,rc:0xffb060,ri:.45,fd:.0058},
+  {bg:0xb8b0e0,sky:0xf4eeff,gr:0x8a84b0,hi:1.05,sun:1.05,sc:0xfff4e0,rc:0xffe8a0,ri:.6,fd:.0054}
 ];
 const _ac={bg:new THREE.Color(0x8fb4d8),sky:new THREE.Color(0xdfeeff),gr:new THREE.Color(0x6a7a5a),sc:new THREE.Color(0xfff0d0),rc:new THREE.Color(0x9ab8ff),hi:1,sun:1,ri:.4,fd:.0046},_ct=new THREE.Color();
 const _nb=new THREE.Color(),_ns=new THREE.Color(),_ng=new THREE.Color(),_nsc=new THREE.Color(),_nrc=new THREE.Color();

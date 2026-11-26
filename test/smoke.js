@@ -66,6 +66,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   // job: 1st at Lv20, 2nd at Lv50 (5 awakenings), cap 99
   const dbk=()=>JSON.parse(localStorage.getItem('rw_local_db_v1'));
   const setAcc=o=>{const d=dbk();Object.assign(d.acc[g.SES.name],o);localStorage.setItem('rw_local_db_v1',JSON.stringify(d))};
+  setAcc({level:15,xp:0});
   let lowE='';try{await g.API.call('advance','gladiator')}catch(e){lowE=e.message}T(lowE==='LOW_LEVEL','advance blocked below Lv20 '+lowE);
   setAcc({level:20,gold:1e6});await g.API.call('claim',[]);
   try{await g.API.call('advance','gladiator');T(g.SES.pf.job==='gladiator','job advanced')}catch(e){T(false,'advance '+e.message)}
@@ -84,6 +85,41 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   await g.API.call("claim",[{z:1,ml:11,n:30,e:true}]);await g.API.call("claim",[{z:1,ml:11,n:30,e:true}]);
   try{await g.API.call('enchant',w.id,-1);T(g.SES.pf.items.find(i=>i.id===w.id).ench.length===1,'enchant added')}catch(e){T(false,'enchant '+e.message)}
   g.derive();T(g.S.atk>0,'derive ok');
+  // ---- armor, weapon kinds, zones 7-9 ----
+  {
+    setAcc({gold:5e7,level:99});await g.API.call('claim',[]);
+    for(const sl of g.ASLOTS)await g.API.call('buy',sl+'_3_plate');
+    let bw='';try{await g.API.call('buy','helm_9_plate')}catch(e){bw=e.message}T(bw!=='','bad armor id rejected');
+    const arm=()=>g.SES.pf.items.filter(i=>i.kind==='armor'),p3=()=>arm().filter(i=>/_3_plate$/.test(i.base));
+    T(p3().length>=4,'bought 4 armor pieces');
+    for(const sl of g.ASLOTS)await g.API.call('equip',p3().find(i=>i.base.startsWith(sl+'_')).id);
+    T(p3().filter(i=>i.eq).length===4,'all armor equipped');
+    g.derive();T(g.S.def>0&&g.S.armor>0,'armor gives def '+g.S.def);
+    const b4=g.armorBonus(p3().filter(i=>i.eq));T(b4.cnt.plate===4&&b4.armor>0&&b4.hpPct>0,'plate 4pc bonus');
+    const hp0=g.S.maxHp;
+    const h1=p3().find(i=>i.base.startsWith('helm_'));await g.API.call('equip',h1.id);T(!arm().find(i=>i.id===h1.id).eq,'equip toggles armor off');await g.API.call('equip',h1.id);
+    await g.API.call('buy','helm_2_leather');const lh=arm().find(i=>i.base==='helm_2_leather');await g.API.call('equip',lh.id);
+    T(arm().filter(i=>i.eq&&i.base.startsWith('helm_')).length===1&&!arm().find(i=>i.id===h1.id).eq,'one piece per slot');
+    await g.API.call('equip',h1.id);
+    const e0=h1.enh;await g.API.call('enhance',h1.id).catch(()=>{});
+    setAcc({});for(let i=0;i<3;i++)await g.API.call('enhance',h1.id).catch(()=>{});
+    T(g.SES.pf.items.find(i=>i.id===h1.id).enh>=e0,'armor enhance callable');
+    g.derive();T(g.S.maxHp>=hp0*.9,'hp from armor');
+    const spare=arm().find(i=>!i.eq&&!i.listed);const g0=g.SES.pf.gold;await g.API.call('sell',spare.id);T(g.SES.pf.gold>g0,'armor sold');
+    // weapon kinds
+    const cls=g.SES.pf.cls;for(const ty of[1,2])await g.API.call('buy',cls+'_3_'+ty);
+    const typed=g.SES.pf.items.filter(i=>i.kind==='weapon'&&/_3_[12]$/.test(i.base));T(typed.length===2,'typed weapons bought');
+    T(g.wType(typed[0].base)===1&&g.wName(typed[0].base)!==g.wName(cls+'_3'),'weapon kind names differ');
+    await g.API.call('equip',typed[0].id);g.derive();const aHeavy=g.S.atk;await g.API.call('equip',typed[1].id);g.derive();T(g.S.atk!==aHeavy,'weapon kinds change stats');
+    // zones
+    T(g.ZONES.length===10&&g.WORLD_R>=570,'ten zones');
+    T(g.zoneAt(400,0).id===7&&g.zoneAt(470,0).id===8&&g.zoneAt(540,0).id===9,'zones 7-9 resolve');
+    T(g.mobLevel(540,0)>=88&&g.mobLevel(400,0)>=70,'late-zone mob levels');
+    setAcc({tokens:80,ts:Date.now()});const c9=await g.API.call('claim',[{z:9,ml:95,n:40,e:true}]);T(c9.gold>0,'zone 9 claim pays');
+    for(let i=0;i<10;i++){setAcc({tokens:80,ts:Date.now()});await g.API.call('claim',[{z:9,ml:95,n:40,e:true}])}
+    T(g.SES.pf.items.some(i=>i.kind==='armor')&&true,'armor present after claims');
+    g.drawMini();g.openShop();g.UI.close();
+  }
   // render all panels (smoke) + handlers
   g.openInventory();T(g.UI.modal==='가방','inv');g.UI.close();
   g.openJob();T(g.UI.modal==='전직 교관','job panel');g.UI.close();

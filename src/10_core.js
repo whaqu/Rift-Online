@@ -204,7 +204,10 @@ const AMB=[
   {rate:18,cols:[0xff8a3a,0xffc060],vy:[1.2,3.2],sp:.9,y:[.2,1.5],life:[1.8,3]},
   {rate:11,cols:[0xa88aff,0x7ae8ff],vy:[.1,.5],sp:.4,y:[.3,4.5],life:[3.5,6]},
   {rate:14,cols:[0xffe27a,0xcfe0ff],vy:[.3,1.6],sp:1.1,y:[.3,4],life:[1.2,2.4]},
-  {rate:13,cols:[0xff3dd0,0x8a2ad0],vy:[.2,1.2],sp:.5,y:[.3,5],life:[2.5,4.5]}
+  {rate:13,cols:[0xff3dd0,0x8a2ad0],vy:[.2,1.2],sp:.5,y:[.3,5],life:[2.5,4.5]},
+  {rate:20,cols:[0xffffff,0xd8ecff],vy:[-.7,-.25],sp:.6,y:[2,7],life:[3,5]},
+  {rate:12,cols:[0xe8c88a,0xffe2a8],vy:[.05,.5],sp:1.3,y:[.2,2.2],life:[2,3.5]},
+  {rate:12,cols:[0xfff0b0,0xffffff,0xd8c8ff],vy:[.3,1.1],sp:.35,y:[.5,6],life:[3,5.5]}
 ];
 let ambAcc=0,fireAcc=0;
 function ambientFx(dt,zi,cx,cz){

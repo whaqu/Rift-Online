@@ -6,20 +6,22 @@ const inTown=(x,z)=>x*x+z*z<19*19;
 function derive(){
   const pf=SES.pf,c=CLS[pf.cls],job=JOBS[pf.job]||JOBS[pf.cls],m=job.m,L=pf.level;
   const w=pf.items.find(i=>i.kind==='weapon'&&i.eq);
-  const wa=w?weaponAtk(w.base,w.enh):0;const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
+  const ab=armorBonus(pf.items.filter(i=>i.kind==='armor'&&i.eq));
+  const wa=w?weaponAtk(w.base,w.enh):0,wt=w?WTMOD[wType(w.base)]:WTMOD[0];const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
   const burnLv=(m.burn||0)+(en.burn||0);
+  const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor);
   S={
     cls:pf.cls,job:pf.job,level:L,
-    maxHp:Math.round((c.hp+L*c.hpLv)*(m.hp||1)),
-    atk:(c.atk+L*c.atkLv+wa)*(m.atk||1),wa,
-    aps:c.aps*(m.aps||1)*(1+(en.aspd||0)*.06),
-    spd:c.spd*(m.spd||1),
-    crit:Math.min(.8,c.crit+(m.crit||0)+(en.crit||0)*.05),critDmg:1.6,
-    armor:1-(1-(m.armor||0))*(1-(en.armor||0)*.04),
-    vamp:(m.vamp||0)+(en.vamp||0)*.03,burnLv,
+    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct)),
+    atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk),wa,
+    aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
+    spd:c.spd*(m.spd||1)*(1+ab.spd),
+    crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
+    armor:1-(1-(m.armor||0))*(1-dr)*(1-(en.armor||0)*.04),
+    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03,burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
-    regen:m.regen||0,berserk:!!m.berserk,weapon:w||null,en
+    regen:m.regen||0,berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
   };
   return S;
 }

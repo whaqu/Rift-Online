@@ -34,7 +34,7 @@ const LocalAPI=(()=>{
   const hashS=s=>{let h=0;for(let i=0;i<s.length;i++)h=(h*31+s.charCodeAt(i))>>>0;return h};
   function dqEnsure(a){
     const d=today();if(a.dq&&a.dq.d===d)return a.dq;
-    const zmax=a.level>=60?6:a.level>=40?5:a.level>=26?4:a.level>=16?3:a.level>=8?2:1,h=hashS(a.name+d);
+    const zmax=a.level>=88?9:a.level>=78?8:a.level>=70?7:a.level>=60?6:a.level>=40?5:a.level>=26?4:a.level>=16?3:a.level>=8?2:1,h=hashS(a.name+d);
     const q=[{k:'any',z:0,t:50+(h%5)*10,p:0,c:false},{k:'zone',z:1+(Math.floor(h/7)%zmax),t:30+(Math.floor(h/11)%4)*5,p:0,c:false}];
     q.push(Math.floor(h/13)%2===0?{k:'elite',z:0,t:2+Math.floor(h/17)%3,p:0,c:false}:{k:'potion',z:0,t:4+Math.floor(h/17)%4,p:0,c:false});
     return a.dq={d,q,b:false};
@@ -76,19 +76,21 @@ const LocalAPI=(()=>{
     claim(n,t,kills){
       rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
       if(!a.gq_ts||Date.now()-a.gq_ts>30*60e3){a.gq_n=0;a.gq_ts=Date.now()}
-      const zc=[0,0,0,0,0,0,0];let ec=0;
+      const zc=[0,0,0,0,0,0,0,0,0,0];let ec=0;
       for(const k of kills||[]){
-        const z=clamp(k.z|0||1,1,6),el=!!k.e,gl=!!k.g;let nn=Math.min(30,k.n|0,Math.floor(tk));if(nn<=0)continue;
-        const lo=[1,8,16,26,40,60][z-1],hi=[10,18,28,42,62,99][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
+        const z=clamp(k.z|0||1,1,9),el=!!k.e,gl=!!k.g;let nn=Math.min(30,k.n|0,Math.floor(tk));if(nn<=0)continue;
+        const lo=[1,8,16,26,40,60,70,78,88][z-1],hi=[10,18,28,42,62,72,80,89,99][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
         tk-=nn;got+=nn;zc[z]+=nn;if(el)ec+=nn;xx+=Math.floor(nn*(6+ml*4)*(el?6:1)*nm);gx+=Math.floor(nn*(2+ml*1.6)*(el?5:1)*nm);
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
-          if(rnd01()<(el?.3:.035)*(night?1.4:1)){const tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8),cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)];const b=cls+'_'+tier;give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
+          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          else if(rr<wc+ac){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
       a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;
-      if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=6;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
+      if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=9;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
       applyXp(a,xx);wr();
       return{gold:gx,xp:xx,n:got,drops,night,profile:pf(a)};
     },
@@ -109,27 +111,30 @@ const LocalAPI=(()=>{
     buy(n,t,base,q){
       rd();const a=auth(n,t);q=clamp(q|0||1,1,99);
       if(POTIONS[base]){const p=POTIONS[base].price*q;if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'potion',base,q)}
-      else if(new RegExp('^('+CLASSES.join('|')+')_[2-4]$').test(base)){const p=WVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'weapon',base,1)}
+      else if(new RegExp('^('+CLASSES.join('|')+')_[2-4](_[12])?$').test(base)){const p=WVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'weapon',base,1)}
+      else if(/^(helm|body|gloves|boots)_[1-4]_(plate|leather|cloth)$/.test(base)){const p=AVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'armor',base,1)}
       else E('NOT_SOLD');
       wr();return pf(a);
     },
     sell(n,t,id,q){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&!i.gone);if(!it||it.listed||it.eq)E('BAD_ITEM');
-      let v;if(it.kind==='weapon'){v=sellValue(it);it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
+      let v;if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
       a.gold+=v;wr();return pf(a);
     },
     equip(n,t,id){
-      rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='weapon'&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
-      if(wCls(it.base)!==a.cls)E('WRONG_CLASS');
-      db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});it.eq=true;wr();return pf(a);
+      rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
+      if(it.kind==='weapon'){if(wCls(it.base)!==a.cls)E('WRONG_CLASS');db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});it.eq=true}
+      else if(it.eq)it.eq=false;
+      else{db.items.forEach(i=>{if(i.owner===n&&i.kind==='armor'&&aSlot(i.base)===aSlot(it.base))i.eq=false});it.eq=true}
+      wr();return pf(a);
     },
     usePotion(n,t,base){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone&&i.qty>0);if(!it)E('NO_POTION');
       it.qty--;if(it.qty<=0)it.gone=true;dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
     },
     enhance(n,t,id){
-      rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='weapon'&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
-      if(it.enh>=20)E('MAX_ENH');const cost=enhCost(it.base,it.enh);if(a.gold<cost)E('NO_GOLD');a.gold-=cost;
+      rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
+      if(it.enh>=maxEnh(it))E('MAX_ENH');const cost=enhCost(it.base,it.enh);if(a.gold<cost)E('NO_GOLD');a.gold-=cost;
       const rate=ENH_RATE[it.enh];let res;
       if(rnd01()*100<rate){it.enh++;res='success'}else if(it.enh>=7){it.enh--;res='drop'}else res='fail';
       wr();return{result:res,cost,rate,enh:it.enh,profile:pf(a)};

@@ -11,7 +11,7 @@ UI.renderPeers=()=>{let n=1;for(const k in NET.peers)n++;$('netn').textContent=N
 UI.afterProfile=()=>{if(UI.rerender)UI.rerender()};
 UI.feed=d=>{
   let txt,col='#ccc';
-  if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
+  if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='armor'){txt=armorName(d.base);col=TIER_COL[wTier(d.base)-1]}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
   UI.feedText('획득: '+txt,col);
 };
 UI.feedText=(txt,col)=>{const f=$('feed'),d=document.createElement('div');d.textContent=txt;d.style.borderLeftColor=col||'#888';f.appendChild(d);while(f.children.length>5)f.removeChild(f.children[0]);setTimeout(()=>{try{f.removeChild(d)}catch(e){}},6000)};
@@ -45,11 +45,12 @@ UI.page=function(title,render){
 UI.act=function(a,v,el){const h=UI.handlers[a];if(h)h(v,el)};
 UI.handlers={};
 const fmtG=n=>fmtN(n)+' G';
-function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base,it.enh)):''}
+function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base,it.enh)):it.kind==='armor'?'방어 '+fmtN(armorDef(it.base,it.enh))+' · 체력 +'+fmtN(armorHp(it.base,it.enh)):''}
 function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</span>').join('')}
 function itemRow(it,o){
-  o=o||{};const col=it.kind==='weapon'?TIER_COL[wTier(it.base)-1]:'#e4e6ec';let sub;
-  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls;sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wStat(it)+' '+enchTags(it)}
+  o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:'#e4e6ec';let sub;
+  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)}
+  else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else{const p=POTIONS[it.base];sub=p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc}
   return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
@@ -63,7 +64,17 @@ async function guarded(fn,okMsg){
 /* ---------- inventory ---------- */
 function statsHtml(){
   derive();const pen=Math.round(S.armor*100);
-  return '<div class="kv"><span>공격력</span><span>'+fmtN(S.atk)+'</span><span>최대 체력</span><span>'+fmtN(S.maxHp)+'</span><span>공격 속도</span><span>'+S.aps.toFixed(2)+'/초</span><span>치명타</span><span>'+Math.round(S.crit*100)+'%</span><span>이동 속도</span><span>'+S.spd.toFixed(1)+'</span><span>피해 감소</span><span>'+pen+'%</span>'+(S.vamp?'<span>흡혈</span><span>'+Math.round(S.vamp*100)+'%</span>':'')+'</div>';
+  return '<div class="kv"><span>공격력</span><span>'+fmtN(S.atk)+'</span><span>최대 체력</span><span>'+fmtN(S.maxHp)+'</span><span>공격 속도</span><span>'+S.aps.toFixed(2)+'/초</span><span>치명타</span><span>'+Math.round(S.crit*100)+'%</span><span>이동 속도</span><span>'+S.spd.toFixed(1)+'</span><span>방어력</span><span>'+fmtN(S.def||0)+'</span><span>피해 감소</span><span>'+pen+'%</span>'+(S.vamp?'<span>흡혈</span><span>'+Math.round(S.vamp*100)+'%</span>':'')+'</div>';
+}
+function setBonusHtml(){
+  derive();let h='';
+  for(const k of ASET_KEYS){const n=S.setCnt?S.setCnt[k]:0;if(n<1)continue;
+    h+='<div class="sb"><b>'+ASETS[k].n+' '+n+'/4</b>'+SETB[k].map((t,i)=>'<span class="'+(n>=(i+1)*2?'on':'')+'">'+(i+1)*2+'세트: '+t+'</span>').join('')+'</div>'}
+  return h;
+}
+function equipRow(){
+  const pf=SES.pf;
+  return '<div class="eqrow">'+ASLOTS.map(sl=>{const it=pf.items.find(i=>i.kind==='armor'&&i.eq&&aSlot(i.base)===sl);return '<div class="eqs'+(it?'':' emp')+'" '+(it?'data-a="sel" data-v="'+it.id+'"':'')+'>'+(it?itemIcon(it):ico(ic(sl,'#667',26),'#667'))+'<span>'+ASLOT_N[sl]+(it&&it.enh?' +'+it.enh:'')+'</span></div>'}).join('')+'</div>';
 }
 function openInventory(){
   UI.sel=null;
@@ -73,59 +84,68 @@ function openInventory(){
     let det='<div class="dim">아이템을 선택하세요.</div>';
     if(sel){
       det=itemRow(sel,{a:'none'});
-      if(sel.kind==='weapon'){
-        det+='<div class="row wrap" style="margin-top:8px">'+(sel.eq?'':'<button class="btn sm" data-a="equip" data-v="'+sel.id+'">장착</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">상점 판매 ('+fmtG(sellValue(sel))+')</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button>')+'</div>';
-        if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 무기는 판매할 수 없습니다.</div>';
+      if(isGear(sel)){
+        det+='<div class="row wrap" style="margin-top:8px">'+(sel.eq?(sel.kind==='armor'?'<button class="btn sm sec" data-a="equip" data-v="'+sel.id+'">해제</button>':''):'<button class="btn sm" data-a="equip" data-v="'+sel.id+'">장착</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">상점 판매 ('+fmtG(sellValue(sel))+')</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button>')+'</div>';
+        if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 장비는 판매할 수 없습니다.</div>';
+        if(sel.kind==='weapon'&&wType(sel.base))det+='<div class="dim" style="margin-top:6px">'+WTMOD[wType(sel.base)].d+'</div>';
+        if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
     const pf=SES.pf,jn=JOBS[pf.job].name;
-    return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card">'+det+'</div></div>'
+    return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
       +'<div><div class="list" style="max-height:62vh">'+(items.length?items.map(i=>itemRow(i,{sel:sel&&sel.id===i.id})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
   });
 }
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
 UI.handlers.none=()=>{};
-UI.handlers.equip=v=>guarded(()=>API.call('equip',+v),'장착했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel()}});
+UI.handlers.equip=v=>guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel()}});
 UI.handlers.sell=v=>{const it=byId(+v);if(!it)return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 UI.handlers.usep=v=>{usePotionKey(v);setTimeout(()=>UI.rerender&&UI.rerender(),50)};
 UI.handlers.toauc=v=>{UI.close();openAuction('post',+v)};
 
 /* ---------- shop ---------- */
 function openShop(){
-  let tab='buy',qty=1;
+  let tab='buy',qty=1,aset='plate',atier=1;
   UI.page('상점',()=>{
-    const pf=SES.pf;let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='buy'?'on':'')+'" data-a="stab" data-v="buy">구매</div><div class="tab '+(tab==='sell'?'on':'')+'" data-a="stab" data-v="sell">판매</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
+    const pf=SES.pf;let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='buy'?'on':'')+'" data-a="stab" data-v="buy">구매</div><div class="tab '+(tab==='armor'?'on':'')+'" data-a="stab" data-v="armor">방어구</div><div class="tab '+(tab==='sell'?'on':'')+'" data-a="stab" data-v="sell">판매</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
     if(tab==='buy'){
       h+='<div class="row" style="margin-bottom:6px"><span class="dim">수량</span>'+[1,5,10,20].map(n=>'<button class="btn sm '+(qty===n?'':'sec')+'" data-a="sqty" data-v="'+n+'">'+n+'</button>').join('')+'</div><div class="list" style="max-height:56vh">';
       for(const b of POTION_ORDER){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
-      for(const t of[2,3,4]){const b=pf.cls+'_'+t;h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(WICON[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · '+KCLS[pf.cls]+' 전용'+'</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
+      for(const t of[2,3,4])for(let ty=0;ty<3;ty++){const b=pf.cls+'_'+t+(ty?'_'+ty:'');h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(WICON[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · '+WTMOD[ty].n+' · '+KCLS[pf.cls]+' 전용</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
+      h+='</div>';
+    }else if(tab==='armor'){
+      h+='<div class="row wrap" style="margin-bottom:6px">'+ASET_KEYS.map(k=>'<button class="btn sm '+(aset===k?'':'sec')+'" data-a="aset" data-v="'+k+'">'+ASETS[k].n+'</button>').join('')+'<span class="dim" style="margin:0 4px 0 10px">등급</span>'+[1,2,3,4].map(n=>'<button class="btn sm '+(atier===n?'':'sec')+'" data-a="atier" data-v="'+n+'">'+n+'</button>').join('')+'</div>'
+        +'<div class="dim" style="margin-bottom:6px">'+ASETS[aset].n+': '+ASETS[aset].d+' · 2세트 '+SETB[aset][0]+' / 4세트 '+SETB[aset][1]+'</div><div class="list" style="max-height:50vh">';
+      for(const sl of ASLOTS){const b=sl+'_'+atier+'_'+aset,pr=AVALUE[atier-1],cl=TIER_COL[atier-1];h+='<div class="item" style="--tc:'+cl+'">'+ico(ic(sl,cl,26),cl)+'<div><div class="nm" style="color:'+cl+'">'+armorName(b)+'</div><div class="sub">방어 '+armorDef(b,0)+' · 체력 +'+armorHp(b,0)+'</div></div><div class="rt"><div class="gold">'+fmtG(pr)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<pr?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
       const items=myItems().filter(i=>!i.eq);
-      h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(i.kind==='weapon'?sellValue(i):Math.floor(POTIONS[i.base].price*.25))+'</div>'+(i.kind==='potion'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
+      h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(isGear(i)?sellValue(i):Math.floor(POTIONS[i.base].price*.25))+'</div>'+(i.kind==='potion'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }
     return h;
   });
-  UI.handlers.stab=v=>{tab=v;UI.rerender()};UI.handlers.sqty=v=>{qty=+v;UI.rerender()};
+  UI.handlers.stab=v=>{tab=v;UI.rerender()};UI.handlers.aset=v=>{aset=v;UI.rerender()};UI.handlers.atier=v=>{atier=+v;UI.rerender()};UI.handlers.sqty=v=>{qty=+v;UI.rerender()};
   UI.handlers.buy=v=>guarded(()=>API.call('buy',v,qty),'구매했습니다');
-  UI.handlers.sellrow=async v=>{const it=byId(+v);if(!it)return;if(it.kind==='weapon'&&(it.enh>=5||it.ench.length)&&!(await UI.confirm('강화·인첸트된 무기입니다.\n정말 판매할까요?')))return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
+  UI.handlers.sellrow=async v=>{const it=byId(+v);if(!it)return;if(isGear(it)&&(it.enh>=5||(it.ench||[]).length)&&!(await UI.confirm('강화·인첸트된 장비입니다.\n정말 판매할까요?')))return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 }
 
 /* ---------- blacksmith ---------- */
 function openSmith(){
   let tab='enh',selId=null,msg='';
-  const weapons=()=>myItems().filter(i=>i.kind==='weapon').sort((a,b)=>(b.eq-a.eq)||(wTier(b.base)-wTier(a.base)));
+  const weapons=()=>myItems().filter(isGear).sort((a,b)=>(b.eq-a.eq)||(wTier(b.base)-wTier(a.base)));
   UI.page('대장간',()=>{
     const pf=SES.pf,ws=weapons();if(!selId||!byId(selId)||byId(selId).listed){const eq=ws.find(w=>w.eq);selId=eq?eq.id:(ws[0]?ws[0].id:null)}
     const it=selId?byId(selId):null;
     let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='enh'?'on':'')+'" data-a="mtab" data-v="enh">강화</div><div class="tab '+(tab==='ench'?'on':'')+'" data-a="mtab" data-v="ench">인첸트</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
     h+='<div class="two"><div><div class="list" style="max-height:58vh">'+ws.map(w=>itemRow(w,{sel:w.id===selId,a:'wsel'})).join('')+'</div></div><div>';
-    if(!it)h+='<div class="dim">무기가 없습니다.</div>';
+    if(!it)h+='<div class="dim">장비가 없습니다.</div>';
     else if(tab==='enh'){
-      const maxed=it.enh>=20,cost=maxed?0:enhCost(it.base,it.enh),rate=maxed?0:ENH_RATE[it.enh];
-      h+='<div class="card"><div class="nm" style="font-size:16px;color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim">공격력 '+fmtN(weaponAtk(it.base,it.enh))+(maxed?'':' → <span class="grn">'+fmtN(weaponAtk(it.base,it.enh+1))+'</span>')+'</div><hr>'
+      const maxed=it.enh>=maxEnh(it),cost=maxed?0:enhCost(it.base,it.enh),rate=maxed?0:ENH_RATE[it.enh],isA=it.kind==='armor',ev=(e)=>isA?armorDef(it.base,e):weaponAtk(it.base,e);
+      h+='<div class="card"><div class="nm" style="font-size:16px;color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim">'+(isA?'방어 ':'공격력 ')+fmtN(ev(it.enh))+(maxed?'':' → <span class="grn">'+fmtN(ev(it.enh+1))+'</span>')+'</div><hr>'
         +(maxed?'<div>최대 강화입니다.</div>':'<div class="kv"><span>성공 확률</span><span>'+rate+'%</span><span>비용</span><span class="gold">'+fmtG(cost)+'</span><span>실패 시</span><span>'+(it.enh>=7?'<span class="red">강화 단계 -1</span>':'변화 없음')+'</span></div>')
         +'<div style="margin:10px 0 4px;min-height:20px">'+msg+'</div><button class="btn" style="width:100%" data-a="enh" '+(maxed||pf.gold<cost?'disabled':'')+'>강화하기</button></div>';
+    }else if(it.kind==='armor'){
+      h+='<div class="card"><div class="nm" style="color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-top:6px">인첸트는 무기에만 부여할 수 있습니다.</div></div>';
     }else{
       const cnt=it.ench.length;
       h+='<div class="card"><div class="nm" style="color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-bottom:6px">인첸트 슬롯 '+cnt+'/3 — 효과는 무작위로 부여됩니다.</div>';
@@ -185,7 +205,7 @@ function openAuction(tab0,preItem){
     const pf=SES.pf;
     let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0">'+[['list','검색'],['post','등록'],['my','내 등록']].map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="atab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
     if(tab==='list'){
-      h+='<div class="row wrap" style="margin-bottom:6px">'+[['','전체'],['weapon','무기'],['potion','물약']].map(t=>'<button class="btn sm '+(kind===t[0]?'':'sec')+'" data-a="akind" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'<label class="row" style="margin-left:8px"><input type="checkbox" id="amine" '+(mine?'checked':'')+' data-a="amine"> 내 직업 무기만</label><button class="btn sm sec" data-a="arefresh" style="margin-left:auto">새로고침</button></div>';
+      h+='<div class="row wrap" style="margin-bottom:6px">'+[['','전체'],['weapon','무기'],['armor','방어구'],['potion','물약']].map(t=>'<button class="btn sm '+(kind===t[0]?'':'sec')+'" data-a="akind" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'<label class="row" style="margin-left:8px"><input type="checkbox" id="amine" '+(mine?'checked':'')+' data-a="amine"> 내 직업 무기만</label><button class="btn sm sec" data-a="arefresh" style="margin-left:auto">새로고침</button></div>';
       h+='<div class="list" style="max-height:54vh">'+(loading?'<div class="dim">불러오는 중…</div>':rows.length?rows.map(r=>itemRow(r.item,{a:'none',rt:'<div class="gold">'+fmtG(r.price)+'</div><div class="dim">'+esc(r.seller)+'</div><button class="btn sm" data-a="abuy" data-v="'+r.id+'" '+(r.seller===SES.name||pf.gold<r.price?'disabled':'')+'>구매</button>'})).join(''):'<div class="dim">등록된 물품이 없습니다.</div>')+'</div>';
     }else if(tab==='post'){
       const items=myItems().filter(i=>!i.eq);const it=sel&&items.find(i=>i.id===sel);
@@ -340,15 +360,16 @@ function updatePartyBars(){
   for(const el of box.children){const n=el.dataset.n,me=n===SES.name,p=me?null:NET.peers[n],hp=me?P.hp/S.maxHp*100:p?p.hp:0;const b=el.querySelector('.b i');if(b)b.style.width=Math.max(0,Math.min(100,hp))+'%'}
 }
 function drawMini(){
-  const c=$('mini'),g=c.getContext&&c.getContext('2d');if(!g)return;const W=c.width,sc=W/2/(WORLD_R+4),cx=W/2;
+  const c=$('mini'),g=c.getContext&&c.getContext('2d');if(!g)return;const W=c.width,sc=W/2/105,cx=W/2,ox=cx-P.x*sc,oz=cx-P.z*sc;
   g.clearRect(0,0,W,W);g.save();g.beginPath();g.arc(cx,cx,W/2-1,0,TAU);g.clip();g.fillStyle='#10131b';g.fillRect(0,0,W,W);
-  const cols=['#6f8a56','#5fa84a','#4a4f58','#7a4a38','#4a4a8a','#5a6678','#3a2a52'];
-  for(let i=ZONES.length-1;i>=0;i--){g.fillStyle=cols[i];g.beginPath();g.arc(cx,cx,ZONES[i].r1*sc,0,TAU);g.fill()}
-  g.fillStyle='#8c8678';g.beginPath();g.arc(cx,cx,19*sc,0,TAU);g.fill();
-  const px=x=>cx+x*sc;
-  g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(m.golden){g.fillStyle='#ffd24a';g.fillRect(px(m.x)-4,px(m.z)-4,8,8);g.fillStyle='#d9534f';continue}if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,px(m.z)-2,4,4)}}
-  g.fillStyle='#6bd4ff';for(const k in NET.peers){const p=NET.peers[k];if(p.got){g.beginPath();g.arc(px(p.x),px(p.z),4,0,TAU);g.fill()}}
-  g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),px(P.z),5,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
+  const cols=['#6f8a56','#5fa84a','#4a4f58','#7a4a38','#4a4a8a','#5a6678','#3a2a52','#cfe0ee','#c8a468','#d8d4e8'];
+  for(let i=ZONES.length-1;i>=0;i--){g.fillStyle=cols[i];g.beginPath();g.arc(ox,oz,ZONES[i].r1*sc,0,TAU);g.fill()}
+  g.fillStyle='#8c8678';g.beginPath();g.arc(ox,oz,19*sc,0,TAU);g.fill();
+  g.fillStyle='#10131b';g.beginPath();g.rect(0,0,W,W);g.arc(ox,oz,WORLD_R*sc,0,TAU,true);g.fill('evenodd');
+  const px=x=>ox+x*sc,pz=z=>oz+z*sc;
+  g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(m.golden){g.fillStyle='#ffd24a';g.fillRect(px(m.x)-4,pz(m.z)-4,8,8);g.fillStyle='#d9534f';continue}if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,pz(m.z)-2,4,4)}}
+  g.fillStyle='#6bd4ff';for(const k in NET.peers){const p=NET.peers[k];if(p.got){g.beginPath();g.arc(px(p.x),pz(p.z),4,0,TAU);g.fill()}}
+  g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),pz(P.z),5,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
   g.restore();
 }
 
