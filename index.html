@@ -649,13 +649,35 @@ canvas.addEventListener('contextmenu',e=>e.preventDefault());
 
 /* ---------------- model helpers ---------------- */
 const matC={};
-function M(hex,o){const k=hex+(o?JSON.stringify(o):'');return matC[k]||(matC[k]=new THREE.MeshStandardMaterial(Object.assign({color:hex,flatShading:true,roughness:.72,metalness:.08},o||{})))}
+/* HQ>0 while building heroes/weapons: smooth shading, more segments, rounded boxes */
+let HQ=0;
+function M(hex,o){const k=(HQ?'s':'')+hex+(o?JSON.stringify(o):'');return matC[k]||(matC[k]=new THREE.MeshStandardMaterial(Object.assign({color:hex,flatShading:!HQ,roughness:HQ?.62:.72,metalness:.08},o||{})))}
+const rbC={};
+function rboxGeo(w,h,d){
+  const r=Math.min(.14,Math.min(w,h,d)*.32),key=[w,h,d].map(v=>v.toFixed(3)).join(',');
+  if(rbC[key])return rbC[key];
+  const g=new THREE.BoxGeometry(w,h,d,6,6,6),pos=g.attributes&&g.attributes.position,nrm=g.attributes&&g.attributes.normal;
+  if(pos&&pos.array&&nrm&&nrm.array&&r>.004){
+    const H=[w/2,h/2,d/2],I=H.map(v=>v-r),a=pos.array,na=nrm.array;
+    for(let i=0;i<a.length;i+=3){
+      const c=[0,0,0],v=[0,0,0];
+      for(let k=0;k<3;k++){let u=a[i+k];const s=Math.sign(u),au=Math.abs(u),Hk=H[k];
+        if(au>Hk*.99)u=s*Hk;else if(au>Hk*.5)u=s*(I[k]+r*.5);else if(au>Hk*.2)u=s*I[k];else u=0;
+        v[k]=u;c[k]=Math.max(-I[k],Math.min(I[k],u))}
+      let nx=v[0]-c[0],ny=v[1]-c[1],nz=v[2]-c[2];const l=Math.hypot(nx,ny,nz);
+      if(l>1e-6){nx/=l;ny/=l;nz/=l;a[i]=c[0]+nx*r;a[i+1]=c[1]+ny*r;a[i+2]=c[2]+nz*r;na[i]=nx;na[i+1]=ny;na[i+2]=nz}
+      else{a[i]=v[0];a[i+1]=v[1];a[i+2]=v[2]}
+    }
+    pos.needsUpdate=true;nrm.needsUpdate=true;
+  }
+  return rbC[key]=g;
+}
 function EM(hex,int){return M(hex,{emissive:hex,emissiveIntensity:int==null?1:int,roughness:.4})}
 function mesh(geo,mat,x,y,z,parent,shadow){const m=new THREE.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=shadow!==false;if(parent)parent.add(m);return m}
-const BX=(w,h,d,mat,x,y,z,p)=>mesh(new THREE.BoxGeometry(w,h,d),mat,x,y,z,p);
-const SP=(r,mat,x,y,z,p,ws,hs)=>mesh(new THREE.SphereGeometry(r,ws||10,hs||8),mat,x,y,z,p);
-const CY=(rt,rb,h,mat,x,y,z,p,seg)=>mesh(new THREE.CylinderGeometry(rt,rb,h,seg||8),mat,x,y,z,p);
-const CN=(r,h,mat,x,y,z,p,seg)=>mesh(new THREE.ConeGeometry(r,h,seg||8),mat,x,y,z,p);
+const BX=(w,h,d,mat,x,y,z,p)=>mesh(HQ?rboxGeo(w,h,d):new THREE.BoxGeometry(w,h,d),mat,x,y,z,p);
+const SP=(r,mat,x,y,z,p,ws,hs)=>{const m=mesh(new THREE.SphereGeometry(r,HQ?Math.max(16,(ws||10)*2):ws||10,HQ?Math.max(12,(hs||8)*2):hs||8),mat,x,y,z,p);if(HQ)m.userData.sr=r;return m};
+const CY=(rt,rb,h,mat,x,y,z,p,seg)=>{const m=mesh(new THREE.CylinderGeometry(rt,rb,h,HQ?Math.max(16,(seg||8)*2):seg||8),mat,x,y,z,p);if(HQ)m.userData.cy=[rt,rb,h];return m};
+const CN=(r,h,mat,x,y,z,p,seg)=>mesh(new THREE.ConeGeometry(r,h,HQ?Math.max(12,(seg||8)*2):seg||8),mat,x,y,z,p);
 const OC=(r,mat,x,y,z,p)=>mesh(new THREE.OctahedronGeometry(r,0),mat,x,y,z,p);
 function grp(x,y,z,p){const g=new THREE.Group();g.position.set(x||0,y||0,z||0);if(p)p.add(g);return g}
 function cloneMats(g){
@@ -698,12 +720,32 @@ function blob(r){
 function fin(o,n,t,r){addOutline(o.g,n,t);if(r)o.g.add(blob(r));return o}
 
 /* ---------------- heroes ---------------- */
-function makeHero(cls,tint){
+function makeHero(cls,tint){HQ++;try{return makeHero0(cls,tint)}finally{HQ--}}
+/* attach arms to the torso (shoulder ball, moved in), replace ball hands with mitten hands */
+function heroLimbs(o,skin){
+  for(const [arm,side] of[[o.armL,-1],[o.armR,1]]){
+    arm.position.x=side*.58;
+    const sl=arm.children.find(c=>c.userData&&c.userData.cy);
+    if(sl){const [rt,rb,h]=sl.userData.cy;sl.position.y=-.34;
+      SP(rt*1.18,sl.material,0,-.02,0,arm,10,8);
+      CY(rb*1.12,rb*1.18,.12,M(0x2a2230),0,-.66,0,arm,8)}
+    const hs=arm.children.find(c=>c.userData&&c.userData.sr&&c.position.y<-.6);
+    if(hs){const r=hs.userData.sr,mat=hs.material,y=hs.position.y;arm.remove(hs);
+      const k=r/.135,hd=grp(0,y,0,arm);hd.scale.setScalar(k);
+      BX(.2,.19,.15,mat,0,.03,0,hd);
+      const fg=BX(.2,.12,.14,mat,0,-.09,.035,hd);fg.rotation.x=.45;
+      const th=CY(.038,.034,.13,mat,-side*.1,-.01,.06,hd,6);th.rotation.z=side*.55;th.rotation.x=.5;
+      o.hands=o.hands||[];o.hands.push(hd)}
+  }
+  // legs: knee pad + rounder hip so the legs read as attached
+  for(const lg of[o.legL,o.legR]){const c=lg.children.find(m=>m.userData&&m.userData.cy);if(c)SP(c.userData.cy[0]*1.05,c.material,0,-.02,0,lg,10,8)}
+}
+function makeHero0(cls,tint){
   const g=grp(),body=grp(0,0,0,g);
   const skin=M(0xf1c7a0),dark=M(0x262a40);
   const legL=grp(-.22,.85,0,body),legR=grp(.22,.85,0,body),torso=grp(0,1.15,0,body),head=grp(0,1.95,0,body),armL=grp(-.66,1.6,0,body),armR=grp(.66,1.6,0,body);
   const o={g,body,torso,head,legL,legR,armL,armR,cls,weapon:null,shadowBlob:null};
-  const eye=(x,y,z)=>SP(.045,M(0x10131f),x,y,z,head,6,5);
+  const eye=(x,y,z)=>{const e=SP(.05,M(0x10131f,{roughness:.2}),x,y,z,head,6,5);e.scale.set(1,1.25,.7);SP(.016,EM(0xffffff,1),x+.018,y+.025,z+.03,head,4,3);BX(.11,.025,.03,M(0x2a1e18),x,y+.1,z-.01,head).rotation.z=x>0?-.15:.15;return e};
   if(cls==='warrior'){
     const steel=M(0xaab6d6,{metalness:.55,roughness:.4}),blue=M(tint||0x2f56c8),gold=M(0xe8b73a,{metalness:.6,roughness:.35});
     CY(.17,.15,.8,steel,0,-.4,0,legL);CY(.17,.15,.8,steel,0,-.4,0,legR);BX(.3,.18,.46,dark,0,-.78,.08,legL);BX(.3,.18,.46,dark,0,-.78,.08,legR);
@@ -823,6 +865,7 @@ function makeHero(cls,tint){
     const sw=grp(0,-.76,0,armR);BX(.3,2.1,.07,steel,0,1.1,0,sw);BX(.05,2.0,.08,edge,0,1.1,0,sw);BX(.62,.12,.2,blk,0,.12,0,sw);CY(.06,.06,.4,M(0x1a1420),0,-.12,0,sw);
     sw.rotation.x=.9;o.weapon=sw;
   }
+  heroLimbs(o,skin);
   o.ak=({warrior:'m',rogue:'m',lancer:'m',monk:'m',darknight:'m',mage:'c',cleric:'c',summoner:'c'})[cls]||'a';
   g.traverse(m=>{if(m.isMesh)m.castShadow=true});
   addOutline(g,18,.04);g.add(blob(.85));
@@ -1019,7 +1062,8 @@ function makeHeart(){const g=grp();const a=SP(.2,EM(0xff4d6d,1.0),-.13,.55,0,g,8
 const JOB_COL={gladiator:0xd8452f,guardian:0x4a78d8,blademaster:0xbfe4ff,berserker:0xc0302a,paladin:0xffe27a,bulwark:0x8a7a5a,
   pyromancer:0xff7a2a,cryomancer:0x5ee7ff,flamelord:0xff3d2a,meteormage:0xffb04a,frostlord:0x9fe8ff,stormcaller:0xfff2a0,
   sniper:0xffe27a,hunter:0x6bffb0,marksman:0xffd24a,shadowarcher:0xa07aff,stormarcher:0x7fd6ff,beasthunter:0xe0a050};
-function makeHeroFor(cls,job,tint){
+function makeHeroFor(cls,job,tint){HQ++;try{return makeHeroFor0(cls,job,tint)}finally{HQ--}}
+function makeHeroFor0(cls,job,tint){
   const o=makeHero(cls,tint);o.job=job;
   const jd=JOBS[job],t=jd?jd.tier:0;
   if(t>=1){
@@ -1721,7 +1765,8 @@ const WLOOK={
   }
 };
 
-function applyWeaponLook(o,base){
+function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
+function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
   let b=typeof base==='string'&&/^[a-z]+_[1-8](_[12])?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';

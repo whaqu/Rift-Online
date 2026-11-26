@@ -169,7 +169,8 @@ const WLOOK={
   }
 };
 
-function applyWeaponLook(o,base){
+function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
+function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
   let b=typeof base==='string'&&/^[a-z]+_[1-8](_[12])?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
