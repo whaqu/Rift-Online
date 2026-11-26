@@ -275,6 +275,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.enterGame();step(3);g.openGM();T(g.UI.modal==='GM 패널','GM panel opens');
     g.UI.handlers.gmtab('weapon');g.UI.handlers.gmtab('job');await g.UI.handlers.gmjob('assassin_dark');await sleep(20);step(3);
     T(g.SES.pf.job==='assassin_dark','job change from panel');g.UI.close();
+    const code2=async f=>{try{await f();return''}catch(e){return e.message}};
+    await g.API.call('gmResetInv');
+    T(g.SES.pf.items.length===2&&g.SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&i.base===g.SES.pf.cls+'_1'),'inventory reset to starter kit');
+    T(await code2(()=>g.API.changePassword('wrong','newpass123'))==='BAD_OLD_PASS','password change needs the current one');
+    T(await code2(()=>g.API.changePassword('pw1234','short'))==='BAD_NEW_PASS','new password too short');
+    await g.API.changePassword('pw1234','newpass123');await g.API.call('gmResetInv');T(true,'session still works after password change');
+    T(await code2(()=>g.API.login('테스트','pw1234'))==='BAD_LOGIN','old password rejected');
+    T(await code2(()=>g.API.login('테스트','newpass123'))==='','new password works');
+    T(code(()=>A.gmResetInv('일반유저',u.token))==='NOT_ADMIN'&&code(()=>A.gmPassword('일반유저',u.token,'pw1234','newpass123'))==='NOT_ADMIN','normal account refused');
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);

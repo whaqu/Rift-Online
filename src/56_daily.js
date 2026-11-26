@@ -44,7 +44,7 @@ function dailyDot(){
 }
 function renderTrack(){
   const el=$('qtrack');if(!el||!SES.pf||!SES.pf.dq)return;const dq=SES.pf.dq;
-  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'dn':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('');
+  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'done':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('');
 }
 {const _rh=UI.refreshHud;UI.refreshHud=function(){_rh.apply(this,arguments);try{dailyDot();renderTrack()}catch(e){}}}
 function dailyOnEnter(){setTimeout(()=>{try{if(SES.pf&&SES.pf.daily&&SES.pf.daily.ready&&!UI.modal&&G.mode==='play')openDaily('daily')}catch(e){}},2200)}

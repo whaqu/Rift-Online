@@ -20,12 +20,17 @@ function openGM(){
   const line=(title,body)=>'<div class="dim" style="margin:8px 0 4px">'+title+'</div><div class="row wrap" style="gap:6px">'+body+'</div>';
   const base=()=>cls+'_'+tier+(wt?'_'+wt:'');
   UI.page('GM 패널',()=>{
-    let h='<div class="tabs">'+[['job','직업'],['weapon','무기'],['grow','성장']].map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
-    h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'?'':line('계열',CLASSES.map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
+    let h='<div class="tabs">'+[['job','직업'],['weapon','무기'],['grow','성장'],['acc','계정']].map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
+    h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'||tab==='acc'?'':line('계열',CLASSES.map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
     if(tab==='grow'){
       const k=perkOf(SES.pf),gl=gatLvOf((SES.pf.gather&&SES.pf.gather.xp)||0);
       h+='<div class="card"><div class="kv"><span>공격력 강화</span><span>'+k.a+'회</span><span>체력 강화</span><span>'+k.h+'회</span><span>쿨타임 강화</span><span>'+k.c+'회</span><span>벌목(채집) 숙련</span><span>Lv.'+gl+'</span></div></div>';
       h+=line('한 번에 설정',btn('gmgrow',1,'강화·벌목 만렙',true)+btn('gmgrow',0,'강화 초기화 (직접 고르기)'));
+    }else if(tab==='acc'){
+      const pw=(id,label,auto)=>'<input class="tx" type="password" id="'+id+'" maxlength="40" placeholder="'+label+'" autocomplete="'+auto+'" style="margin-top:6px">';
+      h+='<div class="card"><b>비밀번호 바꾸기</b>'+pw('gmpw0','현재 비밀번호','current-password')+pw('gmpw1','새 비밀번호 (8자 이상)','new-password')+pw('gmpw2','새 비밀번호 확인','new-password')
+        +'<div class="row sp" style="margin-top:8px;gap:8px"><span class="dim">admin.html 로그인에도 새 비밀번호를 씁니다.</span><button class="btn" data-a="gmpass">변경</button></div></div>';
+      h+='<div class="card" style="margin-top:10px"><b>인벤토리 초기화</b><div class="row sp" style="margin-top:6px;gap:8px"><span class="dim">무기·방어구·물약·재료를 모두 지우고 기본 무기와 하급 물약 5개만 남깁니다. 골드와 성장은 유지됩니다.</span><button class="btn" data-a="gminv" style="flex:none;white-space:nowrap">초기화</button></div></div>';
     }else if(tab==='job'){
       const job=id=>btn('gmjob',id,JOBS[id].name,SES.pf.job===id);
       h+=line('기본 직업',job(cls))+line('1차 전직',JOB_KIDS(cls).map(job).join(''));
@@ -49,5 +54,19 @@ function openGM(){
   UI.handlers.gmench=v=>{ench=ench.includes(v)?ench.filter(k=>k!==v):ench.concat(v).slice(-3);UI.rerender()};
   UI.handlers.gmjob=v=>run(()=>gmApply('gmJob',v),JOBS[v].name+'(으)로 바꿨습니다');
   UI.handlers.gmgrow=v=>run(()=>gmApply('gmGrowth',v==='1'),v==='1'?'강화·벌목 숙련 만렙':'강화를 초기화했습니다');
+  UI.handlers.gmpass=async()=>{
+    if(busy)return;
+    const v=id=>$(id).value,old=v('gmpw0'),nw=v('gmpw1');
+    if(!old){UI.toast('현재 비밀번호를 입력해주세요');return}
+    if(nw!==v('gmpw2')){UI.toast('새 비밀번호가 서로 다릅니다');return}
+    busy=true;
+    try{await API.changePassword(old,nw);UI.toast('비밀번호를 바꿨습니다');UI.rerender&&UI.rerender()}
+    catch(e){UI.toast(errKo(e.message))}   // keep what was typed so it can be corrected
+    busy=false;
+  };
+  UI.handlers.gminv=async()=>{
+    if(busy||!(await UI.confirm('인벤토리를 초기화할까요?\n장비·물약·재료가 모두 사라지고\n내 경매 등록도 취소됩니다.\n게임에서 되돌릴 수 없습니다.')))return;
+    run(()=>gmApply('gmResetInv'),'인벤토리를 초기화했습니다');
+  };
   UI.handlers.gmget=()=>run(()=>gmApply('gmWeapon',base(),enh,ench),wName(base())+' 지급');
 }

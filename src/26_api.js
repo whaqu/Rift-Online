@@ -191,6 +191,16 @@ const LocalAPI=(()=>{
       if(max){a.perks={a:98,h:98,c:40};a.gat_xp=Math.max(a.gat_xp||0,9025)}else a.perks={a:0,h:0,c:0};
       wr();return pf(a);
     },
+    gmPassword(n,t,old,nw){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');if(a.pass!==old)E('BAD_OLD_PASS');
+      if(!nw||nw.length<8||nw.length>40||nw===old)E('BAD_NEW_PASS');a.pass=nw;a.token='t'+Math.random().toString(36).slice(2);wr();return{token:a.token};
+    },
+    gmResetInv(n,t){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');
+      db.auc.forEach(x=>{if(x.seller===n&&x.status==='active')x.status='cancelled'});
+      db.items.forEach(i=>{if(i.owner===n){i.gone=true;i.eq=false;i.listed=false}});
+      give(n,'weapon',a.cls+'_1',1).eq=true;give(n,'potion','hp1',5);wr();return pf(a);
+    },
     gmJob(n,t,job){
       rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
       const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
@@ -210,12 +220,12 @@ const LocalAPI=(()=>{
 
 /* ---------- unified client wrapper ---------- */
 const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
-  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth'};
+  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory'};
 const ARGS={
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]})
+  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({})
 };
 const API={
   async probe(){
@@ -230,6 +240,11 @@ const API={
   async login(name,pass){
     const r=SES.mode==='online'?await rpc('rw_login',{p_name:name,p_pass:pass}):LocalAPI.login(name,pass);
     SES.name=name;SES.token=r.token;SES.pf=r.profile;return r.profile;
+  },
+  // the server replaces the session on a password change, so keep the new token (also for auto-resume)
+  async changePassword(old,nw){
+    const r=SES.mode==='online'?await rpc('rw_gm_password',{p_name:SES.name,p_token:SES.token,p_old:old,p_new:nw}):LocalAPI.gmPassword(SES.name,SES.token,old,nw);
+    SES.token=r.token;try{localStorage.setItem('rw_sess',JSON.stringify({name:SES.name,token:SES.token,mode:SES.mode}))}catch(e){}
   },
   async resume(name,token){
     const r=SES.mode==='online'?await rpc('rw_load',{p_name:name,p_token:token}):LocalAPI.load(name,token);
