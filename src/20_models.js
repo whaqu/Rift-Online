@@ -4,8 +4,8 @@ const matC={};
 let HQ=0;
 function M(hex,o){const k=(HQ?'s':'')+hex+(o?JSON.stringify(o):'');return matC[k]||(matC[k]=new THREE.MeshStandardMaterial(Object.assign({color:hex,flatShading:!HQ,roughness:HQ?.62:.72,metalness:.08},o||{})))}
 const rbC={};
-function rboxGeo(w,h,d){
-  const r=Math.min(.14,Math.min(w,h,d)*.32),key=[w,h,d].map(v=>v.toFixed(3)).join(',');
+function rboxGeo(w,h,d,rr){
+  const r=rr?Math.min(rr,Math.min(w,h,d)*.46):Math.min(.14,Math.min(w,h,d)*.32),key=[w,h,d,r].map(v=>v.toFixed(3)).join(',');
   if(rbC[key])return rbC[key];
   const g=new THREE.BoxGeometry(w,h,d,6,6,6),pos=g.attributes&&g.attributes.position,nrm=g.attributes&&g.attributes.normal;
   if(pos&&pos.array&&nrm&&nrm.array&&r>.004){
@@ -94,7 +94,7 @@ function heroLimbs(o,skin){
     if(c.userData.sr&&c.userData.sr>=.24&&Math.abs(c.position.x)>.4){c.scale.set(.8,.62,.86);c.position.x*=.95;c.position.y+=.06;continue}
     if(c.userData.cy)continue;
     c.position.x*=k;c.position.z*=k;
-    const b=c.userData.bx;
+    const b=c.userData.bx;if(b&&b[0]>=.7&&b[1]>=.5)c.geometry=rboxGeo(b[0],b[1],b[2],.27);
     if(b&&b[0]>=.7&&c.geometry.attributes&&c.geometry.attributes.position&&c.geometry.attributes.position.array){
       const g=c.geometry.clone(),a=g.attributes.position.array;
       for(let i=0;i<a.length;i+=3){const kk=f(a[i+1]+y)/k;a[i]*=kk;if(b[2]>.3)a[i+2]*=1+(kk-1)*.6}
@@ -102,6 +102,43 @@ function heroLimbs(o,skin){
   }
   // legs: knee pad + rounder hip so the legs read as attached
   for(const lg of[o.legL,o.legR]){const c=lg.children.find(m=>m.userData&&m.userData.cy);if(c)SP(c.userData.cy[0]*1.05,c.material,0,-.02,0,lg,10,8)}
+}
+/* ---- drapery helpers: perturb a geometry so cloth looks folded instead of geometric ---- */
+const sstep=(a,b,x)=>{const t=Math.max(0,Math.min(1,(x-a)/(b-a)));return t*t*(3-2*t)};
+function drapeGeo(g,fn){
+  const pos=g&&g.attributes&&g.attributes.position;if(!pos||!pos.array)return g;
+  const a=pos.array;for(let i=0;i<a.length;i+=3){const r=fn(a[i],a[i+1],a[i+2]);if(r){a[i]=r[0];a[i+1]=r[1];a[i+2]=r[2]}}
+  pos.needsUpdate=true;try{g.computeVertexNormals()}catch(e){}g.computeBoundingSphere&&g.computeBoundingSphere();return g;
+}
+/* open cloth cylinder with vertical folds + ragged hem */
+function foldGeo(rt,rb,h,folds,amp,thS,thL){
+  const g=new THREE.CylinderGeometry(rt,rb,h,48,8,true,thS==null?0:thS,thL==null?TAU:thL);
+  return drapeGeo(g,(x,y,z)=>{const th=Math.atan2(x,z),t=y/h+.5,k=1+amp*Math.sin(folds*th+t*2.2)*(.35+.65*(1-t))+amp*.5*Math.sin(folds*2.3*th+1.3);
+    return[x*k,y-(1-t)*(.03+.025*Math.sin(folds*1.7*th)),z*k]});
+}
+/* hooded cowl: deep brow, soft folds, long drooping peak behind.  mode 'open' leaves the face; col/inner are materials */
+function hoodRig(head,torso,hm,inner,opt){
+  opt=opt||{};const R=.41,gap=opt.gap||1.5;
+  const fold=(x,y,z)=>{const th=Math.atan2(x,z),f=1+.04*Math.sin(7*th+y*5)+.025*Math.sin(13*th-y*3);
+    let nx=x*f,ny=y,nz=z*f;
+    if(nz<0){nz*=1.16;ny+=.05*sstep(0,-.4,nz)}                                 // fuller back of the hood
+    const w=sstep(.05,.42,ny)*sstep(-.02,-.3,nz);                              // pointed peak up/back
+    ny+=w*(opt.peak||.5);nz-=w*(opt.peak||.5)*.78;nx*=1-w*.8;
+    if(nz>0&&ny>.12)nz+=.07*sstep(.12,.34,ny);                                  // brow overhang
+    return[nx,ny,nz]};
+  const mk=(r,m,t0,tl,g)=>{const sg=new THREE.SphereGeometry(r,40,28,g?Math.PI/2+g/2:0,g?TAU-g:TAU,t0,tl);drapeGeo(sg,fold);return mesh(sg,m,0,.03,-.05,head)};
+  mk(R,hm,0,Math.PI*.82,gap);mk(R,hm,0,Math.PI*.3,0);                           // shell + closed crown/brow
+  mk(R-.035,inner,Math.PI*.3,Math.PI*.5,gap);                                    // dark inside = shadowed face
+  const rim=mesh(new THREE.TorusGeometry(.385,.035,8,26,Math.PI*1.02),hm,0,.02,.0,head);rim.rotation.set(Math.PI/2*0,Math.PI/2,0);rim.rotation.z=-Math.PI*.51+Math.PI/2;rim.visible=false;
+  // cowl draping over neck and shoulders, folds, plus a shoulder mantle
+  const cowl=mesh(foldGeo(.33,opt.cowlR||.5,.3,8,.05),hm,0,.5,.02,torso);
+  const mant=mesh(foldGeo(.46,.7,.2,10,.04,Math.PI*.15,Math.PI*1.7),hm,0,.43,-.03,torso);mant.rotation.y=Math.PI;
+  return{cowl,mant};
+}
+/* partial sphere shell (hoods/masks): phi window opened around +z */
+function shell(r,mat,par,thetaStart,thetaLen,gap,x,y,z){
+  const ps=Math.PI/2+gap/2,pl=TAU-gap;
+  const m=mesh(new THREE.SphereGeometry(r,28,18,gap?ps:0,gap?pl:TAU,thetaStart,thetaLen),mat,x||0,y||0,z||0,par);return m;
 }
 function makeHero0(cls,tint){
   const g=grp(),body=grp(0,0,0,g);
@@ -144,21 +181,40 @@ function makeHero0(cls,tint){
     const green=M(tint||0x2f7a4a),leather=M(0x6b4a2b),cloak=M(0x1f4a31),bootm=M(0x3a2a1e);
     CY(.15,.13,.8,leather,0,-.4,0,legL);CY(.15,.13,.8,leather,0,-.4,0,legR);BX(.27,.2,.42,bootm,0,-.78,.07,legL);BX(.27,.2,.42,bootm,0,-.78,.07,legR);
     BX(.86,.92,.5,green,0,0,0,torso);BX(.9,.12,.53,leather,0,-.3,0,torso);BX(.14,.95,.54,leather,.2,0,0,torso).rotation.z=.3;
-    const cp=BX(1.0,1.35,.1,cloak,0,-.15,-.34,torso);cp.rotation.x=.12;SP(.27,cloak,-.55,.48,0,torso);SP(.27,cloak,.55,.48,0,torso);
-    SP(.32,skin,0,0,0,head);const hd=SP(.4,cloak,0,.08,-.14,head,10,8);hd.scale.set(1,1,1.0);const hp=CN(.26,.55,cloak,0,.14,-.52,head,6);hp.rotation.x=-1.25;
-    BX(.5,.15,.1,M(0x2a2a35),0,-.1,.31,head);eye(-.11,.06,.3);eye(.11,.06,.3);
+    const cape=mesh(foldGeo(.5,.82,1.45,6,.06,Math.PI-1.15,2.3),M(0x1f4a31,{side:THREE.DoubleSide}),0,-.1,-.02,torso);cape.scale.set(1,1,.86);
+    SP(.32,skin,0,0,0,head);eye(-.11,.06,.3);eye(.11,.06,.3);
+    {const hm=M(0x275a3a,{side:THREE.DoubleSide,roughness:.8}),inner=M(0x0b1a12,{side:THREE.DoubleSide});
+     hoodRig(head,torso,hm,inner,{peak:.52});
+     const strap=BX(.07,.7,.05,M(0x6b4a2b),.12,0,.27,torso);strap.rotation.z=.5;
+     const clasp=OC(.075,EM(0xe8c060,1.0),0,.36,.4,torso);}
     CY(.12,.11,.7,green,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.12,.11,.7,green,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
     const qv=CY(.13,.12,.8,leather,.28,.15,-.42,torso);qv.rotation.x=.15;for(let i=0;i<3;i++){const ar=CN(.05,.18,M(0xdddddd),.28+(i-1)*.07,.62,-.46,torso,4)}
     const bw=grp(0,-.76,0,armL);const geo=new THREE.TorusGeometry(.85,.055,6,20,Math.PI);geo.rotateZ(Math.PI/2);geo.rotateY(Math.PI/2);
     const bm=mesh(geo,M(0x7a4b25),0,0,0,bw);BX(.015,1.7,.015,M(0xeeeeee),0,0,0,bw);o.weapon=bw;
   }else if(cls==='rogue'){
-    const cloth=M(tint||0x7a3f9a),dk2=M(0x1e1a2e),lea=M(0x3a2a3e),acc=M(0xff6bd6,{emissive:0xff6bd6,emissiveIntensity:.5}),blade=M(0xe3ebff,{metalness:.7,roughness:.25,emissive:0x6a4aa0,emissiveIntensity:.45});
-    CY(.14,.12,.8,dk2,0,-.4,0,legL);CY(.14,.12,.8,dk2,0,-.4,0,legR);BX(.26,.18,.42,lea,0,-.78,.07,legL);BX(.26,.18,.42,lea,0,-.78,.07,legR);
-    BX(.8,.88,.46,cloth,0,0,0,torso);BX(.84,.1,.5,lea,0,-.3,0,torso);BX(.2,.7,.5,dk2,.25,0,0,torso).rotation.z=.4;
-    BX(.95,1.2,.08,dk2,0,-.2,-.32,torso).rotation.x=.18;
-    SP(.32,skin,0,0,0,head);SP(.4,cloth,0,.09,-.14,head,10,8);const hh=CN(.26,.55,cloth,0,.12,-.5,head,6);hh.rotation.x=-1.2;
-    BX(.54,.2,.1,dk2,0,-.1,.3,head);eye(-.11,.06,.3);eye(.11,.06,.3);
-    CY(.11,.1,.7,cloth,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.11,.1,.7,cloth,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
+    const acc0=tint||0x7a3f9a,accM=M(acc0),ink=M(0x16151f),ink2=M(0x24222f),wrap=M(0x3a3644),steel=M(0xb8c0cc,{metalness:.7,roughness:.3}),
+      blade=M(0xe3ebff,{metalness:.7,roughness:.25,emissive:0x6a4aa0,emissiveIntensity:.45}),acc=M(0xff6bd6,{emissive:0xff6bd6,emissiveIntensity:.5}),lea=M(0x2a2230);
+    // legs: dark hakama-ish trousers, shin wraps, split-toe boots
+    for(const lg of[legL,legR]){CY(.16,.12,.8,ink,0,-.4,0,lg);for(let i=0;i<3;i++)CY(.135,.135,.06,wrap,0,-.48-i*.09,0,lg,10);BX(.24,.16,.4,ink2,0,-.8,.06,lg);BX(.04,.17,.14,wrap,0,-.8,.2,lg)}
+    // torso: wrapped gi with crossed collar, sash with tail, chest plate
+    BX(.8,.9,.46,ink,0,0,0,torso);
+    for(const s2 of[-1,1]){const c=BX(.12,.75,.06,ink2,s2*.12,.12,.235,torso);c.rotation.z=s2*.45}
+    BX(.86,.16,.5,accM,0,-.28,0,torso);const kn=BX(.16,.16,.1,accM,.24,-.28,.26,torso);
+    for(const s2 of[0,1]){const t=BX(.09,.42,.04,accM,.27+s2*.08,-.52,.27,torso);t.rotation.z=.15+s2*.15}
+    for(const s2 of[-1,1]){const sp=BX(.3,.12,.42,ink2,s2*.4,.42,0,torso);sp.rotation.z=-s2*.35;BX(.26,.04,.38,accM,s2*.42,.49,0,torso).rotation.z=-s2*.35}
+    // back: crossed short blade sheath + flowing scarf
+    {const sh=grp(0,.05,-.27,torso);sh.rotation.z=.75;BX(.1,1.05,.07,lea,0,0,0,sh);BX(.18,.06,.1,steel,0,.55,0,sh);CY(.04,.04,.3,wrap,0,.73,0,sh,6)}
+    {const sc=mesh(new THREE.TorusGeometry(.3,.09,8,18),accM,0,.48,0,torso);sc.rotation.x=Math.PI/2;
+     const t1=BX(.2,.9,.04,accM,.1,.12,-.34,torso);t1.rotation.set(.35,0,-.12);const t2=BX(.17,.7,.04,accM,-.05,.05,-.38,torso);t2.rotation.set(.5,0,.18);o.scarf=[t1,t2]}
+    // head: hood + face wrap with eye slit, headband with tails
+    SP(.32,skin,0,0,0,head);eye(-.11,.07,.3);eye(.11,.07,.3);
+    hoodRig(head,torso,M(0x1d1b28,{side:THREE.DoubleSide,roughness:.85}),M(0x07060c,{side:THREE.DoubleSide}),{peak:.6,gap:1.55,cowlR:.48});
+    shell(.345,ink,head,Math.PI*.5,Math.PI*.5,0);              // face wrap under the eyes
+    const hb=mesh(new THREE.TorusGeometry(.35,.03,6,26,Math.PI*1.1),accM,0,.15,0,head);hb.rotation.set(Math.PI/2+.1,0,Math.PI*.95);
+    BX(.14,.09,.04,steel,0,.17,.35,head);
+    for(const s2 of[-1,1]){const tl=BX(.08,.55,.025,accM,s2*.07,.02,-.44,head);tl.rotation.set(.9,0,s2*.25)}
+    // arms: dark sleeves, wrapped forearms, gloved hands
+    for(const arm of[armL,armR]){CY(.12,.105,.7,ink,0,-.35,0,arm);for(let i=0;i<3;i++)CY(.118,.118,.05,wrap,0,-.46-i*.08,0,arm,10);SP(.13,ink2,0,-.76,0,arm)}
     const dl=grp(0,-.76,0,armL),dr=grp(0,-.76,0,armR);
     for(const d of[dl,dr]){BX(.09,.85,.035,blade,0,.5,0,d);BX(.26,.06,.08,acc,0,.08,0,d);CY(.035,.035,.22,lea,0,-.05,0,d,6);d.rotation.x=1.0}
     o.weapon=dr;o.weapon2=dl;
@@ -199,7 +255,7 @@ function makeHero0(cls,tint){
     BX(.9,.8,.08,coat,0,-.55,-.28,torso).rotation.x=.1;
     SP(.32,skin,0,0,0,head);SP(.36,dk2,0,.1,-.08,head,10,8);
     CY(.62,.62,.06,dk2,0,.27,0,head,14);CY(.36,.4,.4,dk2,0,.48,0,head,10);CY(.38,.38,.08,brass,0,.34,0,head,10);
-    BX(.5,.12,.1,M(0xd8353a),0,-.12,.3,head);eye(-.11,.05,.3);eye(.11,.05,.3);
+    eye(-.11,.05,.3);eye(.11,.05,.3);
     CY(.12,.11,.7,coat,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.12,.11,.7,coat,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
     const gn=grp(0,-.76,0,armR);BX(.1,.5,.1,steel,0,-.22,0,gn);BX(.12,.16,.14,brass,0,-.02,0,gn);BX(.09,.2,.09,lea,0,.02,-.12,gn).rotation.x=.35;
     o.weapon=gn;
@@ -443,6 +499,7 @@ function makeHeroFor0(cls,job,tint){
 }
 function animHeroFor(o,t,spd,atkP,dashing,sd){
   animHero(o,t,spd,atkP,dashing,sd);
+  if(o.scarf)o.scarf.forEach((b,i)=>{b.rotation.x=.35+i*.15+Math.sin(t*5.5+i*1.3)*.13;b.rotation.y=Math.sin(t*3.7+i)*.15});
   if(o.wfx)for(const f of o.wfx){const n=f.list.length;f.list.forEach((r,i)=>{const a=t*f.sp+i/n*TAU,k=1+.15*Math.sin(t*2+i);r.position.set(f.x+Math.cos(a)*f.r*k,f.y+Math.sin(t*1.7+i*1.9)*f.h,f.z+Math.sin(a)*f.r*k);r.rotation.y=-a})}
   if(o.orbs)o.orbs.forEach((r,i)=>{const a=t*1.8+i/3*TAU;r.position.set(Math.cos(a)*1.1,1.6+Math.sin(t*2+i)*.2,Math.sin(a)*1.1);r.rotation.y=t*3});
 }

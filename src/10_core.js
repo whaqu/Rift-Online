@@ -19,7 +19,7 @@ const fmtN=n=>Math.floor(n).toLocaleString('ko-KR');
 /* ---------------- settings ---------------- */
 const SET_KEY='rw_settings_v1';
 const IS_TOUCH=(typeof matchMedia==='function')?(matchMedia('(pointer:coarse)').matches||(('ontouchstart' in window)&&!matchMedia('(any-pointer:fine)').matches)):('ontouchstart' in window);
-const save={vol:.7,shadows:!IS_TOUCH,auto:IS_TOUCH,outline:!IS_TOUCH,lastName:''};
+const save={fx:true,vol:.7,shadows:!IS_TOUCH,auto:IS_TOUCH,outline:!IS_TOUCH,lastName:''};
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s)Object.assign(save,s)}catch(e){}}
 function writeSave(){try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
 

@@ -92,7 +92,7 @@ function frame(dt){
   try{updateWorldFx(dt,G.t)}catch(e){}
   updateParticles(dt);updateFx(dt);updateDN(dt);
   if(!P||G.mode!=='play'){hideMobLabels();for(const n of WORLD.npcs)n.label.el.style.display='none'}
-  renderer.render(scene,camera);
+  renderFrame();
 }
 function loop(now){
   requestAnimationFrame(loop);
