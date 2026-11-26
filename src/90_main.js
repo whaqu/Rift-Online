@@ -15,6 +15,7 @@ window.onKeyPress=(k,e)=>{
   if(k===' ')return doDash();
   if(k>='1'&&k<='6')return usePotionKey(POTION_ORDER[+k-1]);
 };
+document.addEventListener&&document.addEventListener('click',e=>{try{auInit();const t=e.target&&e.target.closest&&e.target.closest('.btn,.tab,.item,.c');if(t&&!t.disabled)sfx('click')}catch(x){}});
 document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(document.hidden)flushKills()});
 
 function enterGame(){
@@ -31,6 +32,7 @@ function enterGame(){
   if(first)UI.toast(IS_TOUCH?'상점에서 물약을 구입하고, 필드로 나가 몬스터를 사냥하세요':'상점(E)에서 물약을 구입하고, 마을 밖으로 나가 사냥하세요',4200);
   if(!IS_TOUCH)canvas.focus();
   dailyOnEnter();
+  if(perkOf(SES.pf).pts>0)UI.toast('능력치 강화 포인트가 '+perkOf(SES.pf).pts+'개 있습니다 (왼쪽 위 프로필을 눌러 선택)',4200);
 }
 
 
@@ -75,7 +77,7 @@ function frame(dt){
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);
     netUpdate(dt);
     const z=zoneAt(P.x,P.z);updateAtmo(dt,z.id);
-    if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town'}
+    if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town';ambZone(z.id)}
     KBt+=dt;if(KBn&&KBt>4)flushKills();
     for(const n of WORLD.npcs){const p=n.model.g.position;n.label.pos(p.x,4.1,p.z);n.model.g.rotation.y=lerpAng(n.model.g.rotation.y,Math.atan2(P.x-p.x,P.z-p.z),dt*2);animHero(n.model,G.t,0,-1,false,1)}
     ambientFx(dt,z.id,cam.x,cam.z);
@@ -95,7 +97,8 @@ function frame(dt){
 function loop(now){
   requestAnimationFrame(loop);
   let dt=Math.min(.05,(now-G.last)/1000);G.last=now;if(!(dt>0))return;
-  G.t+=dt;frame(dt);
+  G.t+=dt;let sdt=dt;if(G.hs>0){G.hs-=dt;sdt=dt*.05}   // hit-stop: sim crawls for a few frames on heavy hits
+  frame(sdt);
 }
 
 async function boot(){
@@ -113,5 +116,5 @@ async function boot(){
     if(s&&s.mode===mode&&s.name&&s.token){await API.resume(s.name,s.token);enterGame()}
   }catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}}
 }
-if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();

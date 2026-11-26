@@ -171,6 +171,9 @@ function armorBonus(pieces){
   if(o.cnt.cloth>=2)o.atk+=.06;if(o.cnt.cloth>=4){o.atk+=.08;o.vamp+=.02}
   return o;
 }
+/* level-up perks: every level (from 2) grants 1 point to spend on atk / hp / cooldown */
+const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'체력',per:.03,col:'#6bd98a',d:'최대 체력 +3%'},c:{n:'쿨타임 감소',per:.01,col:'#7ac8ff',d:'스킬·대시 쿨타임 -1% (최대 40%)'}};
+const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
 const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
@@ -202,15 +205,15 @@ const ENCH={
 };
 const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
-  {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat'],ground:0x5fa84a,alt:0x4f9a40},
-  {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer'],ground:0x4a4f58,alt:0x3e4350},
-  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat'],ground:0x7a4a38,alt:0x6a3c30},
-  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber'],ground:0x4a4a8a,alt:0x3a3a78},
-  {id:5,name:'뇌우 고원',r0:246,r1:308,lo:40,hi:62,types:['golem','bomber','archer','bat'],ground:0x5a6678,alt:0x4a5668},
-  {id:6,name:'공허의 균열',r0:308,r1:372,lo:60,hi:72,types:['golem','skel','archer','bomber'],ground:0x3a2a52,alt:0x2e2044},
-  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['skel','golem','archer','bat'],ground:0xcfe0ee,alt:0xb4cbe0},
-  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['golem','bomber','archer','skel'],ground:0xc8a468,alt:0xb48f55},
-  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['golem','archer','bomber','bat'],ground:0xd8d4e8,alt:0xbfb8dc}
+  {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x5fa84a,alt:0x4f9a40},
+  {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer','wraith'],ground:0x4a4f58,alt:0x3e4350},
+  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x7a4a38,alt:0x6a3c30},
+  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x4a4a8a,alt:0x3a3a78},
+  {id:5,name:'뇌우 고원',r0:246,r1:308,lo:40,hi:62,types:['golem','bomber','archer','bat','stormhawk','stormhawk'],ground:0x5a6678,alt:0x4a5668},
+  {id:6,name:'공허의 균열',r0:308,r1:372,lo:60,hi:72,types:['golem','skel','archer','phantom','phantom','wraith'],ground:0x3a2a52,alt:0x2e2044},
+  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['yeti','frostwolf','frostwolf','icewitch'],ground:0xcfe0ee,alt:0xb4cbe0},
+  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['scorpion','scorpion','mummy','mummy','jackal'],ground:0xc8a468,alt:0xb48f55},
+  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['sentinel','sentinel','seraph','stormhawk'],ground:0xd8d4e8,alt:0xbfb8dc}
 ];
 const WORLD_R=576;
 /* day / night: one cycle = 16 min on the shared wall clock, night is phase [.55,.95) (same rule as the server) */
@@ -275,5 +278,5 @@ function itemName(it){
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.'};
+const ERR_KO={NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};

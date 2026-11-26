@@ -98,7 +98,7 @@ function openInventory(){
 }
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
 UI.handlers.none=()=>{};
-UI.handlers.equip=v=>guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel()}});
+UI.handlers.equip=v=>{sfx('equip');return guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel()}})};
 UI.handlers.sell=v=>{const it=byId(+v);if(!it)return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 UI.handlers.usep=v=>{usePotionKey(v);setTimeout(()=>UI.rerender&&UI.rerender(),50)};
 UI.handlers.toauc=v=>{UI.close();openAuction('post',+v)};
@@ -125,7 +125,7 @@ function openShop(){
     return h;
   });
   UI.handlers.stab=v=>{tab=v;UI.rerender()};UI.handlers.aset=v=>{aset=v;UI.rerender()};UI.handlers.atier=v=>{atier=+v;UI.rerender()};UI.handlers.sqty=v=>{qty=+v;UI.rerender()};
-  UI.handlers.buy=v=>guarded(()=>API.call('buy',v,qty),'구매했습니다');
+  UI.handlers.buy=v=>{sfx('coin');return guarded(()=>API.call('buy',v,qty),'구매했습니다')};
   UI.handlers.sellrow=async v=>{const it=byId(+v);if(!it)return;if(isGear(it)&&(it.enh>=5||(it.ench||[]).length)&&!(await UI.confirm('강화·인첸트된 장비입니다.\n정말 판매할까요?')))return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 }
 
@@ -165,7 +165,7 @@ function openSmith(){
     const it=byId(selId);if(!it)return;
     try{const r=await API.call('enhance',selId);UI.refreshHud();
       msg=r.result==='success'?'<b class="grn">강화 성공! +'+r.enh+'</b>':r.result==='drop'?'<b class="red">실패 — +'+r.enh+'로 하락</b>':'<b class="red">실패 (단계 유지)</b>';
-      sfx(r.result==='success'?'level':'hurt');if(r.result==='success'){const a=P;shockRing(a.x,a.z,3,0xffe27a,.5)}
+      sfx(r.result==='success'?'enhOk':'enhFail');if(r.result==='success'){const a=P;shockRing(a.x,a.z,3,0xffe27a,.5)}
       derive();UI.rerender()}
     catch(e){UI.toast(errKo(e.message))}
   };
@@ -337,8 +337,32 @@ UI.refreshHud=function(){
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
   for(const k of['q','e','r']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
   const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
-  UI.refreshTouch&&UI.refreshTouch();
+  updatePerkRow();UI.refreshTouch&&UI.refreshTouch();
 };
+/* ---------- level-up perks ---------- */
+function perkRowHtml(){
+  const k=perkOf(SES.pf);let h='';
+  if(k.a)h+='<span class="pk" style="color:'+PERK.a.col+'">공격 +'+(+(k.a*PERK.a.per*100).toFixed(1))+'%</span>';
+  if(k.h)h+='<span class="pk" style="color:'+PERK.h.col+'">체력 +'+(+(k.h*PERK.h.per*100).toFixed(1))+'%</span>';
+  if(k.c)h+='<span class="pk" style="color:'+PERK.c.col+'">쿨 -'+Math.min(40,k.c)+'%</span>';
+  if(k.pts>0)h+='<button class="pkb">+'+k.pts+' 강화 선택</button>';
+  return h;
+}
+function updatePerkRow(){const el=$('perkrow');if(!el||!SES.pf)return;const h=perkRowHtml();if(el._h!==h){el._h=h;el.innerHTML=h}}
+function openPerks(){
+  if(!SES.pf)return;
+  UI.page('능력치 강화',()=>{
+    const k=perkOf(SES.pf);
+    let h='<div class="dim" style="margin-bottom:10px">레벨이 오를 때마다 1포인트를 받아 원하는 능력치를 강화합니다.</div><div class="row" style="margin-bottom:10px"><b style="font-size:16px;color:var(--ac2)">남은 포인트 '+k.pts+'</b></div>';
+    for(const id of['a','h','c']){
+      const P_=PERK[id],n=k[id],tot=id==='c'?Math.min(40,n):+(n*P_.per*100).toFixed(1),capped=id==='c'&&n>=40;
+      h+='<div class="pkc" style="border-left:4px solid '+P_.col+'"><div><b style="color:'+P_.col+'">'+P_.n+'</b><div class="dim">'+P_.d+'</div><div class="dim">현재 '+(id==='c'?'-':'+')+tot+'% ('+n+'회)</div></div><button class="btn" data-a="perk" data-v="'+id+'" '+(k.pts<1||capped?'disabled':'')+'>강화</button></div>';
+    }
+    return h;
+  });
+}
+UI.handlers.perk=async v=>{try{await API.call('perk',v);sfx('enhOk');const a=P;if(a){shockRing(a.x,a.z,3,parseInt(PERK[v].col.slice(1),16),.5);burst(a.x,1,a.z,16,0xffe27a,6,.6,2)}const old=S.maxHp;derive();if(P&&S.maxHp>old)P.hp+=S.maxHp-old;UI.refreshHud();UI.rerender&&UI.rerender();if(perkOf(SES.pf).pts<1)setTimeout(()=>{if(UI.modal==='능력치 강화')UI.close()},650)}catch(e){UI.toast(errKo(e.message))}};
+{const el=typeof $==='function'?$('perkrow'):null;if(el)el.onclick=()=>{if(!UI.modal)openPerks()}}
 UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
   const hp=Math.max(0,P.hp);$('hpfill').style.width=(hp/S.maxHp*100)+'%';$('hptxt').textContent=Math.ceil(hp)+' / '+S.maxHp;

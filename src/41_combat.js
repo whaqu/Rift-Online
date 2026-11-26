@@ -36,8 +36,14 @@ function dealMob(m,base,o){
   const crit=o.crit!==undefined?o.crit:Math.random()<S.crit;
   const d=Math.max(1,Math.round(base*(crit?S.critDmg:1)*(.92+Math.random()*.16)));
   dmgNum(m.x,m.r*1.5+1.2,m.z,fmtN(d),crit?'crit':'');
-  sfx(crit?'crit':'hit');burst(m.x,1.2,m.z,crit?12:4,crit?0xffd24a:0xffffff,5,.35,10);m.flash=.09;
-  if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28)}else cam.shake=Math.max(cam.shake,.06);
+  const mat=m.def&&m.def.mat||'flesh',heavy=!!o.big||base>S.atk*2.2,kxn=o.kx||0,kzn=o.kz||0,ic=crit?0xffd24a:0xfff4e0;
+  if(crit){sfx('crit');sfx('hit_'+mat,.8);sfx('sparkle')}else sfx('hit_'+mat);
+  if(heavy)sfx('bigHit',.8);
+  burst(m.x,1.2,m.z,crit?12:4,crit?0xffd24a:0xffffff,5,.35,10);m.flash=.09;m.pop=1;
+  impactFlash(m.x-(kxn?kxn/(Math.hypot(kxn,kzn)||1)*m.r*.6:0),1.3,m.z-(kzn?kzn/(Math.hypot(kxn,kzn)||1)*m.r*.6:0),ic,crit?3.4:heavy?3:2.1,crit?.2:.15);
+  if(kxn||kzn){hitSparks(m.x,1.3,m.z,kxn,kzn,ic,crit?9:heavy?7:4,crit?11:8);camKick(kxn,kzn,crit?.2:heavy?.26:.07)}
+  if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28);hitStop(.04)}else cam.shake=Math.max(cam.shake,heavy?.2:.06);
+  if(heavy)hitStop(.055);
   const kk={kx:o.kx||0,kz:o.kz||0,kb:o.noKb?0:(o.kb||0)};
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
@@ -86,7 +92,7 @@ function clearProjectiles(){for(const b of PB)entG.remove(b.m);PB.length=0;for(c
 
 /* ---------------- enemy events (run on every client for the local player) ---------------- */
 function spawnEB(x,z,ang,spd,dmg,col,life,big){
-  col=col||0xff4d6d;const g=grp(x,1.2,z);
+  col=col||0xff4d6d;sfxAt('ebolt',x,z,30);const g=grp(x,1.2,z);
   const s=mesh(GEO.ebul,EM(col,1.6),0,0,0,g,false);if(big)s.scale.setScalar(1.5);g.add(glowS(col,big?3:2,.75));entG.add(g);
   EB.push({x,z,vx:Math.sin(ang)*spd,vz:Math.cos(ang)*spd,r:big?.7:.42,dmg,life:life||4,m:g,col});
 }
@@ -96,6 +102,8 @@ function runEnemyEvent(ev){
     slashArc(ev.x,ev.z,ev.f,ev.r,ev.a,0xff6a6a,.22);sfx('slash');
     const dx=P.x-ev.x,dz=P.z-ev.z,d=Math.hypot(dx,dz);
     if(d<ev.r+.5&&Math.abs(angDiff(ev.f,Math.atan2(dx,dz)))<ev.a/2+.2)hurtPlayer(ev.d,ev.x,ev.z);
+  }else if(ev.t==='v'){sfxAt(ev.n||'growl',ev.x,ev.z);
+  }else if(ev.t==='f'){burst(ev.x,1.2,ev.z,16,ev.c||0xff3dd0,6,.5,2);shockRing(ev.x,ev.z,2,ev.c||0xff3dd0,.3);if(ev.n)sfxAt(ev.n,ev.x,ev.z);
   }else if(ev.t==='x'){
     telegraph(ev.x,ev.z,ev.r,ev.w,()=>{
       shockRing(ev.x,ev.z,ev.r+.8,ev.c||0xff7a3a,.4);flashDisc(ev.x,ev.z,ev.r,ev.c||0xff5a1a,.35);burst(ev.x,1,ev.z,26,ev.c||0xff8a3a,10,.6,8);sfx('boom');cam.shake=Math.max(cam.shake,.4);
@@ -140,4 +148,5 @@ async function flushKills(){
 function onLevelUp(){
   derive();P.hp=S.maxHp;sfx('level');dmgNum(P.x,3.8,P.z,'LEVEL UP','info');shockRing(P.x,P.z,5,0xffe27a,.6);shockRing(P.x,P.z,9,0xfff3b0,.9);pillar(P.x,P.z,0xffe27a,12,.8);burst(P.x,1,P.z,40,0xffe27a,9,1,2);flashDisc(P.x,P.z,4,0xffe27a,.5);cam.shake=Math.max(cam.shake,.3);
   UI.feedText('레벨 '+SES.pf.level+' 달성','#ffe27a');netSys('lv',SES.pf.level);
+  UI.refreshHud();setTimeout(()=>{if(P&&!P.dead&&!UI.modal&&perkOf(SES.pf).pts>0)openPerks()},900);
 }

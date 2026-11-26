@@ -9,11 +9,11 @@ function derive(){
   const ab=armorBonus(pf.items.filter(i=>i.kind==='armor'&&i.eq));
   const wa=w?weaponAtk(w.base,w.enh):0,wt=w?WTMOD[wType(w.base)]:WTMOD[0];const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
   const burnLv=(m.burn||0)+(en.burn||0);
-  const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor);
+  const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor),pk=perkOf(pf);
   S={
     cls:pf.cls,job:pf.job,level:L,
-    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct)),
-    atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk),wa,
+    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct)*(1+PERK.h.per*pk.h)),
+    atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk)*(1+PERK.a.per*pk.a),wa,cdr:Math.min(.4,PERK.c.per*pk.c),
     aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
     spd:c.spd*(m.spd||1)*(1+ab.spd),
     crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
@@ -85,8 +85,11 @@ function movePlayer(dt){
     if(P.dashHit)dashStrike(dt);
   }else{const k=1-Math.exp(-dt*(il>0?16:11));P.vx=lerp(P.vx,ix*sp,k);P.vz=lerp(P.vz,iz*sp,k)}
   P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r);
+  if(P.dashT<=0&&!P.dead){P.stepAcc=(P.stepAcc||0)+Math.hypot(P.vx,P.vz)*dt;if(P.stepAcc>2.2){P.stepAcc=0;footstep()}}
   P.spdN=Math.min(1.2,Math.hypot(P.vx,P.vz)/Math.max(1,S.spd));
 }
+const STEPS=['step_stone','step_grass','step_grass','step_stone','step_stone','step_stone','step_stone','step_snow','step_sand','step_marble'];
+function footstep(){const z=zoneAt(P.x,P.z);sfx(STEPS[z.id]||'step_stone',.55)}
 function updatePlayerModel(dt){
   P.animT+=dt;PM.g.position.set(P.x,0,P.z);
   let fy=P.face;if(P.spinT>0)fy+=(1-P.spinT/.5)*TAU*1.2;
@@ -110,6 +113,7 @@ function tickPlayer(dt){
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
   if(S.regen>0&&P.hp<S.maxHp&&!P.dead){P.regenAcc+=S.maxHp*S.regen*dt;if(P.regenAcc>=1){const v=Math.floor(P.regenAcc);P.regenAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
   if(inTown(P.x,P.z)&&P.hp<S.maxHp&&!P.dead)P.hp=Math.min(S.maxHp,P.hp+S.maxHp*.12*dt);
+  if(!P.dead&&P.hp<S.maxHp*.25){P.beatT=(P.beatT||0)-dt;if(P.beatT<=0){P.beatT=1.1;sfx('beat',.8)}}
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
 }
 function tryAttackInput(){
@@ -143,7 +147,7 @@ function doAttack(){
     slashArc(P.x+a.x*.4,P.z+a.z*.4,f,range,arc,big?sty.bigCol:sty.col,.26);
     if(big)ringBurst(P.x+a.x*range*.7,.9,P.z+a.z*range*.7,10,sty.bigCol,5,.35);
     sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
-    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb);
+    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb,{big});
     for(const b of EB){const dx=b.x-P.x,dz=b.z-P.z,d=Math.hypot(dx,dz);if(d<range+.5&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<arc/2){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3);sfx('hit')}}
     netFx('slash',{x:P.x+a.x*.4,z:P.z+a.z*.4,f,r:range,a:arc,c:big?1:0});
   }else if(sty.kind==='orb'){
@@ -162,7 +166,7 @@ function trySkill(slot){
   if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.cd[slot]>0||P.spinT>0)return;
   const sk=skillOf(slot);if(!sk)return;
   castSkill(sk,slot);
-  P.cd[slot]=sk.cd;P.cdMax[slot]=sk.cd;P.atkAnim=0;P.atkDur=.35;
+  P.cd[slot]=sk.cd*(1-S.cdr);P.cdMax[slot]=sk.cd*(1-S.cdr);P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
@@ -242,7 +246,7 @@ function dashStrike(dt){
 function doDash(){
   if(!P||P.dead||P.dashCd>0||P.dashT>0||UI.modal)return;
   let dx=P.ix,dz=P.iz;if(!dx&&!dz){dx=Math.sin(P.face);dz=Math.cos(P.face)}
-  const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8;
+  const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8*(1-S.cdr);
   sfx('dash');burst(P.x,.6,P.z,10,0xffffff,4,.3,0);
 }
 
@@ -256,8 +260,8 @@ function hurtPlayer(dmg,sx,sz){
   dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
-  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);
-    if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6}}
+  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);hitStop(.06);
+    if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
   burst(P.x,1.2,P.z,10,0xff5a6a,6,.4,10);
   if(P.hp<=0)playerDown();
   return true;

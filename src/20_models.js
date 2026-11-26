@@ -262,6 +262,92 @@ function makeGolem(){
   for(let i=0;i<4;i++){const s=OC(.35,cr,Math.cos(i*1.7)*.5,3.5+Math.sin(i)*.1,-.6,b);s.scale.set(.6,1.6,.6);s.rotation.z=(i-1.5)*.4}
   return fin({g,b,legL,legR,armL,armR,torso,head,core:cg,kind:'golem'},10,.1,1.7);
 }
+/* ---- new monster models (zones 1-9 variety) ---- */
+function makeQuad(o){
+  const g=grp(),b=grp(0,0,0,g),fur=M(o.body),dk=M(o.dk),L=o.len||1.7,H=.62;
+  BX(1.0,.85,L,fur,0,H+.4,0,b);BX(.9,.3,L*.7,dk,0,H+.9,-.1,b);
+  const head=grp(0,H+.55,L*.5+.2,b);BX(.78,.7,.75,fur,0,0,0,head);BX(.46,.34,.5,M(o.snout||0xc9a58a),0,-.14,.5,head);
+  SP(.055,EM(o.eye,1.6),-.22,.1,.37,head,5,4);SP(.055,EM(o.eye,1.6),.22,.1,.37,head,5,4);
+  if(o.tusk)for(const s of[-1,1]){const t=CN(.06,.38,M(0xf2ead0),s*.2,-.05,.62,head,4);t.rotation.x=1.15}
+  if(o.ears)for(const s of[-1,1])CN(.12,.34,dk,s*.26,.42,-.05,head,4);
+  if(o.horn)for(const s of[-1,1]){const h=CN(.08,.5,M(0xe8e0c8),s*.24,.45,0,head,5);h.rotation.z=-s*.4}
+  if(o.flame){CN(.4,1.1,EM(o.flame,1.3),0,H+1.25,-.1,b,5);const gl=glow(o.flame,3,.55);gl.position.set(0,H+1.1,0);b.add(gl)}
+  if(o.frost){for(let i=0;i<4;i++){const c=CN(.14,.55,EM(0xbfe6ff,.8),(i-1.5)*.22,H+1.05,-.2+i*.1,b,4);c.rotation.z=(i-1.5)*.15}}
+  const tail=grp(0,H+.8,-L*.5,b);const tt=CN(.1,.8,dk,0,0,-.35,tail,4);tt.rotation.x=-1.2;
+  const legs=[];for(const p of[[-.32,.6],[.32,.6],[-.32,-.6],[.32,-.6]]){const l=grp(p[0],H+.2,p[1]*(L/1.7),b);CY(.1,.08,H+.2,dk,0,-(H+.2)/2,0,l,5);BX(.2,.1,.26,dk,0,-(H+.2),.04,l);legs.push(l)}
+  return fin({g,b,legs,head,tail,kind:o.kind},9,.04,.95);
+}
+function makeWraith(){
+  const g=grp(),b=grp(0,.4,0,g),cl=M(0x4a5a8a,{transparent:true,opacity:.78,emissive:0x2a3a7a,emissiveIntensity:.55}),dk=M(0x1a2040,{transparent:true,opacity:.85});
+  const body=CN(.75,2.0,cl,0,.5,0,b,8);const tail=CN(.5,1.3,cl,0,-.7,0,b,6);tail.rotation.x=Math.PI;
+  const head=grp(0,1.65,0,b);SP(.36,dk,0,0,0,head,8,6);CN(.4,.6,cl,0,.25,-.05,head,7);
+  SP(.07,EM(0x9fe8ff,1.9),-.13,.02,.3,head,5,4);SP(.07,EM(0x9fe8ff,1.9),.13,.02,.3,head,5,4);
+  const armL=grp(-.55,1.2,0,b),armR=grp(.55,1.2,0,b);for(const a of[armL,armR]){const c=CN(.12,1.1,cl,0,-.5,0,a,5);c.rotation.x=Math.PI;SP(.1,EM(0x9fe8ff,1.2),0,-1.05,0,a,5,4)}
+  const gl=glow(0x7aa8ff,3.6,.4);gl.position.set(0,.8,0);b.add(gl);
+  return fin({g,b,armL,armR,tail,head,gl,kind:'wraith'},4,.05,.8);
+}
+function makeSpider(){
+  const g=grp(),b=grp(0,.75,0,g),ch=M(0x2a2250),cr=EM(0x7a7aff,1.1),dk=M(0x1a1634);
+  const ab=SP(.62,ch,0,.15,-.75,b,9,7);ab.scale.set(1,.85,1.25);SP(.42,ch,0,.15,.15,b,8,6);const head=grp(0,.15,.72,b);SP(.3,ch,0,0,0,head,8,6);
+  for(const p of[[-.12,.1],[.12,.1],[-.2,.02],[.2,.02]])SP(.055,EM(0xff4060,1.7),p[0],p[1]+.08,.25,head,5,4);
+  for(const s of[-1,1]){const f=CN(.05,.3,M(0xe8e0d0),s*.1,-.18,.25,head,4);f.rotation.x=2.7}
+  for(let i=0;i<3;i++){const c=OC(.24,cr,(i-1)*.35,.62,-.7-Math.abs(i-1)*.1,b);c.scale.set(.7,1.5,.7)}
+  const gl=glow(0x7a7aff,2.6,.45);gl.position.set(0,.7,-.7);b.add(gl);
+  const legs=[];for(let i=0;i<4;i++)for(const s of[-1,1]){const l=grp(s*.3,.1,.55-i*.4,b);const u=CY(.045,.04,1.0,dk,s*.5,.0,0,l,5);u.rotation.z=s*1.05;const d=CY(.035,.03,.95,dk,s*1.02,-.38,0,l,5);d.rotation.z=-s*.25;legs.push({g:l,s,i})}
+  return fin({g,b,legs,head,gl,kind:'spider'},6,.04,1.0);
+}
+function makeStormhawk(){
+  const g=grp(),b=grp(0,.2,0,g),fe=M(0x5a6a8a),lt=M(0xe8eefc),ye=M(0xffd24a);
+  const body=SP(.4,fe,0,0,0,b,8,6);body.scale.set(.9,.8,1.3);const head=grp(0,.22,.55,b);SP(.26,lt,0,0,0,head,8,6);
+  const bk=CN(.08,.32,ye,0,-.03,.3,head,4);bk.rotation.x=Math.PI/2;SP(.05,EM(0xffe27a,1.8),-.12,.07,.2,head,5,4);SP(.05,EM(0xffe27a,1.8),.12,.07,.2,head,5,4);
+  BX(.42,.05,.62,fe,0,0,-.78,b);BX(.2,.05,.4,lt,0,0,-1.15,b);
+  const wl=grp(-.3,.1,0,b),wr=grp(.3,.1,0,b);
+  for(const [w,s] of[[wl,-1],[wr,1]]){BX(1.5,.05,.8,fe,s*.75,0,0,w);BX(.8,.04,.6,lt,s*1.6,0,-.1,w);BX(.5,.04,.4,M(0xffe27a,{emissive:0xffd24a,emissiveIntensity:.8}),s*2.1,0,-.15,w)}
+  for(const s of[-1,1]){const c=CN(.05,.28,ye,s*.14,-.45,.1,b,4);c.rotation.x=Math.PI}
+  const gl=glow(0xffe27a,2.6,.5);b.add(gl);
+  return fin({g,b,wl,wr,head,gl,kind:'stormhawk'},5,.05,.7);
+}
+function makeScorpion(){
+  const g=grp(),b=grp(0,0,0,g),sh=M(0xb88a4a),dk=M(0x6a4a24),cl=M(0xd8a85a);
+  BX(1.0,.45,1.3,sh,0,.55,0,b);BX(.7,.38,.5,dk,0,.55,.8,b);SP(.05,EM(0xff5a3a,1.7),-.15,.68,1.05,b,5,4);SP(.05,EM(0xff5a3a,1.7),.15,.68,1.05,b,5,4);
+  const pin=[];for(const s of[-1,1]){const a=grp(s*.6,.55,.8,b);BX(.16,.16,.9,sh,s*.15,0,.45,a);BX(.5,.14,.4,cl,s*.2,0,1.0,a);const c=CN(.12,.5,cl,s*.38,0,1.25,a,4);c.rotation.x=Math.PI/2;pin.push(a)}
+  const tail=grp(0,.7,-.6,b);SP(.24,sh,0,.2,-.2,tail,6,5);SP(.22,sh,0,.75,-.4,tail,6,5);SP(.2,sh,0,1.25,-.2,tail,6,5);
+  const st=CN(.1,.42,EM(0x6aff6a,1.2),0,1.55,.1,tail,4);st.rotation.x=2.3;const gl=glow(0x6aff6a,1.2,.6);gl.position.set(0,1.6,.2);tail.add(gl);
+  const legs=[];for(let i=0;i<3;i++)for(const s of[-1,1]){const l=grp(s*.45,.5,.3-i*.4,b);const c=CY(.04,.035,.8,dk,s*.35,-.15,0,l,4);c.rotation.z=s*.9;legs.push({g:l,s,i})}
+  return fin({g,b,legs,tail,pin,gl,kind:'scorpion'},8,.04,1.0);
+}
+function makeHum(o){
+  const g=grp(),b=grp(0,0,0,g),sk=M(o.skin),cl=M(o.cloth),tr=M(o.trim||o.cloth),w=o.bulk||1;
+  const legL=grp(-.2*w,.85,0,b),legR=grp(.2*w,.85,0,b);
+  if(!o.noLegs){for(const l of[legL,legR]){CY(.1*w,.08*w,.85,cl,0,-.42,0,l);BX(.24*w,.12,.34,tr,0,-.85,.06,l)}}
+  BX(.7*w,.95,.4*w,cl,0,1.35,0,b);BX(.78*w,.18,.44*w,tr,0,.92,0,b);
+  if(o.skirt)CN(.75*w,1.35,cl,0,.7,0,b,8);
+  if(o.wraps)for(let i=0;i<5;i++)BX(.76*w,.07,.46*w,M(0xe8dcb8),0,.95+i*.19,0,b);
+  const head=grp(0,2.05,0,b);SP(.3,sk,0,0,0,head,10,8);
+  if(o.head==='hood'){const h=CN(.42,.75,cl,0,.12,-.05,head,7);h.rotation.x=-.12}
+  if(o.head==='helm'){SP(.34,tr,0,.04,0,head,9,7);BX(.5,.08,.12,EM(o.eye,1.4),0,.02,.3,head);BX(.1,.35,.5,tr,0,.3,-.02,head)}
+  if(o.brow)BX(.56,.12,.2,cl,0,.14,.24,head);
+  if(o.head!=='helm'){SP(.055,EM(o.eye,1.7),-.11,.03,.27,head,5,4);SP(.055,EM(o.eye,1.7),.11,.03,.27,head,5,4)}
+  const armL=grp(-.46*w,1.7,0,b),armR=grp(.46*w,1.7,0,b);
+  for(const a of[armL,armR]){CY(.08*w,.07*w,.75,o.sleeve?cl:sk,0,-.38,0,a);SP(.13*w,sk,0,-.78,0,a,6,5)}
+  const gc=o.glow||0xffffff;
+  if(o.weapon==='blades')for(const a of[armL,armR]){const bl=BX(.06,.95,.03,EM(gc,1.2),0,-1.2,.12,a);bl.rotation.x=.5}
+  else if(o.weapon==='sword'){BX(.14,1.5,.06,M(0xdcdcf0,{metalness:.6}),0,-1.45,.1,armR);BX(.42,.09,.12,tr,0,-.78,.1,armR)}
+  else if(o.weapon==='club')CY(.14,.22,1.2,M(0x6b5a46),0,-1.2,.1,armR,6);
+  else if(o.weapon==='staff'){CY(.04,.04,2.0,M(0x7a6a50),0,-.7,.1,armR,5);SP(.15,EM(gc,1.7),0,.35,.1,armR,6,5)}
+  if(o.shield)BX(.1,.95,.7,tr,-.1,-.7,.2,armL);
+  const wings=[];
+  if(o.wings){for(const s of[-1,1]){const wg=grp(s*.3,1.7,-.25,b);for(let i=0;i<4;i++){const f=CN(.14,1.7-i*.25,EM(o.wings,.5),s*(.3+i*.28),.2-i*.1,0,wg,4);f.rotation.z=-s*(1.0+i*.12)}wings.push(wg)}}
+  let halo=null;if(o.halo){halo=mesh(new THREE.TorusGeometry(.42,.04,6,18),EM(0xffe27a,1.5),0,.62,0,head);halo.rotation.x=Math.PI/2}
+  if(o.glow){const gl=glow(o.glow,2.4,.45);gl.position.set(0,1.4,.2);b.add(gl)}
+  return fin({g,b,legL,legR,armL,armR,head,wings,halo,kind:o.kind},10,.04,.8);
+}
+const makePhantom=()=>makeHum({kind:'phantom',skin:0x3a2a5a,cloth:0x241636,trim:0x4a2a6a,eye:0xff3dd0,bulk:.85,head:'hood',weapon:'blades',glow:0xff3dd0});
+const makeYeti=()=>makeHum({kind:'yeti',skin:0xcfdcea,cloth:0xe8f0f8,trim:0x9fb6cc,eye:0x6ad0ff,bulk:1.9,head:'bare',brow:true,sleeve:true,weapon:'none'});
+const makeMummy=()=>makeHum({kind:'mummy',skin:0xd8c9a0,cloth:0xd8c9a0,trim:0xb8a880,eye:0x6aff9a,bulk:1.1,head:'bare',wraps:true,sleeve:true,weapon:'none'});
+const makeSentinel=()=>makeHum({kind:'sentinel',skin:0xe8e4f0,cloth:0xe8e4f0,trim:0xd8b24a,eye:0xffe27a,bulk:1.25,head:'helm',weapon:'sword',shield:true,glow:0xffe27a,sleeve:true});
+const makeIceWitch=()=>makeHum({kind:'icewitch',skin:0xdfeeff,cloth:0x7aa8d8,trim:0xbfe6ff,eye:0x9fe8ff,bulk:.9,head:'hood',skirt:true,weapon:'staff',glow:0x9fe8ff,sleeve:true});
+const makeSeraph=()=>makeHum({kind:'seraph',skin:0xfff0d8,cloth:0xf6f0ff,trim:0xe8c860,eye:0xffe27a,bulk:.9,head:'bare',noLegs:true,skirt:true,weapon:'staff',glow:0xffe27a,wings:0xfff0b0,halo:true,sleeve:true});
 function makeBoss(){
   const g=grp(),b=grp(0,3.4,0,g);
   const dk=M(0x2b1232,{metalness:.4,roughness:.5}),bone=M(0xe9e1d2),red=EM(0xff3d7a,1.4);

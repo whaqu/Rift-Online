@@ -120,6 +120,35 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(g.SES.pf.items.some(i=>i.kind==='armor')&&true,'armor present after claims');
     g.drawMini();g.openShop();g.UI.close();
   }
+  // ---- level perks ----
+  {
+    setAcc({level:30});await g.API.call('claim',[]);
+    const k0=g.perkOf(g.SES.pf);T(k0.pts===29,'perk points = level-1 ('+k0.pts+')');
+    g.derive();const atk0=g.S.atk,hp0=g.S.maxHp;
+    for(let i=0;i<4;i++)await g.UI.handlers.perk('a');for(let i=0;i<3;i++)await g.UI.handlers.perk('h');for(let i=0;i<5;i++)await g.UI.handlers.perk('c');
+    const k1=g.perkOf(g.SES.pf);T(k1.a===4&&k1.h===3&&k1.c===5&&k1.pts===17,'perks spent');
+    g.derive();T(g.S.atk>atk0*1.09&&g.S.maxHp>hp0*1.08&&Math.abs(g.S.cdr-.05)<1e-9,'perks change stats');
+    setAcc({level:1,perks:{a:0,h:0,c:0}});await g.API.call('claim',[]);
+    let np='';try{await g.API.call('perk','a')}catch(e){np=e.message}T(np==='NO_POINTS','no points rejected '+np);
+    let bk='';try{setAcc({level:10});await g.API.call('perk','x')}catch(e){bk=e.message}T(bk==='BAD_ARGS','bad perk kind');
+    g.UI.close();g.openPerks();T(g.UI.modal==='능력치 강화','perk window opens');g.UI.close();
+  }
+  // ---- every monster type: spawn, AI ticks, hit, die ----
+  {
+    g.UI.close();g.P.dead=false;g.P.hp=g.S.maxHp;g.P.x=300;g.P.z=0;
+    const types=Object.keys(g.MDEF);T(types.length>=19,'monster roster '+types.length);
+    for(const t of types){
+      const m=g.makeMobObj(7000+types.indexOf(t),t,306,2,50,false,false,false);m.spawning=false;m.sp=0;
+      for(let i=0;i<120;i++){g.P.iframes=1;g.P.hp=g.S.maxHp;step(1)}
+      T((t==='bomber'||!m.dead)&&Number.isFinite(m.x)&&Number.isFinite(m.z),'mob '+t+' survives AI ticks');
+      g.dealMob(m,10,{kx:1,kz:0,kb:3,big:true});step(2);
+      g.dealMob(m,m.maxHp*2,{kx:1,kz:0,kb:3,crit:true});step(40);
+      T(m.dead,'mob '+t+' dies');
+    }
+    for(const t of['wraith','phantom','sentinel','yeti']){const m=g.makeMobObj(7500,t,306,2,50,true,false,false);m.spawning=false;m.sp=0;for(let i=0;i<150;i++){g.P.iframes=1;step(1)}T(!m.dead,'elite '+t+' ok');m.dead=true}
+    for(let i=0;i<200;i++)step(1);T(g.DYING.length===0,'death animations clean up');
+    T(g.ZONES.every(z=>!z.types||z.types.every(t=>g.MDEF[t])),'zone monster types all defined');
+  }
   // render all panels (smoke) + handlers
   g.openInventory();T(g.UI.modal==='가방','inv');g.UI.close();
   g.openJob();T(g.UI.modal==='전직 교관','job panel');g.UI.close();
