@@ -35,8 +35,9 @@ function newPlayer(){
 }
 function buildPlayerModel(){
   if(PM)entG.remove(PM.g);
-  PM=makeHeroFor(SES.pf.cls,SES.pf.job,CLS[SES.pf.cls].col);entG.add(PM.g);
+  PM=makeHeroFor(SES.pf.cls,SES.pf.job,CLS[SES.pf.cls].col);applyWeaponLook(PM,myWeaponBase());entG.add(PM.g);
 }
+function myWeaponBase(){const w=SES.pf&&SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);return w?w.base:null}
 function skillOf(slot){
   const pf=SES.pf,c=CLS[pf.cls],j=JOBS[pf.job];
   if(slot==='q')return c.q;if(slot==='e')return c.e;

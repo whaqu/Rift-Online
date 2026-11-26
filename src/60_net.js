@@ -57,13 +57,13 @@ function netJoin(i){
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
         if(n>SHARD_MAX&&i<6){try{NET.sb.removeChannel(ch)}catch(e){}fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
-        if(st==='SUBSCRIBED'){try{ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level})}catch(e){}setTimeout(()=>{if(!done){NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}},1800)}
+        if(st==='SUBSCRIBED'){try{ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()})}catch(e){}setTimeout(()=>{if(!done){NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}},1800)}
         else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){if(!done)fin(false);else{NET.on=false;UI.setNet(false,'연결 끊김');UI.renderPeers()}}
       });
     setTimeout(()=>fin(false),7000);
   });
 }
-function netPresence(){if(NET.on&&NET.ch)try{NET.ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level})}catch(e){}}
+function netPresence(){if(NET.on&&NET.ch)try{NET.ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()})}catch(e){}}
 
 /* ---------- peers ---------- */
 function syncPeers(){
@@ -73,7 +73,8 @@ function syncPeers(){
     if(k===SES.name)continue;const m=st[k]&&st[k][st[k].length-1];if(!m)continue;seen[k]=1;let p=NET.peers[k];
     if(!p)p=NET.peers[k]={name:k,x:0,z:0,tx:0,tz:0,f:0,tf:0,moving:false,model:null,label:null,got:false,hp:100,dead:false,anim:Math.random()*5,cls:'warrior',job:'warrior',lv:1};
     const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c;
-    if(c!==p.cls||j!==p.job){p.cls=c;p.job=j;if(p.model){entG.remove(p.model.g);p.model=null}}
+    const w=typeof m.w==='string'&&m.w.length<24?m.w:null;
+    if(c!==p.cls||j!==p.job||w!==p.w){p.cls=c;p.job=j;p.w=w;if(p.model){entG.remove(p.model.g);p.model=null}}
     p.lv=+m.lv||1;if(p.label)p.label.el.textContent=peerLabel(p);
   }
   for(const k in NET.peers){if(!seen[k])dropPeer(k)}
@@ -197,7 +198,7 @@ function netUpdate(dt){
   }
   for(const k in NET.peers){
     const p=NET.peers[k];if(!p.got){if(p.model)p.model.g.visible=false;continue}
-    if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);entG.add(p.model.g)}
+    if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
     if(!p.label)p.label=makeLabel(peerLabel(p),'pl');
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
     p.model.g.visible=!p.dead;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;

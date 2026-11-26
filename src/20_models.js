@@ -65,7 +65,7 @@ function makeHero(cls,tint){
     const pl=CN(.11,.6,M(0xd8353a),0,.5,-.2,head,6);pl.rotation.x=-.6;
     CY(.13,.12,.7,steel,0,-.35,0,armL);SP(.14,skin,0,-.76,0,armL);CY(.13,.12,.7,steel,0,-.35,0,armR);SP(.14,skin,0,-.76,0,armR);
     const sh=grp(-.22,-.5,.22,armL);const sd=CY(.58,.58,.1,blue,0,0,0,sh,14);sd.rotation.x=Math.PI/2;sh.rotation.y=-.25;
-    const sd2=CY(.4,.4,.13,gold,0,0,.02,sh,14);sd2.rotation.x=Math.PI/2;SP(.13,gold,0,0,.1,sh,8,6);
+    o.shield=sh;const sd2=CY(.4,.4,.13,gold,0,0,.02,sh,14);sd2.rotation.x=Math.PI/2;SP(.13,gold,0,0,.1,sh,8,6);
     const sw=grp(0,-.76,0,armR);
     BX(.17,1.75,.06,M(0xe9f2ff,{metalness:.7,roughness:.25,emissive:0x335577,emissiveIntensity:.45}),0,.98,0,sw);
     BX(.52,.1,.15,gold,0,.12,0,sw);CY(.06,.06,.42,M(0x4a2c18),0,-.1,0,sw);SP(.09,gold,0,-.32,0,sw,6,5);
@@ -107,7 +107,7 @@ function makeHero(cls,tint){
     CY(.11,.1,.7,cloth,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.11,.1,.7,cloth,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
     const dl=grp(0,-.76,0,armL),dr=grp(0,-.76,0,armR);
     for(const d of[dl,dr]){BX(.09,.85,.035,blade,0,.5,0,d);BX(.26,.06,.08,acc,0,.08,0,d);CY(.035,.035,.22,lea,0,-.05,0,d,6);d.rotation.x=1.0}
-    o.weapon=dr;
+    o.weapon=dr;o.weapon2=dl;
   }else if(cls==='cleric'){
     const robe=M(0xf1ecd8),trim=M(tint||0xe8d27a,{metalness:.5,roughness:.4}),sash=M(0x5a7ad8),wood=M(0x7a5a33),boot=M(0x8a6a3a);
     BX(.22,.5,.3,boot,-.2,-.4,.04,legL);BX(.22,.5,.3,boot,.2,-.4,.04,legR);

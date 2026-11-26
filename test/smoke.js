@@ -150,6 +150,23 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     for(let i=0;i<200;i++)step(1);T(g.DYING.length===0,'death animations clean up');
     T(g.ZONES.every(z=>!z.types||z.types.every(t=>g.MDEF[t])),'zone monster types all defined');
   }
+  // ---- weapon looks: every class x kind x tier builds without error; kinds look different ----
+  {
+    const oe=console.error;let be=0;console.error=(...x)=>{if(String(x[0]).indexOf('weapon look')===0)be++;oe.apply(console,x)};
+    const cnt=o=>{let n=0;if(o)o.traverse(()=>n++);return n};
+    const shape=o=>{let n=0;if(o)o.traverse(c=>{n+=Math.round((c.position.y*7+c.position.z*13+c.position.x*3+c.scale.y*5)*100)});return n};
+    for(const cls of g.CLASSES){
+      const sig=[];
+      for(let ty=0;ty<3;ty++){
+        for(const t of[1,3,5,8]){const h=g.makeHeroFor(cls,cls,0xffffff);g.applyWeaponLook(h,cls+'_'+t+(ty?'_'+ty:''));if(t===1)sig.push(cnt(h.weapon)+'/'+shape(h.weapon)+'/'+(h.weapon2&&h.weapon2.visible?cnt(h.weapon2):0));if(!(cnt(h.weapon)>1))be++;
+          if(['mage','cleric','summoner'].includes(cls)&&h.orb&&!h.orbGlow)be++}
+      }
+      T(new Set(sig).size===3,'weapon kinds look different for '+cls+' '+sig.join(','));
+    }
+    const hw=g.makeHeroFor('warrior','warrior',0xffffff);g.applyWeaponLook(hw,'warrior_2');const c2=cnt(hw.weapon);g.applyWeaponLook(hw,'warrior_8');T(cnt(hw.weapon)>c2,'higher tier adds detail (glow/rune ring)');
+    g.applyWeaponLook(hw,'mage_3');T(hw.wbase==='warrior_1','foreign class weapon falls back');
+    console.error=oe;T(be===0,'weapon look builds clean ('+be+')');
+  }
   // render all panels (smoke) + handlers
   g.openInventory();T(g.UI.modal==='가방','inv');g.UI.close();
   g.openJob();T(g.UI.modal==='전직 교관','job panel');g.UI.close();
