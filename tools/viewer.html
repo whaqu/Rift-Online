@@ -3704,9 +3704,10 @@ if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){ret
 else boot();
 
 </script>
-<script>/* dev-only model viewer: open tools/viewer.html#mode (mode: row | close | tiers) */
+<script>addEventListener('error',e=>{document.title='PAGEERR '+e.message});
+/* dev-only model viewer: open tools/viewer.html#mode (mode: row | close | tiers) */
 addEventListener('load',()=>setTimeout(()=>{
-  for(const el of document.body.children)if(el.tagName!=='CANVAS'&&el.tagName!=='SCRIPT')el.style.display='none';
+  try{for(const el of document.body.children)if(el.tagName!=='SCRIPT'&&!el.contains(canvas)&&el!==canvas)el.style.display='none';
   LOGIN.on=false;if(LOGIN.g)LOGIN.g.visible=false;
   const mode=(location.hash||'#row').slice(1),V=new THREE.Group();scene.add(V);
   const list=[];const C=Object.keys(CLS);
@@ -3718,7 +3719,8 @@ addEventListener('load',()=>setTimeout(()=>{
     if(camera.clearViewOffset)camera.clearViewOffset();
     if(mode==='close'){camera.position.set(-2.6,2.4,7.8+11-3.6);camera.lookAt(-2.6,1.3,11-1.8)}
     else{camera.position.set(0,9,24);camera.lookAt(0,1,11)}
-    camera.updateProjectionMatrix();camera.updateMatrixWorld();requestAnimationFrame(lp)};lp();
+    camera.updateProjectionMatrix();camera.updateMatrixWorld();renderer.render(scene,camera);requestAnimationFrame(lp)};lp();
+  document.title='VIEWER OK '+(renderer.getContext()?'gl':'nogl');}catch(e){document.title='VIEWER ERR '+e.message}
 },800));
 </script></body>
 </html>
