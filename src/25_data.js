@@ -213,7 +213,7 @@ const ENCH={
 };
 const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
-  {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x5fa84a,alt:0x4f9a40},
+  {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x56a044,alt:0x4a9340},
   {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer','wraith'],ground:0x4a4f58,alt:0x3e4350},
   {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x5e4a44,alt:0x524038},
   {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x585a86,alt:0x4a4c78},

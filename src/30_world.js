@@ -125,6 +125,7 @@ function bough(R,h,seed,cap){
   }catch(e){return new THREE.ConeGeometry(R,h,10)}
 }
 const TREEG={};
+const TQ=()=>save.treeQ===0?0:1;
 /* tapered limb between two points (brown wood; merged into trunk meshes) */
 function limbGeo(ax,ay,az,bx,by,bz,r0,r1,seg){
   const dx=bx-ax,dy=by-ay,dz=bz-az,len=Math.hypot(dx,dy,dz)||.01,g=new THREE.CylinderGeometry(r1,r0,len,seg||5,1);
@@ -150,8 +151,30 @@ function pineLayout(){
   }
   return out;
 }
+/* soft conifer pad: flattened, elongated low-poly bud lying along a drooping branch (rounded ends, no spikes) */
+function padGeo(len,w,h,droop,th,dist,x,y,z){
+  const g=new THREE.IcosahedronGeometry(1,0);try{const pa=g.attributes.position.array,na=g.attributes.normal.array;for(let i=0;i<pa.length;i+=3){const l=Math.hypot(pa[i],pa[i+1],pa[i+2])||1;na[i]=pa[i]/l;na[i+1]=pa[i+1]/l;na[i+2]=pa[i+2]/l}}catch(e){}
+  g.scale(w,h,len/2);g.rotateX(droop);g.rotateY(th);
+  const c=Math.cos(droop);g.translate(x+Math.sin(th)*dist*c,y-Math.sin(droop)*dist,z+Math.cos(th)*dist*c);return g;
+}
+/* previous, simpler trees (setting: light models) */
+function treeGeoLow(k){
+  const ico=r=>new THREE.IcosahedronGeometry(r,1);let g;
+  try{
+    if(k==='trunk'||k==='ptrunk')g=mergeGeos([[new THREE.CylinderGeometry(.2,.32,2.4,8),0,1.2,0],[new THREE.ConeGeometry(.55,.6,8),0,.25,0],[new THREE.CylinderGeometry(.06,.1,.9,5),.32,1.6,0,0,0,-.9],[new THREE.CylinderGeometry(.05,.09,.8,5),-.28,1.9,.1,.3,0,.85]]);
+    else if(k==='round')g=mergeGeos([[ico(1.35),0,3.2,0],[ico(1),.95,2.75,.3],[ico(1.05),-.85,2.85,-.35],[ico(.95),.2,3.95,-.4],[ico(.9),-.3,2.55,.85],[ico(.85),.5,2.6,-.85],[ico(.8),-.2,4.1,.45]]);
+    else{
+      const T=[[1.45,1.9,2.2,0],[2.55,1.55,1.9,.5],[3.55,1.2,1.7,1.0],[4.45,.85,1.45,1.5]],parts=[];
+      T.forEach((t,i)=>{if(k==='pine')parts.push([bough(t[1],t[2],t[3]+1),0,t[0],0,0,i*.7]);else parts.push([bough(t[1]*.8,t[2]*.5,t[3]+1,true),0,t[0]+t[2]*.24,0,0,i*.7])});
+      if(k==='pine')parts.push([bough(.5,1.3,9),0,5.3,0]);else parts.push([bough(.3,.7,9,true),0,5.6,0]);
+      g=mergeGeos(parts);
+    }
+  }catch(e){g=new THREE.IcosahedronGeometry(1,0)}
+  return g;
+}
 function treeGeo(k){
-  if(TREEG[k])return TREEG[k];
+  const ck=k+TQ();if(TREEG[ck])return TREEG[ck];
+  if(!TQ()&&k!=='dead')return TREEG[ck]=treeGeoLow(k);
   let g;
   try{
   if(k==='trunk'){
@@ -174,20 +197,21 @@ function treeGeo(k){
   }
   else if(k==='pine'||k==='snow'){
     const sn=k==='snow',parts=[];
-    pineLayout().forEach((b,i)=>{
-      const L=b.L*(sn?.82:1),w=b.w*(sn?.78:1),y=b.y+(sn?.1:0),cx=Math.sin(b.th)*.12,cz=Math.cos(b.th)*.12;
-      parts.push([frondGeo(L,w,b.dr,b.th,cx,y,cz),0,0,0]);
-      for(const sd of[-.62,.62])parts.push([frondGeo(L*.66,w*.8,b.dr+.06,b.th+sd,cx,y-.04,cz),0,0,0]);
+    pineLayout().forEach(b=>{
+      const L=b.L*(sn?.86:1),y=b.y+(sn?.13:0),th=b.th,dr=b.dr*(sn?.9:1),wd=b.w*(sn?.7:1),hh=(sn?.12:.26)+b.w*.35,x0=Math.sin(th)*.1,z0=Math.cos(th)*.1;
+      parts.push([padGeo(L*.86,wd*1.45,hh*.7,dr,th,L*.46,x0,y,z0),0,0,0]);              /* inner pad */
+      parts.push([padGeo(L*.62,wd*1.05,hh*.6,dr+.12,th,L*.86,x0,y,z0),0,0,0]);           /* outer pad, droops more */
+      for(const sd of[-.62,.62])parts.push([padGeo(L*.66,wd*.95,hh*.55,dr+.06,th+sd,L*.52,x0,y-.03,z0),0,0,0]); /* side pads */
     });
     for(let t=0;t<8;t+=2){const u=t/7,y=1.35+u*4.2,rad=2.15*Math.pow(1-u*.92,.95)+.3;parts.push(sn?[bough(rad*.3,.5,t+3,true),0,y+.3,0]:[bough(rad*.42,1.1,t+3),0,y+.1,0])}
-    parts.push(sn?[bough(.28,.7,9,true),0,6.15,0]:[bough(.45,1.5,9),0,6.0,0]);
+    parts.push(sn?[bough(.28,.7,9,true),0,6.15,0]:[bough(.5,1.5,9),0,6.0,0]);
     g=mergeGeos(parts);
   }
   else if(k==='dead')g=mergeGeos([[new THREE.CylinderGeometry(.1,.36,4.4,7),0,2.2,0],[new THREE.ConeGeometry(.6,.7,7),0,.3,0],
     [new THREE.CylinderGeometry(.04,.1,1.7,5),.55,3.0,0,0,0,-1.0],[new THREE.CylinderGeometry(.04,.09,1.5,5),-.5,3.5,.15,.2,0,.95],[new THREE.CylinderGeometry(.03,.08,1.3,5),.1,3.9,-.5,-.95,0,0],
     [new THREE.CylinderGeometry(.03,.06,.8,4),1.05,3.75,0,0,0,-.3],[new THREE.CylinderGeometry(.03,.06,.7,4),-.95,4.15,.25,0,0,.3],[new THREE.CylinderGeometry(.03,.07,1.1,5),.2,2.2,.5,.9,0,0]]);
   }catch(e){g=new THREE.IcosahedronGeometry(1,0)}
-  return TREEG[k]=g;
+  return TREEG[ck]=g;
 }
 /* timber house with stone base, gable roof, chimney, windows */
 function buildHouse(x,z,ry,v){
@@ -217,6 +241,23 @@ function buildHouse(x,z,ry,v){
 }
 /* ---- lush grass: clumps of curved leaf blades, swaying in the wind (vertex shader) ---- */
 const GRASS_U={uTime:{value:0}};
+function grassGeoLow(n,h,w,lean,seed){
+  try{
+    const rnd=mulberry(seed),P=[],N=[],C=[],SEG=3;
+    for(let b=0;b<n;b++){
+      const a=b/n*TAU+rnd()*.9,dx=Math.cos(a),dz=Math.sin(a),px=-dz,pz=dx,hh=h*(.6+rnd()*.7),ww=w*(.7+rnd()*.6),ln=lean*(.4+rnd()*.9),r0=rnd()*.1*w/.1;
+      const pt=t=>{const cx=dx*(r0+ln*hh*Math.pow(t,1.7)),cz=dz*(r0+ln*hh*Math.pow(t,1.7)),y=hh*t*(1-.25*t*ln),wd=ww*Math.pow(1-t,.75)*(t<.25?.75+t:1)*.5;return[[cx-px*wd,y,cz-pz*wd],[cx+px*wd,y,cz+pz*wd]]};
+      const nx=dx*.45,nz=dz*.45,nl=Math.hypot(nx,1,nz);
+      const push=(v,t)=>{P.push(v[0],v[1],v[2]);N.push(nx/nl,1/nl,nz/nl);const c=.56+.5*t;C.push(c,c,c)};
+      for(let i=0;i<SEG;i++){const t0=i/SEG,t1=(i+1)/SEG,A=pt(t0),B=pt(t1);
+        push(A[0],t0);push(A[1],t0);push(B[1],t1);
+        if(i<SEG-1){push(A[0],t0);push(B[1],t1);push(B[0],t1)}}
+    }
+    const g=new THREE.BufferGeometry();
+    g.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));g.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(N),3));g.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));
+    g.computeBoundingSphere();return g;
+  }catch(e){return new THREE.ConeGeometry(w,h,4)}
+}
 function grassGeo(n,h,w,lean,seed,opt){
   try{
     opt=opt||{};const rnd=mulberry(seed),P=[],N=[],C=[],SEG=3,leaf=!!opt.leaf;
@@ -225,7 +266,7 @@ function grassGeo(n,h,w,lean,seed,opt){
       const pt=t=>{const cr=r0+ln*hh*Math.pow(t,leaf?1.2:1.7),ca=curl*t*t,cx=dx*cr+px*ca*hh*.25,cz=dz*cr+pz*ca*hh*.25,y=hh*t*(1-(leaf?.5:.25)*t*ln),
         wd=(leaf?ww*Math.pow(Math.sin(Math.PI*Math.min(1,.12+t*.88)),.75)*1.25:ww*Math.pow(1-t,.75)*(t<.25?.75+t:1))*.5;return[[cx-px*wd,y,cz-pz*wd],[cx+px*wd,y,cz+pz*wd]]};
       const nx=dx*.45,nz=dz*.45,nl=Math.hypot(nx,1,nz);
-      const push=(v,t)=>{P.push(v[0],v[1],v[2]);N.push(nx/nl,1/nl,nz/nl);const c=(.34+.7*t)*tone;C.push(c*(1+.1*t*tip),c*(1+.05*t),c*(1-.14*t*tip))};
+      const push=(v,t)=>{P.push(v[0],v[1],v[2]);N.push(nx/nl,1/nl,nz/nl);const c=(.5+.55*t)*tone;C.push(c*(1+.1*t*tip),c*(1+.05*t),c*(1-.14*t*tip))};
       for(let i=0;i<SEG;i++){const t0=i/SEG,t1=(i+1)/SEG,A=pt(t0),B=pt(t1);
         push(A[0],t0);push(A[1],t0);push(B[1],t1);
         if(i<SEG-1){push(A[0],t0);push(B[1],t1);push(B[0],t1)}else{/* leaf tip is a point */}}
@@ -246,7 +287,7 @@ vec3 gv(vec2 p){vec2 i=floor(p),f=fract(p);float d1=9.,d2=9.;float id=0.;for(int
 void gd(int z,vec2 p,float t,out vec3 m,out vec3 e){
   m=vec3(1.);e=vec3(0.);
   float n=gf(p*.07),n2=gf(p*.9),n3=gf(p*.23+5.);
-  if(z==1){m=mix(vec3(.78,.93,.76),vec3(1.12,1.1,.92),n)*(.9+.2*n2);float dirt=smoothstep(.62,.72,gf(p*.045+7.));m=mix(m,vec3(1.35,.95,.62)*(.85+.3*n2),dirt*.6);m*=1.+.05*sin(p.x*.55+n*5.);}
+  if(z==1){m=mix(vec3(.72,.9,.7),vec3(.98,1.03,.84),n)*(.88+.2*n2);float dirt=smoothstep(.66,.76,gf(p*.045+7.));m=mix(m,vec3(1.2,.92,.64)*(.85+.3*n2),dirt*.5);m*=1.+.05*sin(p.x*.55+n*5.);}
   else if(z==2){m=mix(vec3(.5,.58,.5),vec3(.8,.82,.7),n)*(.62+.3*n2);m=mix(m,vec3(.85,.68,.5)*(.6+.3*n2),smoothstep(.6,.7,n3)*.5);float c=gr(p*.22);m*=1.-.35*smoothstep(.95,.99,c);}
   else if(z==3){float c=gr(p*.085+n*.5);float lava=smoothstep(.945,.99,c);m=mix(vec3(.5,.46,.46),vec3(.85,.78,.76),n)*(.72+.3*n2)*(1.-.7*lava);e=vec3(1.5,.5,.12)*lava*(1.1+.45*sin(t*1.7+p.x*.15));float ash=smoothstep(.55,.7,n3);m=mix(m,vec3(.42,.4,.42),ash*.5);}
   else if(z==4){vec3 v=gv(p*.55);m=vec3(.8+.3*v.y)*(1.-.3*smoothstep(.1,0.,v.x));m*=vec3(.9,.9,1.02);float sp=step(.994,gh(floor(p*3.)));e=vec3(.5,.55,1.)*sp*(.5+.5*sin(t*3.+p.x));e+=vec3(.25,.15,.5)*smoothstep(.1,0.,v.x)*.5;}
@@ -276,6 +317,7 @@ function grassMat(o){
   return GRASSM[k]=m;
 }
 function buildWorld(){
+  for(const n of WORLD.npcs){try{n.label.el.remove()}catch(e){}}
   clearGroup(worldG);WORLD.obst.length=0;WORLD.grid={};WORLD.nodes.length=0;WORLD.ngrid={};if(typeof GAT!=='undefined'){GAT.anim.length=0;GAT.weedAnim.length=0}WORLD.lava.length=0;WORLD.wisps.length=0;WORLD.ponds.length=0;WORLD.pulse.length=0;WORLD.cracks=null;WORLD.emblem=null;
   const R=mulberry(20240611);
   /* ground */
@@ -424,13 +466,13 @@ function buildWorld(){
 
   /* ground cover */
   try{
-  const GB=grassGeo(17,.85,.085,.42,11),GL=grassGeo(8,.6,.34,1.05,23,{leaf:true}),GT=grassGeo(14,1.3,.07,.32,37);
+  const hq=TQ();const GB=hq?grassGeo(17,.85,.085,.42,11):grassGeoLow(12,.8,.1,.38,11),GL=hq?grassGeo(8,.6,.34,1.05,23,{leaf:true}):grassGeoLow(7,.55,.3,.95,23),GT=hq?grassGeo(14,1.3,.07,.32,37):grassGeoLow(12,1.2,.08,.3,37);
   const cover=(zi,n,geo,mat,fn)=>{n=Math.round(sc(n,zi)*(IS_TOUCH?.55:1));const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=!!mat.vertexColors;let k=0;const wd=geo===GB||geo===GL||geo===GT;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);if(wd)regNode('weed',x,z,[[m,i]],null);k=i+1});m.count=k;instDone(m);return m};
-  const tm=M(0xffffff,{roughness:1}),gcols=[0x5a9a48,0x6aae52,0x4a8a40,0x7ab85a];
+  const tm=M(0xffffff,{roughness:1}),gcols=[0x68ae52,0x78bd5c,0x5aa04a,0x86c862];
   
   cover(1,4200,GB,grassMat(),(m,i,x,z)=>{const s=.75+R()*.8;instSet(m,i,x,0,z,s,s*(.8+R()*.6),s,R()*6,gcols[Math.floor(R()*4)])});
-  cover(1,1000,GL,grassMat(),(m,i,x,z)=>{const s=.8+R()*.8;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x3f8a3a,0x4e9c44,0x5aa84a]))});
-  cover(1,500,GT,grassMat(),(m,i,x,z)=>{const s=.8+R()*.7;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x6aa84a,0x7ab852,0x8ab85a]))});
+  cover(1,1000,GL,grassMat(),(m,i,x,z)=>{const s=.8+R()*.8;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x55a044,0x62ae4c,0x70b856]))});
+  cover(1,500,GT,grassMat(),(m,i,x,z)=>{const s=.8+R()*.7;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x7ab858,0x88c460,0x96c868]))});
   {const gl=[0x4a8a3a,0x58984a,0x66a650];const n=700,m=instMesh(GB,grassMat(),n);m.castShadow=false;let k=0;
     for(let i=0;i<n;i++){const a=R()*TAU,r=19+R()*5,x=Math.cos(a)*r,z=Math.sin(a)*r;if(onPath(x,z))continue;const s=.6+R()*.7;instSet(m,k++,x,0,z,s,s,s,R()*6,gl[i%3])}m.count=k;instDone(m)}
   {const N=sc(420,1),fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff,0xff8a4a],st=instMesh(new THREE.CylinderGeometry(.025,.025,.42,3),M(0x3f7a38),N),hd=instMesh(new THREE.IcosahedronGeometry(.17,0),M(0xffffff,{emissive:0x222222}),N);st.castShadow=hd.castShadow=false;let k=0;
