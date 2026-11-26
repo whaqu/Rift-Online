@@ -157,6 +157,46 @@ function padGeo(len,w,h,droop,th,dist,x,y,z){
   g.scale(w,h,len/2);g.rotateX(droop);g.rotateY(th);
   const c=Math.cos(droop);g.translate(x+Math.sin(th)*dist*c,y-Math.sin(droop)*dist,z+Math.cos(th)*dist*c);return g;
 }
+/* realistic pine: curved brown limbs with tufts of fine radiating needles (single-triangle needles, vertex-colour gradient) */
+let PINEB=null;
+function pineBuild(){
+  if(PINEB)return PINEB;
+  const R=mulberry(4242),P=[],Nn=[],C=[],tufts=[],limbs=[];
+  const nrm=v=>{const l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l]};
+  const tuft=(cx,cy,cz,n,len,db,spread,tone)=>{
+    for(let i=0;i<n;i++){
+      let d=nrm([db[0]+(R()-.5)*2*spread,db[1]+(R()-.5)*2*spread*.8+.12,db[2]+(R()-.5)*2*spread]);
+      const l=len*(.7+R()*.5),w=.058+R()*.04,ra=nrm([R()-.5,R()-.5,R()-.5]);
+      let a=[d[1]*ra[2]-d[2]*ra[1],d[2]*ra[0]-d[0]*ra[2],d[0]*ra[1]-d[1]*ra[0]];a=nrm(a);
+      const b1=[cx-a[0]*w,cy-a[1]*w,cz-a[2]*w],b2=[cx+a[0]*w,cy+a[1]*w,cz+a[2]*w],tp=[cx+d[0]*l,cy+d[1]*l-l*.1,cz+d[2]*l];
+      const nm=nrm([d[0]*.5,d[1]*.5+.6,d[2]*.5]),tn=tone*(.85+R()*.3);
+      P.push(b1[0],b1[1],b1[2],b2[0],b2[1],b2[2],tp[0],tp[1],tp[2]);
+      for(let k=0;k<3;k++)Nn.push(nm[0],nm[1],nm[2]);
+      C.push(.6*tn,.66*tn,.5*tn, .6*tn,.66*tn,.5*tn, 1.18*tn,1.24*tn,.9*tn);
+    }
+  };
+  const lay=pineLayout();
+  lay.forEach((b,bi)=>{
+    const o=[Math.sin(b.th),0,Math.cos(b.th)],L=b.L,y=b.y,curl=.1+R()*.2,sag=.06+R()*.1,tone=.9+R()*.2;
+    const p1=[o[0]*L*.5,y-sag*L,o[2]*L*.5],p2=[o[0]*L,y+curl*.4,o[2]*L],pi=[o[0]*L*.22,y-sag*L*.3,o[2]*L*.22];
+    limbs.push([0,y,0,p1[0],p1[1],p1[2],.075,.045],[p1[0],p1[1],p1[2],p2[0],p2[1],p2[2],.045,.018]);
+    const dir=[o[0],.18,o[2]];
+    tuft(pi[0],pi[1],pi[2],12,.55,[o[0],.35,o[2]],.8,tone*.85);tufts.push([pi[0],pi[1]+.12,pi[2],.5]);
+    tuft(p1[0],p1[1],p1[2],16,.68,dir,.75,tone);tufts.push([p1[0],p1[1]+.16,p1[2],.7]);
+    tuft(p2[0],p2[1],p2[2],20,.76,[o[0],.2,o[2]],.8,tone*1.05);tufts.push([p2[0],p2[1]+.14,p2[2],.75]);
+    for(const sd of[-1,1]){const q=[p1[0]+(o[2]*sd)*L*.28+o[0]*L*.16,p1[1]+.06+R()*.1,p1[2]+(-o[0]*sd)*L*.28+o[2]*L*.16],od=nrm([q[0]-p1[0],.25,q[2]-p1[2]]);
+      limbs.push([p1[0],p1[1],p1[2],q[0],q[1],q[2],.03,.012]);tuft(q[0],q[1],q[2],12,.55,od,.8,tone*.95);tufts.push([q[0],q[1]+.12,q[2],.5])}
+  });
+  tuft(0,6.15,0,26,.85,[0,1,0],.45,1.05);tuft(0,5.6,0,18,.68,[0,.8,0],.9,1);tufts.push([0,6.2,0,.5]);
+  const gn=new THREE.BufferGeometry();
+  gn.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));gn.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(Nn),3));gn.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));gn.computeBoundingSphere();
+  const tp=[[new THREE.CylinderGeometry(.075,.26,6.2,9),0,3.1,0],[new THREE.ConeGeometry(.5,.9,9),0,.3,0]];
+  for(const l of limbs)tp.push([limbGeo(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],5),0,0,0]);
+  for(let q=0;q<6;q++){const th=q*1.1,y=.7+q*.22;tp.push([limbGeo(0,y,0,Math.sin(th)*.7,y+.12,Math.cos(th)*.7,.045,.012,4),0,0,0])}
+  const trunk=mergeGeos(tp);
+  const sp=[];tufts.forEach((t,i)=>{if(i%2===0)sp.push([padGeo(t[3]*1.0,t[3]*.42,.05,0,R()*6,0,t[0],t[1]+.02,t[2]),0,0,0])});
+  PINEB={needles:gn,trunk,snow:mergeGeos(sp)};return PINEB;
+}
 /* previous, simpler trees (setting: light models) */
 function treeGeoLow(k){
   const ico=r=>new THREE.IcosahedronGeometry(r,1);let g;
@@ -189,24 +229,7 @@ function treeGeo(k){
       for(let q=0;q<3;q++){const a=q*2.1+i*1.3,rr=c[3]*.72;parts.push([lumpyGeo(c[3]*(.46+.08*q),i*3+q,.18),c[0]+Math.cos(a)*rr,c[1]+Math.sin(a*1.7)*.35*c[3],c[2]+Math.sin(a)*rr])}});
     g=mergeGeos(parts);
   }
-  else if(k==='ptrunk'){
-    const parts=[[new THREE.CylinderGeometry(.07,.3,6.2,7),0,3.1,0],[new THREE.ConeGeometry(.55,.55,7),0,.22,0]];
-    for(const b of pineLayout()){const rb=.11+.0*b.L,ex=Math.sin(b.th)*b.L*.62,ez=Math.cos(b.th)*b.L*.62;parts.push([limbGeo(0,b.y,0,ex,b.y-b.L*.62*Math.tan(b.dr)*.9,ez,.065,.022,4),0,0,0])}
-    for(let q=0;q<5;q++){const th=q*1.3,y=.75+q*.2;parts.push([limbGeo(0,y,0,Math.sin(th)*.75,y+.15,Math.cos(th)*.75,.05,.015,4),0,0,0])}
-    g=mergeGeos(parts);
-  }
-  else if(k==='pine'||k==='snow'){
-    const sn=k==='snow',parts=[];
-    pineLayout().forEach(b=>{
-      const L=b.L*(sn?.86:1),y=b.y+(sn?.13:0),th=b.th,dr=b.dr*(sn?.9:1),wd=b.w*(sn?.7:1),hh=(sn?.12:.26)+b.w*.35,x0=Math.sin(th)*.1,z0=Math.cos(th)*.1;
-      parts.push([padGeo(L*.86,wd*1.45,hh*.7,dr,th,L*.46,x0,y,z0),0,0,0]);              /* inner pad */
-      parts.push([padGeo(L*.62,wd*1.05,hh*.6,dr+.12,th,L*.86,x0,y,z0),0,0,0]);           /* outer pad, droops more */
-      for(const sd of[-.62,.62])parts.push([padGeo(L*.66,wd*.95,hh*.55,dr+.06,th+sd,L*.52,x0,y-.03,z0),0,0,0]); /* side pads */
-    });
-    for(let t=0;t<8;t+=2){const u=t/7,y=1.35+u*4.2,rad=2.15*Math.pow(1-u*.92,.95)+.3;parts.push(sn?[bough(rad*.3,.5,t+3,true),0,y+.3,0]:[bough(rad*.42,1.1,t+3),0,y+.1,0])}
-    parts.push(sn?[bough(.28,.7,9,true),0,6.15,0]:[bough(.5,1.5,9),0,6.0,0]);
-    g=mergeGeos(parts);
-  }
+  else if(k==='ptrunk'||k==='pine'||k==='snow'){const b=pineBuild();g=k==='ptrunk'?b.trunk:k==='pine'?b.needles:b.snow}
   else if(k==='dead')g=mergeGeos([[new THREE.CylinderGeometry(.1,.36,4.4,7),0,2.2,0],[new THREE.ConeGeometry(.6,.7,7),0,.3,0],
     [new THREE.CylinderGeometry(.04,.1,1.7,5),.55,3.0,0,0,0,-1.0],[new THREE.CylinderGeometry(.04,.09,1.5,5),-.5,3.5,.15,.2,0,.95],[new THREE.CylinderGeometry(.03,.08,1.3,5),.1,3.9,-.5,-.95,0,0],
     [new THREE.CylinderGeometry(.03,.06,.8,4),1.05,3.75,0,0,0,-.3],[new THREE.CylinderGeometry(.03,.06,.7,4),-.95,4.15,.25,0,0,.3],[new THREE.CylinderGeometry(.03,.07,1.1,5),.2,2.2,.5,.9,0,0]]);
@@ -414,8 +437,8 @@ function buildWorld(){
   const free=(x,z)=>Math.hypot(x,z)>21&&Math.hypot(x,z)<WORLD_R-3&&!onPath(x,z);
   const placeIn=(zi,n,rad,fn)=>{const zn=ZONES[zi];let c=0,tries=0;while(c<n&&tries++<n*20){const a=R()*TAU,r=zn.r0+2+R()*(zn.r1-zn.r0-4),x=Math.cos(a)*r,z=Math.sin(a)*r;if(!free(x,z))continue;let ok=true;for(const o of WORLD.obst){if(Math.abs(o.x-x)<8&&Math.abs(o.z-z)<8&&d2(x,z,o.x,o.z)<(o.r+rad+.6)*(o.r+rad+.6)){ok=false;break}}if(!ok)continue;fn(c++,x,z)}return c};
   // z1 trees
-  {const N=sc(190,1),sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x7a5434,{roughness:.95,flatShading:false}),N),tp=instMesh(treeGeo('ptrunk'),M(0x6a4a30,{roughness:.95,flatShading:false}),N),rd=instMesh(treeGeo('round'),sm,N),pn=instMesh(treeGeo('pine'),sm,N);let k=0,kr=0,kp=0;
-    const cols=[0x4c9a46,0x5aae4e,0x3e8a40,0x68b856,0x7ab84a],pcols=[0x2e7a46,0x34864c,0x286e40];
+  {const N=sc(190,1),sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x7a5434,{roughness:.95,flatShading:false}),N),tp=instMesh(treeGeo('ptrunk'),M(0x6a4a30,{roughness:.95,flatShading:false}),N),rd=instMesh(treeGeo('round'),sm,N),pn=instMesh(treeGeo('pine'),TQ()?M(0xffffff,{roughness:.8,flatShading:false,vertexColors:true,side:THREE.DoubleSide}):sm,N);let k=0,kr=0,kp=0;
+    const cols=[0x4c9a46,0x5aae4e,0x3e8a40,0x68b856,0x7ab84a],pcols=TQ()?[0x6ab870,0x5eaa66,0x76c27a]:[0x2e7a46,0x34864c,0x286e40];
     placeIn(1,N,1.2,(i,x,z)=>{const s=.8+R()*.7,ry=R()*6;
       let cm,ci,tm,ti;if(R()<.55){tm=tr;ti=kr;cm=rd;ci=kr;instSet(tr,kr,x,0,z,s,s,s,ry);instSet(rd,kr++,x,0,z,s,s*(.9+R()*.25),s,ry,cols[Math.floor(R()*cols.length)])}else{tm=tp;ti=kp;cm=pn;ci=kp;instSet(tp,kp,x,0,z,s,s,s,ry);instSet(pn,kp++,x,0,z,s,s*(.95+R()*.3),s,ry,pcols[Math.floor(R()*3)])}
       regNode('wood',x,z,[[tm,ti],[cm,ci]],addObst(x,z,.6*s+.2),s);k=i+1});
@@ -447,8 +470,8 @@ function buildWorld(){
       if(i%3===0){const g=glow(0xff3dd0,s*4.6,.38);g.position.set(x,y,z);worldG.add(g);WORLD.pulse.push({s:g,b:.38,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
 
   // z7 frozen tundra: snowy pines + ice spires
-  {const N=230,sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('ptrunk'),M(0x4a3a30,{flatShading:false}),N),cn=instMesh(treeGeo('pine'),sm,N),cn2=instMesh(treeGeo('snow'),M(0xf4faff,{roughness:.6,flatShading:false}),N);let k=0;
-    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);instSet(cn,i,x,0,z,s,s,s,ry,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,0,z,s,s,s,ry);regNode('wood',x,z,[[tr,i],[cn,i],[cn2,i]],addObst(x,z,.6*s+.2),s);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
+  {const N=230,sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('ptrunk'),M(0x4a3a30,{flatShading:false}),N),cn=instMesh(treeGeo('pine'),TQ()?M(0xffffff,{roughness:.8,flatShading:false,vertexColors:true,side:THREE.DoubleSide}):sm,N),cn2=instMesh(treeGeo('snow'),M(0xf4faff,{roughness:.6,flatShading:false}),N);let k=0;
+    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);instSet(cn,i,x,0,z,s,s,s,ry,pick(TQ()?[0x5a9c92,0x68ac9e,0x4e8c88]:[0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,0,z,s,s,s,ry);regNode('wood',x,z,[[tr,i],[cn,i],[cn2,i]],addObst(x,z,.6*s+.2),s);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
     const N2=130,ic=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x3a7aa8,emissiveIntensity:.7,roughness:.25}),N2);let k2=0;
     placeIn(7,N2,1.2,(i,x,z)=>{const s=.9+R()*1.6;instSet(ic,i,x,s*1.5,z,s*.55,s*1.6,s*.55,R()*6,pick([0xbfe6ff,0x8ad0ff,0xe8f6ff]));if(i%5===0){const g=glow(0x9fe0ff,s*4,.35);g.position.set(x,s*1.5,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}addObst(x,z,s*.6);k2=i+1});ic.count=k2;instDone(ic)}
   // z8 ancient desert ruins: broken columns, cacti, glowing obelisks
