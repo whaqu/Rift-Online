@@ -59,9 +59,10 @@ function compactMobs(){for(let i=MOBS.length-1;i>=0;i--)if(MOBS[i].dead)MOBS.spl
 
 /* ---------- authority helpers ---------- */
 function isAuth(){return !(typeof NET!=='undefined'&&NET.party&&NET.party.leader!==SES.name)}
+const DECOYS=[];   // summons that draw monster attention: {x,z,pull<1}
 function targets(){
-  const T=[];if(!P.dead&&!(P.stealth>0))T.push({x:P.x,z:P.z,me:true});
-  if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got&&!p.dead&&!p.stealth)T.push({x:p.x,z:p.z,name:n})}}
+  const T=DECOYS.map(d=>({x:d.x,z:d.z,pull:d.pull}));if(!P.dead&&!(P.stealth>0)&&!P.hidden)T.push({x:P.x,z:P.z,me:true});
+  if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got&&!p.dead)T.push({x:p.x,z:p.z,name:n})}}
   return T;
 }
 function allPos(){const T=[{x:P.x,z:P.z}];if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got)T.push({x:p.x,z:p.z})}}return T}
@@ -111,7 +112,7 @@ function netApplyHit(h){ // member -> authority
 }
 
 /* ---------- AI ---------- */
-function nearestT(m,T){let b=null,bd=1e9;for(const t of T){const d=d2(m.x,m.z,t.x,t.z);if(d<bd){bd=d;b=t}}return b?{t:b,d:Math.sqrt(bd)}:null}
+function nearestT(m,T){let b=null,bd=1e9;for(const t of T){const d=d2(m.x,m.z,t.x,t.z)*(t.pull||1);if(d<bd){bd=d;b=t}}return b?{t:b,d:Math.sqrt(d2(m.x,m.z,b.x,b.z))}:null}
 function stepM(m,dx,dz,sp,dt){m.x+=dx*sp*dt;m.z+=dz*sp*dt}
 function faceM(m,dx,dz,dt,rate){m.face=lerpAng(m.face,Math.atan2(dx,dz),1-Math.exp(-dt*(rate||10)))}
 function updateMobAuth(m,dt,T){
@@ -246,7 +247,7 @@ function aiMob(m,dt,nt,sp){
 }
 /* contact damage — evaluated on every client for the local player */
 function contactCheck(m){
-  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0)return;
+  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0||P.hidden)return;
   if(m.type==='bat'&&m.ghost&&!m.warn&&false)return;
   if(d2(m.x,m.z,P.x,P.z)<(m.r+P.r)*(m.r+P.r)){if(hurtPlayer(m.dmg,m.x,m.z)){m.hitCd=.9;if(m.type==='bat'&&!m.ghost){m.state='retreat';m.st=.8}}}
 }

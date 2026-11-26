@@ -12,6 +12,7 @@ window.onKeyPress=(k,e)=>{
   if(k==='e')return trySkill('e');
   if(k==='q')return trySkill('q');
   if(k==='r')return trySkill('r');
+  if(k==='f')return trySkill('f');
   if(k===' ')return doDash();
   if(k>='1'&&k<='6')return usePotionKey(POTION_ORDER[+k-1]);
 };
@@ -114,8 +115,8 @@ async function boot(){
   showLoading('서버에 연결하는 중…');
   const mode=await API.probe();
   $('lstat').textContent=mode==='online'?'서버 연결됨':'서버에 연결할 수 없어 오프라인 모드로 실행됩니다 (이 기기에만 저장)';
-  $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · Space 대시';
+  $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,KITS,kit,kitReset,kitHud,kitCanAttack,kitAtkMul,tickPlayer,updatePB,PB,EB,entG,removeMob,compactMobs,resetMobs,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();

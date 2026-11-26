@@ -22,14 +22,14 @@ function initTouch(){
     if(hold){const up=e=>{e.preventDefault();fn(false)};el.addEventListener('touchend',up);el.addEventListener('touchcancel',up)}
   };
   press('tb-atk',on=>{mv.atk=on},true);
-  press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});
+  press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
   press('tb-use',on=>{if(on)interact()});
   canvas.addEventListener('touchstart',e=>{auInit()},{passive:true});
   const setI=(id,h)=>{const e=$(id);if(e){const q=e.querySelector('.ic0');if(q)q.innerHTML=h}};
   setI('tb-dash',ic('dash','#9fc8ff',26));setI('tb-hp',ic('potion','#ff6a7a',26));
-  UI.refreshTouch=()=>{const r=$('tb-r');if(r)r.classList.toggle('hidden',!skillOf('r'));for(const k of['q','e','r']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28));const b=$('sk-'+k);if(b)b._k=null}};
+  UI.refreshTouch=()=>{for(const k of['r','f']){const b=$('tb-'+k);if(b)b.classList.toggle('hidden',!skillOf(k))}for(const k of['q','e','r','f']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28))}};
 }
 function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
 

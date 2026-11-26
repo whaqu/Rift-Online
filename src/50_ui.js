@@ -192,12 +192,12 @@ function openJob(){
     const pf=SES.pf,cur=JOBS[pf.job],kids=JOB_KIDS(pf.job);
     let h='<div class="card" style="margin-bottom:10px"><div class="row sp"><div><span class="dim">현재 직업</span> <b style="font-size:16px">'+cur.name+'</b> <span class="dim">(Lv.'+pf.level+')</span></div><span class="gold">'+fmtG(pf.gold)+'</span></div>'
       +'<div class="dim" style="margin-top:4px">'+(cur.tier?cur.desc:'1차 전직은 Lv.20, 2차 전직(각성)은 Lv.50부터 가능합니다.')+'</div>'
-      +'<div style="margin-top:6px;font-size:12.5px"><b class="gold">'+CLS[pf.cls].sys+'</b> '+CLS[pf.cls].sysDesc+'</div></div>';
+      +'<div style="margin-top:6px;font-size:12px">'+['q','e','r','f'].map(s=>{const k=s==='f'?ULT[pf.cls]:skillOf(s);return k&&k.desc?'<div><b class="gold">'+s.toUpperCase()+' '+k.name+'</b>'+(s==='f'&&pf.level<MAXLV?' <span class="dim">(Lv.'+MAXLV+' 해금)</span>':'')+' — '+k.desc+'</div>':''}).join('')+'</div></div>';
     if(!kids.length)h+='<div class="card">최종 직업입니다. 더 이상 전직할 수 없습니다.</div>';
     else{
       h+='<div class="dim" style="margin-bottom:6px">'+(cur.tier===0?'1차 전직':'2차 전직')+' — 한 번 선택하면 되돌릴 수 없습니다.</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">';
       for(const id of kids){const j=JOBS[id],okL=pf.level>=j.req,okG=pf.gold>=j.price;
-        h+='<div class="card"><div class="row sp"><b style="font-size:16px">'+j.name+'</b><span class="'+(okL?'':'red')+'">필요 Lv.'+j.req+'</span></div><div class="dim" style="margin:3px 0">'+j.desc+'</div><div style="font-size:12px;margin-bottom:3px">'+modText(j.m)+'</div><div style="font-size:12px;color:#9fc8ff">스킬(R): '+j.r.name+' — 쿨타임 '+j.r.cd+'초</div>'
+        h+='<div class="card"><div class="row sp"><b style="font-size:16px">'+j.name+'</b><span class="'+(okL?'':'red')+'">필요 Lv.'+j.req+'</span></div><div class="dim" style="margin:3px 0">'+j.desc+'</div><div style="font-size:12px;margin-bottom:3px">'+modText(j.m)+'</div><div style="font-size:12px;color:#9fc8ff">스킬(R): '+j.r.name+' — 쿨타임 '+j.r.cd+'초'+(j.r.desc?'<br><span class="dim">'+j.r.desc+'</span>':'')+'</div>'
           +'<div class="row sp" style="margin-top:8px"><span class="gold '+(okG?'':'red')+'">'+fmtG(j.price)+'</span><button class="btn sm" data-a="adv" data-v="'+id+'" '+(okL&&okG?'':'disabled')+'>전직</button></div></div>'}
       h+='</div>';
     }
@@ -336,7 +336,7 @@ function buildHud(){
   m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&!UI.modal)MENU[+t.dataset.i][3]()};
   $('quick').innerHTML=POTION_ORDER.map((b,i)=>'<div class="qs" data-b="'+b+'" style="border-color:'+POTIONS[b].col+'55">'+ic('potion',POTIONS[b].col,26)+'<span class="kk">'+(i+1)+'</span><span class="ct"></span><div class="cdm"></div></div>').join('');
   $('quick').onclick=e=>{const t=e.target.closest('.qs');if(t)usePotionKey(t.dataset.b)};
-  $('skills').innerHTML=['dash','q','e','r'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
+  $('skills').innerHTML=['dash','q','e','r','f'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R',f:'F'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
   $('skills').onclick=e=>{const t=e.target.closest('.sk');if(!t)return;const k=t.dataset.k;if(k==='dash')doDash();else trySkill(k)};
   $('prompt').onclick=()=>interact();
   const ci=$('chatin');
@@ -347,9 +347,8 @@ UI.refreshHud=function(){
   if(!SES.pf||!P)return;const pf=SES.pf;
   $('pname').textContent=pf.name;$('pjob').textContent=JOBS[pf.job].name;$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
   $('xpfill').style.width=Math.min(100,pf.xp/pf.need*100)+'%';
-  kitHud();
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
-  for(const k of['q','e','r']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30);el._k=null}}
+  for(const k of['q','e','r','f']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.title=sk.desc||'';el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
   const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
   updatePerkRow();UI.refreshTouch&&UI.refreshTouch();
 };
@@ -381,7 +380,7 @@ UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
   const hp=Math.max(0,P.hp);$('hpfill').style.width=(hp/S.maxHp*100)+'%';$('hptxt').textContent=Math.ceil(hp)+' / '+S.maxHp;
   $('shfill').style.width=Math.min(100,P.shield/S.maxHp*100)+'%';
-  for(const k of['dash','q','e','r']){
+  for(const k of['dash','q','e','r','f']){
     const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1;
     el.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')';el.querySelector('.cdt').textContent=cd>0?Math.ceil(cd):'';
     const tb=$('tb-'+k);if(tb){tb.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')'}
@@ -414,7 +413,7 @@ function drawMini(){
 /* ---------- login ---------- */
 const LG={mode:'in',cls:'warrior'};
 function initLogin(){
-  const desc=()=>{const d=$('clsdesc');if(d)d.innerHTML='<b>'+CLS[LG.cls].name+'</b> — '+CLS[LG.cls].blurb+'<br><span style="color:#d2a84a">'+CLS[LG.cls].sys+'</span> · '+CLS[LG.cls].sysDesc};
+  const desc=()=>{const d=$('clsdesc'),c=CLS[LG.cls];if(d)d.innerHTML='<b>'+c.name+'</b> — '+c.blurb+'<br>Q '+c.q.name+' · E '+c.e.name+' · 만렙 F '+ULT[LG.cls].name};
   $('clsgrid').innerHTML=CLASSES.map(k=>'<div class="c'+(k===LG.cls?' on':'')+'" data-k="'+k+'">'+ic(WICON[k],'#d2a84a',24)+'<b>'+CLS[k].name+'</b></div>').join('');
   $('clsgrid').onclick=e=>{const t=e.target.closest('.c');if(!t)return;LG.cls=t.dataset.k;loginPick(LG.cls);desc();for(const c of $('clsgrid').children)c.classList.toggle('on',c===t)};
   desc();

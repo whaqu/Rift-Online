@@ -85,7 +85,7 @@ function dropPeer(k){const p=NET.peers[k];if(!p)return;if(p.model)entG.remove(p.
 function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
-  p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;p.stealth=!!d.s;
+  p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
 }
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
@@ -93,8 +93,6 @@ function onFx(d){
   if(!d||!NET.peers[d.n]||!isFinite(+d.x)||!isFinite(+d.z))return;const col=+d.c||FXCOL[d.c]||0xffffff;
   if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
   else if(d.k==='shot'){const vx=+d.vx||0,vz=+d.vz||0;const g=grp(+d.x,1.3,+d.z);g.add(glowS(+d.c||(d.v==='orb'?0x5ee7ff:0x6bffb0),d.v==='orb'?2.8:1.6,.8));entG.add(g);let t=0,x=+d.x,z=+d.z;addFx(.8,(k,dt)=>{x+=vx*dt;z+=vz*dt;g.position.x=x;g.position.z=z;emit(x,1.3,z,0,0,0,.2,0x9fe8ff,0)},()=>entG.remove(g))}
-  else if(d.k==='sanct'){const x=+d.x,z=+d.z,r=clamp(+d.r||4,1,6),t=clamp(+d.d||4,1,8);shockRing(x,z,r,0xfff2a0,.8);
-    if(NET.party&&NET.party.members.includes(d.n)&&PEER_SANCT.length<6)PEER_SANCT.push({x,z,r,t,acc:0})}
   else if(d.k==='nova'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,12),+d.c||0xffffff,.45)}
   else if(d.k==='ground'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,10),+d.c||0xffffff,.6)}
 }
@@ -194,7 +192,7 @@ function netUpdate(dt){
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
       if(moved||now-NET.lastPos>1200){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,s:P.stealth>0?1:0})}
+        netSend('p',{n:SES.name,x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }

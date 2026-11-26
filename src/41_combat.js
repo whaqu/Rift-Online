@@ -29,7 +29,7 @@ function explodeAt(x,z,r,dmg,hex){
 }
 
 /* ---------------- damage to monsters ---------------- */
-function freezeMob(m,t){if(m.ghost){m.iceUntil=G.t+t;netSendHit(m,0,{fz:t});return}m.freeze=Math.max(m.freeze||0,m.elite?t*.5:t)}
+function freezeMob(m,t){if(m.ghost){netSendHit(m,0,{fz:t});return}m.freeze=Math.max(m.freeze||0,m.elite?t*.5:t)}
 function burnMob(m,dps){if(m.ghost){netSendHit(m,0,{bn:dps});return}m.burnT=3;m.burnD=Math.max(m.burnD||0,dps)}
 function dealMob(m,base,o){
   if(m.dead)return;o=o||{};
@@ -67,7 +67,7 @@ function spawnPB(o){
 function orbBoom(b,primary){
   const rad=b.splash;
   for(const e of MOBS){if(e.dead||e.spawning)continue;const dx=e.x-b.x,dz=e.z-b.z,d=Math.hypot(dx,dz);
-    if(e===primary){dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});if(b.basic)kitCall('onHit',1,false,e)}
+    if(e===primary)dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});
     else if(d<rad+e.r)dealMob(e,b.dmg*.7,{kx:dx,kz:dz,kb:5,noProc:true})}
   const bc=b.col||0x5ee7ff;shockRing(b.x,b.z,rad,bc,.3);flashDisc(b.x,b.z,rad*.8,bc,.25);burst(b.x,1.2,b.z,14,bc,7,.45,6);sfx('boom');
 }
@@ -81,7 +81,7 @@ function updatePB(dt){
       if(e.dead||e.spawning||b.hit.indexOf(e)>=0)continue;
       const rr=e.r+b.r;if(d2(e.x,e.z,b.x,b.z)<rr*rr){
         if(b.kind==='orb'){orbBoom(b,e);dead=true;break}
-        dealMob(e,b.dmg*(b.rootBonus&&rooted(e)?b.rootBonus:1),{kx:b.vx,kz:b.vz,kb:3});if(b.basic&&!b.hit.length)kitCall('onHit',1,false,e);if(b.expl)explodeAt(e.x,e.z,3,b.dmg*.8,0xff8a3a);if(b.freeze)freezeMob(e,b.freeze);if(b.el)elemHit(e,b.el,b.eatk);b.hit.push(e);b.pierce--;if(b.pierce<=0){dead=true;break}
+        dealMob(e,b.dmg,{kx:b.vx,kz:b.vz,kb:3});if(b.freeze)freezeMob(e,b.freeze);if(b.el)elemHit(e,b.el,b.eatk);b.hit.push(e);b.pierce--;if(b.pierce<=0){dead=true;break}
       }
     }
     if(!dead&&b.life<=0){if(b.kind==='orb')orbBoom(b,null);dead=true}
@@ -148,5 +148,5 @@ async function flushKills(){
 function onLevelUp(){
   derive();P.hp=S.maxHp;sfx('level');dmgNum(P.x,3.8,P.z,'LEVEL UP','info');shockRing(P.x,P.z,5,0xffe27a,.6);shockRing(P.x,P.z,9,0xfff3b0,.9);pillar(P.x,P.z,0xffe27a,12,.8);burst(P.x,1,P.z,40,0xffe27a,9,1,2);flashDisc(P.x,P.z,4,0xffe27a,.5);cam.shake=Math.max(cam.shake,.3);
   UI.feedText('레벨 '+SES.pf.level+' 달성','#ffe27a');netSys('lv',SES.pf.level);
-  UI.refreshHud();setTimeout(()=>{if(P&&!P.dead&&!UI.modal&&perkOf(SES.pf).pts>0)openPerks()},900);
+  UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch();if(SES.pf.level===MAXLV)UI.toast('만렙 달성! 궁극기 해금: '+ULT[SES.pf.cls].name+' (F)');setTimeout(()=>{if(P&&!P.dead&&!UI.modal&&perkOf(SES.pf).pts>0)openPerks()},900);
 }

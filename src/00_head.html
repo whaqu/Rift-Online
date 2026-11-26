@@ -84,13 +84,8 @@ svg.ic{vertical-align:middle;flex:none}
 #chatin.on{display:block;border-color:var(--ac);box-shadow:0 0 8px rgba(217,176,90,.3)}
 #bar{left:50%;bottom:12px;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:7px}
 #quick,#skills{display:flex;gap:7px;pointer-events:auto}
-#cgauge{position:absolute;left:50%;bottom:140px;transform:translateX(-50%);display:flex;align-items:center;gap:8px;padding:4px 14px;border-radius:14px;background:rgba(12,14,24,.82);border:1px solid rgba(255,255,255,.14);white-space:nowrap;pointer-events:none;font-size:12px}
-#cgauge b{font-size:13px}#cgauge small{color:#c9cee0;min-width:64px}
-#cgauge .cgbar{width:150px;height:9px;border-radius:5px;background:#252a3c;overflow:hidden}#cgauge .cgbar i{display:block;height:100%}
-#cgauge .pips{display:flex;gap:4px}#cgauge .pips i{width:13px;height:13px;border-radius:4px;background:#2c3246;border:1px solid rgba(255,255,255,.16)}
-.sk.nores .ic0,.sk.nores .nm{opacity:.35}
 .qs,.sk{position:relative;width:48px;height:48px;border-radius:10px;background:radial-gradient(circle at 50% 30%,#2e3550,#161a28 78%);border:2px solid #404862;display:grid;place-items:center;cursor:pointer;overflow:hidden;box-shadow:0 4px 10px rgba(0,0,0,.5),inset 0 1px 0 rgba(255,255,255,.12)}
-.sk{width:60px;height:60px;border-radius:12px}
+.sk{width:60px;height:60px;border-radius:12px}#sk-f{border-color:#ff9a3a}
 .qs .ct{position:absolute;right:4px;bottom:1px;font-size:12px;font-weight:700;text-shadow:-1px 0 #000,1px 0 #000,0 1px #000}
 .qs .kk,.sk .kk{position:absolute;left:3px;top:2px;font-size:10px;font-weight:700;color:#cfd4e4;background:rgba(0,0,0,.55);border-radius:4px;padding:0 4px;line-height:14px;z-index:3}
 .qs.off{opacity:.38}
@@ -99,7 +94,7 @@ svg.ic{vertical-align:middle;flex:none}
 .sk .cdt{position:absolute;inset:0;display:grid;place-items:center;font-size:20px;font-weight:700;text-shadow:0 1px 4px #000;z-index:4}
 .sk.rdy{border-color:var(--ac);box-shadow:0 4px 10px rgba(0,0,0,.5),0 0 12px rgba(217,176,90,.35),inset 0 0 10px rgba(217,176,90,.18)}
 .sk .nm{position:absolute;bottom:2px;left:0;right:0;text-align:center;font-size:9.5px;color:#c9cee0;white-space:nowrap;overflow:hidden;z-index:3;text-shadow:0 1px 2px #000}
-#prompt{left:50%;bottom:176px;transform:translateX(-50%);background:var(--pg);border:1px solid var(--ac);border-radius:18px;padding:7px 20px;font-weight:700;opacity:0;transition:opacity .15s;pointer-events:none;box-shadow:0 0 14px rgba(217,176,90,.35),0 6px 16px rgba(0,0,0,.5)}
+#prompt{left:50%;bottom:158px;transform:translateX(-50%);background:var(--pg);border:1px solid var(--ac);border-radius:18px;padding:7px 20px;font-weight:700;opacity:0;transition:opacity .15s;pointer-events:none;box-shadow:0 0 14px rgba(217,176,90,.35),0 6px 16px rgba(0,0,0,.5)}
 #prompt.show{opacity:1;pointer-events:auto;cursor:pointer}
 #prompt kbd{background:linear-gradient(180deg,#fff,#c8ccd8);color:#111;border-radius:5px;padding:0 7px;margin-right:8px;font-family:var(--ft);font-weight:700;box-shadow:0 2px 0 #7a8094}
 #vign{position:fixed;inset:0;pointer-events:none;z-index:8;background:radial-gradient(ellipse at center,transparent 55%,rgba(200,30,40,.55));opacity:0;transition:opacity .25s}
@@ -178,11 +173,11 @@ body.touch #touch{display:block}
 .tb .kk{position:absolute;right:6px;bottom:3px;font-size:10px;color:#cfd4e4;z-index:2}
 .tb.off{opacity:.35}
 #tb-atk{right:18px;bottom:22px;width:86px;height:86px;border-color:var(--ac);font-size:15px;background:radial-gradient(circle at 50% 30%,rgba(120,84,26,.95),rgba(48,32,10,.95))}
-#tb-q{right:114px;bottom:30px;width:58px;height:58px}#tb-e{right:106px;bottom:98px;width:58px;height:58px}#tb-r{right:36px;bottom:120px;width:58px;height:58px}
+#tb-q{right:114px;bottom:30px;width:58px;height:58px}#tb-e{right:106px;bottom:98px;width:58px;height:58px}#tb-r{right:36px;bottom:120px;width:58px;height:58px}#tb-f{right:182px;bottom:148px;width:54px;height:54px;border-color:#ff9a3a}
 #tb-dash{right:182px;bottom:24px;width:50px;height:50px}#tb-hp{right:176px;bottom:86px;width:50px;height:50px}
 #tb-use{right:20px;bottom:200px;width:66px;height:66px;border-color:var(--ac)}
 body.touch #chat{width:230px;bottom:176px}body.touch #chatlog{max-height:70px}
-body.touch #bar{display:none}body.touch #cgauge{bottom:10px;gap:6px;padding:3px 10px}body.touch #cgauge .cgbar{width:96px}body.touch #cgauge small{min-width:0}body.touch #cgauge .pips i{width:9px;height:11px}body.touch #cgauge .pips{gap:2px}body.touch #feed{bottom:238px}
+body.touch #bar{display:none}body.touch #feed{bottom:238px}
 body.touch #mini{width:98px;height:98px}
 body.touch #pinfo{width:226px;padding-left:56px}
 body.touch #prompt{bottom:230px}
@@ -250,7 +245,6 @@ body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
   <div id="evb"></div>
   <div id="combo"></div>
   <div id="chat"><div id="chatlog"></div><input id="chatin" maxlength="80" placeholder="메시지 입력 (Enter 전송 · 맨 앞에 /p 파티 채팅)" autocomplete="off"></div>
-  <div id="cgauge"></div>
   <div id="bar"><div id="quick"></div><div id="skills"></div></div>
   <div id="prompt"></div>
 </div>
@@ -261,6 +255,7 @@ body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
   <div class="tb" id="tb-q"><span class="ic0"></span><span class="kk">Q</span><div class="cdm"></div></div>
   <div class="tb" id="tb-e"><span class="ic0"></span><span class="kk">E</span><div class="cdm"></div></div>
   <div class="tb" id="tb-r"><span class="ic0"></span><span class="kk">R</span><div class="cdm"></div></div>
+  <div class="tb" id="tb-f"><span class="ic0"></span><span class="kk">F</span><div class="cdm"></div></div>
   <div class="tb" id="tb-dash"><span class="ic0"></span><div class="cdm"></div></div>
   <div class="tb" id="tb-hp"><span class="ic0"></span></div>
   <div class="tb hidden" id="tb-use"><span>상호작용</span></div>
