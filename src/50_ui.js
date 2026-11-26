@@ -66,7 +66,7 @@ async function guarded(fn,okMsg){
 function statsHtml(){
   derive();const pen=Math.round(S.armor*100);
   const gx=(SES.pf.gather&&SES.pf.gather.xp)||0,gl=gatLvOf(gx),gp=gl>=GAT_MAX?100:Math.floor((gx-(gl>1?gatNeed(gl-1):0))/(gatNeed(gl)-(gl>1?gatNeed(gl-1):0))*100);
-  const gh='<div class="dim" style="margin-top:6px">채집 숙련 <b style="color:#7fd35a">Lv.'+gl+(gl>=GAT_MAX?' (최대)':' · '+gp+'%')+'</b> · 채집 속도 +'+Math.round((gatSpeed(gl)-1)*100)+'% · 추가 획득 '+(gatDouble(gl)*100).toFixed(1)+'%</div>';
+  const gh='<div class="dim" style="margin-top:6px">채집 숙련 <b style="color:#7fd35a">Lv.'+gl+(gl>=GAT_MAX?' (최대)':' · '+gp+'%')+'</b> · 벌목 위력 +'+Math.round((gatSpeed(gl)-1)*100)+'% · 추가 획득 '+(gatDouble(gl)*100).toFixed(1)+'%</div>';
   return '<div class="kv"><span>공격력</span><span>'+fmtN(S.atk)+'</span><span>최대 체력</span><span>'+fmtN(S.maxHp)+'</span><span>공격 속도</span><span>'+S.aps.toFixed(2)+'/초</span><span>치명타</span><span>'+Math.round(S.crit*100)+'%</span><span>이동 속도</span><span>'+S.spd.toFixed(1)+'</span><span>방어력</span><span>'+fmtN(S.def||0)+'</span><span>피해 감소</span><span>'+pen+'%</span>'+(S.vamp?'<span>흡혈</span><span>'+Math.round(S.vamp*100)+'%</span>':'')+'</div>'+gh;
 }
 function setBonusHtml(){
@@ -321,7 +321,7 @@ function nearNpc(){
   return best;
 }
 function interact(){
-  if(UI.modal)return;const n=nearNpc();if(!n){const nd=nearNode();if(nd)startGather(nd);return}
+  if(UI.modal)return;const n=nearNpc();if(!n)return;
   flushKills();flushGather();
   ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob})[n.kind]();
 }
@@ -384,10 +384,8 @@ UI.hudTick=function(dt){
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];qs[i].querySelector('.cdm').style.transform='scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1)+')'}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
-  const n=nearNpc(),pr=$('prompt'),use=$('tb-use'),nd=!n?nearNode():null,ga=GAT.act;
-  if(ga&&!UI.modal){const pc=Math.min(100,Math.round(ga.t/ga.need*100)),lb=(ga.n.k==='weed'?'잡초 베는 중':'벌목 중')+' '+pc+'%';pr.innerHTML=lb;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=pc+'%'}}
-  else if(nd){const lb=nd.k==='weed'?'잡초 베기':'나무 베기';pr.innerHTML=(IS_TOUCH?'':'<kbd>F</kbd>')+lb;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=lb}}
-  else if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
+  const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
+  if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
   else{pr.classList.remove('show');if(use)use.classList.add('hidden')}
   UI.lastMini+=dt;if(UI.lastMini>.12){UI.lastMini=0;drawMini();updatePartyBars()}
 };

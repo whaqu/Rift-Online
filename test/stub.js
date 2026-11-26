@@ -12,7 +12,7 @@ class Mat{constructor(p){Object.assign(this,p||{});this.emissive=new Col(p&&p.em
 class Geo{constructor(){this.attributes={};this.userData={}}computeBoundingBox(){this.boundingBox={min:new Vec(-.5,-.5,-.5),max:new Vec(.5,.5,.5)}}dispose(){}rotateX(){return this}rotateY(){return this}rotateZ(){return this}translate(){return this}setAttribute(k,v){this.attributes[k]=v}}
 class Attr{constructor(a,n){this.array=a;this.needsUpdate=false}}
 class PlaneG extends Geo{constructor(w,h,sx,sz){super();const n=((sx||1)+1)*((sz||1)+1);const a=new Float32Array(n*3);for(let i=0;i<n;i++){a[i*3]=(i%((sx||1)+1))-(sx||1)/2;a[i*3+2]=Math.floor(i/((sx||1)+1))-(sz||1)/2}this.attributes.position={array:a,count:n,getX:i=>a[i*3],getZ:i=>a[i*3+2]}}}
-class Mat4{constructor(){this.e=[1]}makeScale(){return this}makeRotationX(){return this}copy(){return this}multiply(){return this}}
+class Mat4{constructor(){this.e=[1]}makeScale(){return this}makeRotationX(){return this}makeRotationAxis(){return this}makeTranslation(){return this}copy(){return this}multiply(){return this}}
 class InstM extends O3{constructor(g,m,n){super();this.material=m;this.count=n;this.instanceMatrix={needsUpdate:false};this.isMesh=true}setMatrixAt(){}getMatrixAt(){}setColorAt(){this.instanceColor=this.instanceColor||{needsUpdate:false}}}
 const base={Matrix4:Mat4,PlaneGeometry:PlaneG,InstancedMesh:InstM,Vector3:Vec,Color:Col,Object3D:O3,Group:class extends O3{},Mesh,Sprite,Points:class extends O3{},Scene:class extends O3{},
  PerspectiveCamera:class extends O3{constructor(){super();this.aspect=1;this.fov=40}updateProjectionMatrix(){}},

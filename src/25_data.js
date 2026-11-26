@@ -198,7 +198,7 @@ const MATS={
   wood:{name:'목재',price:20,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 20G · 강화 재료로도 쓰일 예정'}
 };
 const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
-const gatSpeed=lv=>1+.16*(lv-1),gatDouble=lv=>.015*(lv-1);
+const gatSpeed=lv=>1+.1*(lv-1),gatDouble=lv=>.015*(lv-1);
 const itemPrice=it=>isGear(it)?sellValue(it):it.kind==='mat'?(MATS[it.base]?MATS[it.base].price:0):Math.floor(POTIONS[it.base].price*.25);
 const POTION_ORDER=['hp1','hp2','hp3','spd','atk','def'];
 const ENCH={

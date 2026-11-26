@@ -148,15 +148,17 @@ function doAttack(){
     slashArc(P.x+a.x*.4,P.z+a.z*.4,f,range,arc,big?sty.bigCol:sty.col,.26);
     if(big)ringBurst(P.x+a.x*range*.7,.9,P.z+a.z*range*.7,10,sty.bigCol,5,.35);
     sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
-    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb,{big});
+    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb,{big});gatherArc(f,range,arc,big?1.5:1);
     for(const b of EB){const dx=b.x-P.x,dz=b.z-P.z,d=Math.hypot(dx,dz);if(d<range+.5&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<arc/2){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3);sfx('hit')}}
     netFx('slash',{x:P.x+a.x*.4,z:P.z+a.z*.4,f,r:range,a:arc,c:big?1:0});
   }else if(sty.kind==='orb'){
     sfx('magic');const sx=P.x+a.x*1.2,sz=P.z+a.z*1.2;
+    gatherLine(a.x,a.z,Math.min(11,sty.spd*sty.life*.4),1);
     spawnPB({kind:'orb',x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:0,splash:sty.splash*S.rangeMul,col:sty.col});
     burst(sx,1.6,sz,4,sty.col,3,.3,0);netFx('shot',{x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,v:'orb',c:sty.col});
   }else{
     sfx('shot');const sp=rnd(-.03,.03),cs=Math.cos(sp),sn=Math.sin(sp),dx=a.x*cs-a.z*sn,dz=a.x*sn+a.z*cs;
+    gatherLine(a.x,a.z,Math.min(14,sty.spd*sty.life),1);
     spawnPB({kind:'arrow',x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:sty.pierce+S.pierce,col:sty.col});
     netFx('shot',{x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,v:'arrow',c:sty.col});
   }
