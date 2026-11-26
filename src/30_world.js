@@ -67,6 +67,71 @@ const ZS=[0,1.5,1.8,2.4,2.8,2.3,2.2,1,1,1],sc=(n,zi)=>Math.round(n*ZS[zi]);
 function onPath(x,z){const d=Math.hypot(x,z);if(d>17&&d<64)return Math.abs(x)<3.6||Math.abs(z)<3.6;return x>0&&Math.abs(z)<3.6&&d<WORLD_R}
 WORLD.wisps=[];WORLD.ponds=[];WORLD.cracks=null;WORLD.emblem=null;WORLD.pulse=[];
 
+/* ---- geometry helpers for nicer props (fallback to the first part if the runtime lacks support) ---- */
+function mergeGeos(parts){
+  try{
+    const P=[],N=[];let n=0;
+    for(const p of parts){
+      let g=p[0];g=g.index?g.toNonIndexed():g.clone();
+      const m=new THREE.Matrix4().compose(new THREE.Vector3(p[1]||0,p[2]||0,p[3]||0),new THREE.Quaternion().setFromEuler(new THREE.Euler(p[4]||0,p[5]||0,p[6]||0)),new THREE.Vector3(p[7]||1,p[8]||p[7]||1,p[9]||p[7]||1));
+      g.applyMatrix4(m);if(!g.attributes.normal)g.computeVertexNormals();
+      P.push(g.attributes.position.array);N.push(g.attributes.normal.array);n+=g.attributes.position.array.length;
+    }
+    const pa=new Float32Array(n),na=new Float32Array(n);let o=0;
+    for(let i=0;i<P.length;i++){pa.set(P[i],o);na.set(N[i],o);o+=P[i].length}
+    const out=new THREE.BufferGeometry();out.setAttribute('position',new THREE.BufferAttribute(pa,3));out.setAttribute('normal',new THREE.BufferAttribute(na,3));
+    out.computeBoundingSphere();return out;
+  }catch(e){return parts[0][0]}
+}
+/* triangular prism: base width w (along z), apex height h, length len (along x) */
+function prismGeo(w,h,len){
+  try{
+    const hw=w/2,hl=len/2,A=[-hl,0,-hw],B=[-hl,0,hw],C=[-hl,h,0],A2=[hl,0,-hw],B2=[hl,0,hw],C2=[hl,h,0];
+    const tris=[A,B,C, A2,C2,B2, B,C2,C, B,B2,C2, A,C2,A2, A,C,C2, A,B2,B, A,A2,B2];
+    const a=new Float32Array(tris.length*3);tris.forEach((v,i)=>a.set(v,i*3));
+    const g=new THREE.BufferGeometry();g.setAttribute('position',new THREE.BufferAttribute(a,3));g.computeVertexNormals();return g;
+  }catch(e){return new THREE.ConeGeometry(w/2,h,4)}
+}
+const TREEG={};
+function treeGeo(k){
+  if(TREEG[k])return TREEG[k];
+  const ico=r=>new THREE.IcosahedronGeometry(r,1);
+  let g;
+  if(k==='trunk')g=mergeGeos([[new THREE.CylinderGeometry(.2,.32,2.4,8),0,1.2,0],[new THREE.ConeGeometry(.55,.6,8),0,.25,0],[new THREE.CylinderGeometry(.06,.1,.9,5),.32,1.6,0,0,0,-.9],[new THREE.CylinderGeometry(.05,.09,.8,5),-.28,1.9,.1,.3,0,.85]]);
+  else if(k==='round')g=mergeGeos([[ico(1.35),0,3.2,0],[ico(1),.95,2.75,.3],[ico(1.05),-.85,2.85,-.35],[ico(.95),.2,3.95,-.4],[ico(.9),-.3,2.55,.85],[ico(.85),.5,2.6,-.85],[ico(.8),-.2,4.1,.45]]);
+  else if(k==='pine')g=mergeGeos([[new THREE.ConeGeometry(1.7,2.1,10),0,2.0,0],[new THREE.ConeGeometry(1.35,1.9,10),0,3.1,0,0,.3],[new THREE.ConeGeometry(1.0,1.7,10),0,4.1,0,0,.6],[new THREE.ConeGeometry(.6,1.3,9),0,4.95,0]]);
+  else if(k==='snow')g=mergeGeos([[new THREE.ConeGeometry(1.2,.9,10),0,2.65,0],[new THREE.ConeGeometry(.95,.8,10),0,3.7,0,0,.3],[new THREE.ConeGeometry(.7,.75,10),0,4.65,0,0,.6],[new THREE.ConeGeometry(.42,.7,9),0,5.35,0]]);
+  else if(k==='dead')g=mergeGeos([[new THREE.CylinderGeometry(.1,.36,4.4,7),0,2.2,0],[new THREE.ConeGeometry(.6,.7,7),0,.3,0],
+    [new THREE.CylinderGeometry(.04,.1,1.7,5),.55,3.0,0,0,0,-1.0],[new THREE.CylinderGeometry(.04,.09,1.5,5),-.5,3.5,.15,.2,0,.95],[new THREE.CylinderGeometry(.03,.08,1.3,5),.1,3.9,-.5,-.95,0,0],
+    [new THREE.CylinderGeometry(.03,.06,.8,4),1.05,3.75,0,0,0,-.3],[new THREE.CylinderGeometry(.03,.06,.7,4),-.95,4.15,.25,0,0,.3],[new THREE.CylinderGeometry(.03,.07,1.1,5),.2,2.2,.5,.9,0,0]]);
+  return TREEG[k]=g;
+}
+/* timber house with stone base, gable roof, chimney, windows */
+function buildHouse(x,z,ry,v){
+  HQ++;try{
+  const g=grp(x,0,z,worldG);g.rotation.y=ry;
+  const wallC=[0xe8dcc0,0xd8c8a4,0xeadfc8][v%3],roofC=[0x9a4a3a,0x3a5a8a,0x5a7a3a][v%3],beamC=0x5a3a24;
+  const wall=M(wallC),beam=M(beamC),stone=M(0x8a8478,{roughness:.95}),roof=M(roofC,{roughness:.8}),roofD=M(0x2a2420),glass=EM(0xffd27a,.9),shut=M([0x3a6a8a,0x8a3a3a,0x4a7a4a][v%3]);
+  BX(5.5,.55,4.5,stone,0,.27,0,g);
+  BX(5,2.7,4,wall,0,1.9,0,g);
+  for(const sx of[-2.45,2.45])for(const sz of[-1.95,1.95])BX(.26,2.75,.26,beam,sx,1.9,sz,g);
+  for(const sz of[-2.02,2.02]){BX(5.1,.2,.12,beam,0,3.18,sz,g);BX(5.1,.18,.12,beam,0,1.95,sz,g)}
+  for(const sx of[-2.02*1.235,2.02*1.235])BX(.12,.2,4.1,beam,sx,3.18,0,g);
+  const gw=new THREE.Mesh(prismGeo(3.9,1.7,4.95),wall);gw.position.set(0,3.25,0);g.add(gw);gw.castShadow=true;
+  const rf=new THREE.Mesh(prismGeo(5.0,2.25,6),roof);rf.position.set(0,3.15,0);rf.scale.set(1,1,1);g.add(rf);rf.castShadow=true;
+  BX(6.15,.2,.2,roofD,0,5.4,0,g);
+  const ch=BX(.65,1.7,.65,stone,1.4,4.9,-1.3,g);BX(.8,.18,.8,M(0x5a5650),1.4,5.8,-1.3,g);
+  BX(1.2,2.0,.14,M(0x6a4428),0,1.55,2.05,g);BX(1.45,.16,.2,beam,0,2.6,2.08,g);SP(.07,M(0xe8b73a,{metalness:.6}),.38,1.5,2.16,g,6,5);BX(1.6,.12,.7,stone,0,.6,2.45,g);
+  for(const sx of[-1.5,1.5]){
+    BX(.9,.85,.1,glass,sx,2.35,2.04,g);BX(1.04,.1,.16,beam,sx,2.82,2.07,g);BX(1.04,.1,.16,beam,sx,1.88,2.07,g);BX(.07,.85,.13,beam,sx,2.35,2.08,g);
+    for(const s2 of[-1,1])BX(.32,.95,.07,shut,sx+s2*.64,2.35,2.1,g);
+    BX(1.0,.22,.3,M(0x6a4428),sx,1.72,2.2,g);for(let i=0;i<4;i++)SP(.09,EM([0xff7aa8,0xffd24a,0xffffff,0xb48aff][i],.25),sx-.33+i*.22,1.9,2.22,g,6,5);
+  }
+  for(const sz of[-.8,.8]){BX(.1,.8,.75,glass,2.52,2.35,sz,g)}
+  g.traverse(m=>{if(m.isMesh)m.castShadow=true});
+  addObst(x,z,3.2);return g;
+  }finally{HQ--}
+}
 function buildWorld(){
   clearGroup(worldG);WORLD.obst.length=0;WORLD.grid={};WORLD.lava.length=0;WORLD.wisps.length=0;WORLD.ponds.length=0;WORLD.pulse.length=0;WORLD.cracks=null;WORLD.emblem=null;
   const R=mulberry(20240611);
@@ -111,7 +176,8 @@ function buildWorld(){
     mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,WORLD_R-12)}
   /* gates */
   const stoneG=M(0x8a8798,{roughness:.9}),darkG=M(0x55526a,{roughness:.9});
-  const gate=(x,z,th,col,sc)=>{
+  const gate=(x,z,th,col,sc)=>{HQ++;try{return gate0(x,z,th,col,sc)}finally{HQ--}};
+  const gate0=(x,z,th,col,sc)=>{
     sc=sc||1;const g=grp(x,0,z,worldG);g.rotation.y=th;g.scale.set(sc,sc,sc);
     for(const sx of[-3.9,3.9]){BX(1.4,6.4,1.4,stoneG,sx,3.2,0,g);BX(1.9,.5,1.9,darkG,sx,6.6,0,g);BX(1.9,.6,1.9,darkG,sx,.3,0,g);
       const f=SP(.3,EM(0xffb040,1.6),sx,7.1,0,g,6,5);const gl=glow(0xffa030,3.2,.6);gl.position.set(sx,7.1,0);g.add(gl);
@@ -137,11 +203,13 @@ function buildWorld(){
   /* stalls + npcs */
   WORLD.npcs.length=0;
   const wood=M(0x6b4a2b),cloth={shop:0xc0803a,smith:0x8a4a3a,auction:0x2f8a6a,job:0x6a4ac0};
-  for(const n of NPCS){
+  for(const n of NPCS){HQ++;try{
     const g=grp(n.x,0,n.z,worldG);g.rotation.y=n.face;
     BX(5.4,.3,3.6,M(0x7a6a58),0,.15,0,g);
     for(const sx of[-2.4,2.4])CY(.12,.12,3.2,wood,sx,1.7,-1.4,g,6);
-    const roof=BX(5.8,.18,3.2,M(cloth[n.kind]),0,3.3,-.7,g);roof.rotation.x=.22;
+    for(let i=0;i<7;i++){const st=BX(.84,.12,3.3,M(i%2?0xf4ecd8:cloth[n.kind]),-2.52+i*.84,3.3,-.7,g);st.rotation.x=.22}
+    for(let i=0;i<7;i++){const fl=CN(.42,.36,M(i%2?0xf4ecd8:cloth[n.kind]),-2.52+i*.84,2.83,.95,g,3);fl.rotation.x=Math.PI}
+    BX(5.9,.14,.14,wood,0,3.0,.92,g);
     BX(4.6,.9,.8,wood,0,.85,1.0,g);BX(4.8,.12,1.0,M(0xcdb68a),0,1.34,1.0,g);
     if(n.kind==='shop'){for(let i=0;i<3;i++)SP(.22,EM([0xff5a6a,0x5ee7ff,0xffa23a][i],.7),-1+i,1.6,1.0,g,6,5)}
     if(n.kind==='smith'){BX(.9,.5,.6,M(0x3a3a44,{metalness:.6}),1.4,1.6,1.0,g);const fl=glow(0xff7a2a,2.4,.6);fl.position.set(-1.2,1.8,-.6);g.add(fl);SP(.4,EM(0xff6a1a,1.4),-1.2,.7,-.6,g,6,5)}
@@ -154,25 +222,23 @@ function buildWorld(){
     npc.g.rotation.y=n.face;worldG.add(npc.g);
     addObst(n.x,n.z,2.6);
     WORLD.npcs.push({kind:n.kind,name:n.name,x:n.x+Math.sin(n.face)*2.4,z:n.z+Math.cos(n.face)*2.4,model:npc,label:makeLabel(n.name,'st')});
-  }
+  }finally{HQ--}}
   /* houses (decor) */
-  [[-15,0,1.57],[15,0,-1.57],[0,-15,0],[-13,-12,.7],[13,-12,-.7]].forEach(h=>{
-    const g=grp(h[0],0,h[1],worldG);g.rotation.y=h[2];const wall=M(0xcdb690),roof=M(0x9a4a3a);
-    BX(5,3,4,wall,0,1.5,0,g);const rf=CN(4.2,2.2,roof,0,4.1,0,g,4);rf.rotation.y=Math.PI/4;rf.scale.set(1,1,.82);
-    BX(1,1.8,.1,M(0x4a3426),0,.9,2.05,g);BX(.8,.8,.1,EM(0xffd27a,.8),1.5,1.8,2.05,g);addObst(h[0],h[1],3.2);
-  });
+  [[-15,0,1.57],[15,0,-1.57],[0,-15,0],[-13,-12,.7],[13,-12,-.7]].forEach((h,i)=>buildHouse(h[0],h[1],h[2],i));
   /* decor by zone */
   const free=(x,z)=>Math.hypot(x,z)>21&&Math.hypot(x,z)<WORLD_R-3&&!onPath(x,z);
   const placeIn=(zi,n,rad,fn)=>{const zn=ZONES[zi];let c=0,tries=0;while(c<n&&tries++<n*20){const a=R()*TAU,r=zn.r0+2+R()*(zn.r1-zn.r0-4),x=Math.cos(a)*r,z=Math.sin(a)*r;if(!free(x,z))continue;let ok=true;for(const o of WORLD.obst){if(Math.abs(o.x-x)<8&&Math.abs(o.z-z)<8&&d2(x,z,o.x,o.z)<(o.r+rad+.6)*(o.r+rad+.6)){ok=false;break}}if(!ok)continue;fn(c++,x,z)}return c};
   // z1 trees
-  {const N=sc(190,1),tr=instMesh(new THREE.CylinderGeometry(.25,.4,2,6),M(0x6b4a2b),N),cn=instMesh(new THREE.ConeGeometry(1.5,3.6,7),M(0xffffff),N),cn2=instMesh(new THREE.ConeGeometry(1.1,2.8,7),M(0xffffff),N);let k=0;
-    const cols=[0x3e8a44,0x4a9a48,0x2e7a3e,0x56a850];
-    placeIn(1,N,1.2,(i,x,z)=>{const s=.8+R()*.8,c=cols[Math.floor(R()*4)];instSet(tr,i,x,s*1,z,s,s,s,0);instSet(cn,i,x,s*3.2,z,s,s,s,R()*6,c);instSet(cn2,i,x,s*5.0,z,s,s,s,R()*6,c);addObst(x,z,.6*s+.2);k=i+1});
-    tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
+  {const N=sc(190,1),sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x7a5434,{roughness:.95,flatShading:false}),N),rd=instMesh(treeGeo('round'),sm,N),pn=instMesh(treeGeo('pine'),sm,N);let k=0,kr=0,kp=0;
+    const cols=[0x4c9a46,0x5aae4e,0x3e8a40,0x68b856,0x7ab84a],pcols=[0x2e7a46,0x34864c,0x286e40];
+    placeIn(1,N,1.2,(i,x,z)=>{const s=.8+R()*.7,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);
+      if(R()<.55)instSet(rd,kr++,x,0,z,s,s*(.9+R()*.25),s,ry,cols[Math.floor(R()*cols.length)]);else instSet(pn,kp++,x,0,z,s,s*(.95+R()*.3),s,ry,pcols[Math.floor(R()*3)]);
+      addObst(x,z,.6*s+.2);k=i+1});
+    tr.count=k;rd.count=kr;pn.count=kp;instDone(tr);instDone(rd);instDone(pn);
     const NR=sc(40,1),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),NR);let kk=0;placeIn(1,NR,1.2,(i,x,z)=>{const s=.7+R()*1.0;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x8a8f98);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
   // z2 dead forest
-  {const N=sc(170,2),tr=instMesh(new THREE.CylinderGeometry(.14,.36,4.4,5),M(0x2a2a30),N),br=instMesh(new THREE.ConeGeometry(.9,2.2,5),M(0x3a3a44),N);let k=0;
-    placeIn(2,N,1,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,s*2.2,z,s,s,s,0);instSet(br,i,x,s*4.2,z,s,s*.8,s,R()*6);addObst(x,z,.5*s+.2);k=i+1});tr.count=br.count=k;instDone(tr);instDone(br);
+  {const N=sc(170,2),tr=instMesh(treeGeo('dead'),M(0x34303a,{roughness:1,flatShading:false}),N);let k=0;
+    placeIn(2,N,1,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,0,z,s,s*(.85+R()*.4),s,R()*6);addObst(x,z,.5*s+.2);k=i+1});tr.count=k;instDone(tr);
     const NR=sc(70,2),gs=instMesh(new THREE.BoxGeometry(.9,1.4,.3),M(0x8a8f9a),NR);let kk=0;placeIn(2,NR,.8,(i,x,z)=>{const s=.8+R()*.5;instSet(gs,i,x,.7*s,z,s,s,s,R()*6);addObst(x,z,.55);kk=i+1});gs.count=kk;instDone(gs)}
   // z3 volcanic
   {const N=sc(130,3),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff,{roughness:1}),N);let k=0;
@@ -196,8 +262,8 @@ function buildWorld(){
       if(i%3===0){const g=glow(0xff3dd0,s*4.6,.38);g.position.set(x,y,z);worldG.add(g);WORLD.pulse.push({s:g,b:.38,ph:R()*6})}addObst(x,z,s*.6);k=i+1});cr.count=k;instDone(cr)}
 
   // z7 frozen tundra: snowy pines + ice spires
-  {const N=230,tr=instMesh(new THREE.CylinderGeometry(.22,.36,1.6,5),M(0x4a3a30),N),cn=instMesh(new THREE.ConeGeometry(1.5,3.4,7),M(0xffffff),N),cn2=instMesh(new THREE.ConeGeometry(1,2.4,7),M(0xffffff),N);let k=0;
-    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,.8*s,z,s,s,s,0);instSet(cn,i,x,s*2.9,z,s,s,s,R()*6,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,s*4.7,z,s,s,s,R()*6,0xeaf4ff);addObst(x,z,.6*s+.2);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
+  {const N=230,sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x4a3a30,{flatShading:false}),N),cn=instMesh(treeGeo('pine'),sm,N),cn2=instMesh(treeGeo('snow'),M(0xf4faff,{roughness:.6,flatShading:false}),N);let k=0;
+    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);instSet(cn,i,x,0,z,s,s,s,ry,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,0,z,s,s,s,ry);addObst(x,z,.6*s+.2);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
     const N2=130,ic=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x3a7aa8,emissiveIntensity:.7,roughness:.25}),N2);let k2=0;
     placeIn(7,N2,1.2,(i,x,z)=>{const s=.9+R()*1.6;instSet(ic,i,x,s*1.5,z,s*.55,s*1.6,s*.55,R()*6,pick([0xbfe6ff,0x8ad0ff,0xe8f6ff]));if(i%5===0){const g=glow(0x9fe0ff,s*4,.35);g.position.set(x,s*1.5,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}addObst(x,z,s*.6);k2=i+1});ic.count=k2;instDone(ic)}
   // z8 ancient desert ruins: broken columns, cacti, glowing obelisks

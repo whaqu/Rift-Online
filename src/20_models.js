@@ -25,7 +25,7 @@ function rboxGeo(w,h,d){
 }
 function EM(hex,int){return M(hex,{emissive:hex,emissiveIntensity:int==null?1:int,roughness:.4})}
 function mesh(geo,mat,x,y,z,parent,shadow){const m=new THREE.Mesh(geo,mat);m.position.set(x||0,y||0,z||0);m.castShadow=shadow!==false;if(parent)parent.add(m);return m}
-const BX=(w,h,d,mat,x,y,z,p)=>mesh(HQ?rboxGeo(w,h,d):new THREE.BoxGeometry(w,h,d),mat,x,y,z,p);
+const BX=(w,h,d,mat,x,y,z,p)=>{const m=mesh(HQ?rboxGeo(w,h,d):new THREE.BoxGeometry(w,h,d),mat,x,y,z,p);if(HQ)m.userData.bx=[w,h,d];return m};
 const SP=(r,mat,x,y,z,p,ws,hs)=>{const m=mesh(new THREE.SphereGeometry(r,HQ?Math.max(16,(ws||10)*2):ws||10,HQ?Math.max(12,(hs||8)*2):hs||8),mat,x,y,z,p);if(HQ)m.userData.sr=r;return m};
 const CY=(rt,rb,h,mat,x,y,z,p,seg)=>{const m=mesh(new THREE.CylinderGeometry(rt,rb,h,HQ?Math.max(16,(seg||8)*2):seg||8),mat,x,y,z,p);if(HQ)m.userData.cy=[rt,rb,h];return m};
 const CN=(r,h,mat,x,y,z,p,seg)=>mesh(new THREE.ConeGeometry(r,h,HQ?Math.max(12,(seg||8)*2):seg||8),mat,x,y,z,p);
@@ -78,8 +78,8 @@ function heroLimbs(o,skin){
     arm.position.x=side*.58;
     const sl=arm.children.find(c=>c.userData&&c.userData.cy);
     if(sl){const [rt,rb,h]=sl.userData.cy;sl.position.y=-.34;
-      SP(rt*1.18,sl.material,0,-.02,0,arm,10,8);
-      CY(rb*1.12,rb*1.18,.12,M(0x2a2230),0,-.66,0,arm,8)}
+      SP(rt*1.12,sl.material,0,-.04,0,arm,10,8);if(rb<=rt)SP(rb*1.04,sl.material,0,-.36,0,arm,10,8);
+      CY(rb*1.14,rb*1.08,.13,sl.material,0,-.64,0,arm,8)}
     const hs=arm.children.find(c=>c.userData&&c.userData.sr&&c.position.y<-.6);
     if(hs){const r=hs.userData.sr,mat=hs.material,y=hs.position.y;arm.remove(hs);
       const k=r/.135,hd=grp(0,y,0,arm);hd.scale.setScalar(k);
@@ -87,6 +87,18 @@ function heroLimbs(o,skin){
       const fg=BX(.2,.12,.14,mat,0,-.09,.035,hd);fg.rotation.x=.45;
       const th=CY(.038,.034,.13,mat,-side*.1,-.01,.06,hd,6);th.rotation.z=side*.55;th.rotation.x=.5;
       o.hands=o.hands||[];o.hands.push(hd)}
+  }
+  const f=y=>Math.max(.8,Math.min(1.04,.82+(y+.48)/.96*.22));
+  for(const c of o.torso.children.slice()){
+    if(!c.isMesh||!c.userData)continue;const y=c.position.y,k=f(y);
+    if(c.userData.sr&&c.userData.sr>=.24&&Math.abs(c.position.x)>.4){c.scale.set(.8,.62,.86);c.position.x*=.95;c.position.y+=.06;continue}
+    if(c.userData.cy)continue;
+    c.position.x*=k;c.position.z*=k;
+    const b=c.userData.bx;
+    if(b&&b[0]>=.7&&c.geometry.attributes&&c.geometry.attributes.position&&c.geometry.attributes.position.array){
+      const g=c.geometry.clone(),a=g.attributes.position.array;
+      for(let i=0;i<a.length;i+=3){const kk=f(a[i+1]+y)/k;a[i]*=kk;if(b[2]>.3)a[i+2]*=1+(kk-1)*.6}
+      g.attributes.position.needsUpdate=true;c.geometry=g}
   }
   // legs: knee pad + rounder hip so the legs read as attached
   for(const lg of[o.legL,o.legR]){const c=lg.children.find(m=>m.userData&&m.userData.cy);if(c)SP(c.userData.cy[0]*1.05,c.material,0,-.02,0,lg,10,8)}
@@ -133,7 +145,7 @@ function makeHero0(cls,tint){
     CY(.15,.13,.8,leather,0,-.4,0,legL);CY(.15,.13,.8,leather,0,-.4,0,legR);BX(.27,.2,.42,bootm,0,-.78,.07,legL);BX(.27,.2,.42,bootm,0,-.78,.07,legR);
     BX(.86,.92,.5,green,0,0,0,torso);BX(.9,.12,.53,leather,0,-.3,0,torso);BX(.14,.95,.54,leather,.2,0,0,torso).rotation.z=.3;
     const cp=BX(1.0,1.35,.1,cloak,0,-.15,-.34,torso);cp.rotation.x=.12;SP(.27,cloak,-.55,.48,0,torso);SP(.27,cloak,.55,.48,0,torso);
-    SP(.32,skin,0,0,0,head);const hd=SP(.4,cloak,0,.07,-.06,head,10,8);hd.scale.set(1,1,1.0);const hp=CN(.26,.55,cloak,0,.14,-.52,head,6);hp.rotation.x=-1.25;
+    SP(.32,skin,0,0,0,head);const hd=SP(.4,cloak,0,.08,-.14,head,10,8);hd.scale.set(1,1,1.0);const hp=CN(.26,.55,cloak,0,.14,-.52,head,6);hp.rotation.x=-1.25;
     BX(.5,.15,.1,M(0x2a2a35),0,-.1,.31,head);eye(-.11,.06,.3);eye(.11,.06,.3);
     CY(.12,.11,.7,green,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.12,.11,.7,green,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
     const qv=CY(.13,.12,.8,leather,.28,.15,-.42,torso);qv.rotation.x=.15;for(let i=0;i<3;i++){const ar=CN(.05,.18,M(0xdddddd),.28+(i-1)*.07,.62,-.46,torso,4)}
@@ -144,7 +156,7 @@ function makeHero0(cls,tint){
     CY(.14,.12,.8,dk2,0,-.4,0,legL);CY(.14,.12,.8,dk2,0,-.4,0,legR);BX(.26,.18,.42,lea,0,-.78,.07,legL);BX(.26,.18,.42,lea,0,-.78,.07,legR);
     BX(.8,.88,.46,cloth,0,0,0,torso);BX(.84,.1,.5,lea,0,-.3,0,torso);BX(.2,.7,.5,dk2,.25,0,0,torso).rotation.z=.4;
     BX(.95,1.2,.08,dk2,0,-.2,-.32,torso).rotation.x=.18;
-    SP(.32,skin,0,0,0,head);SP(.4,cloth,0,.08,-.05,head,10,8);const hh=CN(.26,.55,cloth,0,.12,-.5,head,6);hh.rotation.x=-1.2;
+    SP(.32,skin,0,0,0,head);SP(.4,cloth,0,.09,-.14,head,10,8);const hh=CN(.26,.55,cloth,0,.12,-.5,head,6);hh.rotation.x=-1.2;
     BX(.54,.2,.1,dk2,0,-.1,.3,head);eye(-.11,.06,.3);eye(.11,.06,.3);
     CY(.11,.1,.7,cloth,0,-.35,0,armL);SP(.13,skin,0,-.76,0,armL);CY(.11,.1,.7,cloth,0,-.35,0,armR);SP(.13,skin,0,-.76,0,armR);
     const dl=grp(0,-.76,0,armL),dr=grp(0,-.76,0,armR);
