@@ -201,6 +201,7 @@ body.touch #evb{top:44px;font-size:11px;padding:3px 12px}
 #combo.on{opacity:1}#combo small{display:block;font-size:12px;letter-spacing:.12em;color:#ffe0b0}#combo b{font-size:44px;font-weight:400;line-height:1}
 #combo.pop b{animation:cpop .18s ease-out}@keyframes cpop{0%{transform:scale(1.5)}100%{transform:scale(1)}}
 body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
+.mbtn.auto.on{border-color:#5ee08a;box-shadow:0 0 10px rgba(94,224,138,.6)}.mbtn.auto.on small{color:#7dffa8}.mbtn.auto svg{margin-bottom:8px}.mbtn.auto small{right:0;left:0;text-align:center}body.touch .mbtn.auto,.mbtn.hidden{display:none}
 .mbtn.dot::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 7px #ff4d6d}
 .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff4d6d;margin-left:4px;vertical-align:1px}
 .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
@@ -2590,6 +2591,7 @@ function nearestMob(range,from){
   return best;
 }
 function aimDir(){
+  if(P.autoAim){const m=P.autoAim,dx=m.x-P.x,dz=m.z-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m}}   // only while an automatic basic attack fires
   if(IS_TOUCH||mv.on){const m=nearestMob(15);if(m){const dx=m.x-P.x,dz=m.z-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m}}return{x:Math.sin(P.face),z:Math.cos(P.face),m:null}}
   const dx=mouse.gx-P.x,dz=mouse.gz-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m:null};
 }
@@ -2607,7 +2609,9 @@ function playerFacing(dt){
     if(a.m&&(P.atkAnim>=0||P.atkCd>.05||(save.auto&&!inTown(P.x,P.z))))tf=Math.atan2(a.x,a.z);
     else if(P.ix||P.iz)tf=Math.atan2(P.ix,P.iz);
   }else{
-    if(Math.hypot(mouse.gx-P.x,mouse.gz-P.z)>.4)tf=Math.atan2(mouse.gx-P.x,mouse.gz-P.z);
+    const t=P.autoT;
+    if(t&&!t.dead&&!mouse.down&&P.atkAnim>=0)tf=Math.atan2(t.x-P.x,t.z-P.z);
+    else if(Math.hypot(mouse.gx-P.x,mouse.gz-P.z)>.4)tf=Math.atan2(mouse.gx-P.x,mouse.gz-P.z);
   }
   P.face=lerpAng(P.face,tf,1-Math.exp(-dt*22));
 }
@@ -2658,12 +2662,16 @@ function tickPlayer(dt){
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
   else tickSkills(dt);
 }
+const AUTO_LV=5;
+const canAuto=()=>IS_TOUCH||SES.pf.level>=AUTO_LV;
 function tryAttackInput(){
   if(P.dead||inTown(P.x,P.z)||UI.modal)return;
   const want=mouse.down||keys.j||mv.atk;
-  let auto=false;
-  if(save.auto&&!want&&IS_TOUCH){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;const m=nearestMob(reach);auto=!!m}
-  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy())doAttack();
+  let auto=null;
+  // auto attack never breaks stealth; on desktop it unlocks at AUTO_LV
+  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
+  P.autoT=auto;
+  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy()){P.autoAim=auto;doAttack();P.autoAim=null}
 }
 
 /* ----- basic attack ----- */
@@ -4316,8 +4324,10 @@ function interact(){
 /* ---------- HUD ---------- */
 const MENU=[['chat','채팅','Ent',()=>openChatInput()],['bag','가방','I',openInventory],['people','파티','P',openParty],['gear','설정','Esc',openSettings],['star','일일','J',()=>openDaily()]];
 function buildHud(){
-  const m=$('menu');m.innerHTML=MENU.map((b,i)=>'<div class="mbtn" data-i="'+i+'" title="'+b[1]+'">'+ic(b[0],'#e4e6ec',20)+'<small>'+b[2]+'</small></div>').join('');
-  m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&!UI.modal)MENU[+t.dataset.i][3]()};
+  const m=$('menu');m.innerHTML='<div class="mbtn auto hidden" id="mauto">'+ic('sword','#e4e6ec',20)+'<small></small></div>'+MENU.map((b,i)=>'<div class="mbtn" data-i="'+i+'" title="'+b[1]+'">'+ic(b[0],'#e4e6ec',20)+'<small>'+b[2]+'</small></div>').join('');
+  // desktop auto attack switch: leftmost icon, mouse only (no shortcut key)
+  $('mauto').onclick=e=>{e.stopPropagation();if(UI.modal)return;save.auto=!save.auto;save.custom=true;writeSave();updateAutoBtn();UI.toast(save.auto?'자동 공격 켜짐':'자동 공격 꺼짐')};
+  m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&t.dataset.i!=null&&!UI.modal)MENU[+t.dataset.i][3]()};
   $('quick').innerHTML=POTION_ORDER.map((b,i)=>'<div class="qs" data-b="'+b+'" style="border-color:'+POTIONS[b].col+'55">'+ic('potion',POTIONS[b].col,26)+'<span class="kk">'+(i+1)+'</span><span class="ct"></span><div class="cdm"></div></div>').join('');
   $('quick').onclick=e=>{const t=e.target.closest('.qs');if(t)usePotionKey(t.dataset.b)};
   $('skills').innerHTML=['dash','q','e','r','f'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R',f:'F'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
@@ -4327,6 +4337,11 @@ function buildHud(){
   ci.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){let t=ci.value.trim(),ch='all';if(t.startsWith('/p ')){ch='party';t=t.slice(3)}if(t){if(ch==='party'&&!NET.party)UI.toast('파티가 없습니다');else netChatSend(ch,t)}ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}else if(e.key==='Escape'){ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}};
   ci.onfocus=()=>{for(const k in keys)keys[k]=false};
 }
+function updateAutoBtn(){
+  const b=$('mauto');if(!b||!SES.pf)return;
+  b.classList.toggle('hidden',SES.pf.level<AUTO_LV);b.classList.toggle('on',!!save.auto);
+  b.title='자동 공격 '+(save.auto?'켜짐':'꺼짐');b.querySelector('small').textContent=save.auto?'켜짐':'꺼짐';
+}
 UI.refreshHud=function(){
   if(!SES.pf||!P)return;const pf=SES.pf;
   $('pname').textContent=pf.name;$('pjob').textContent=JOBS[pf.job].name;$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
@@ -4334,7 +4349,7 @@ UI.refreshHud=function(){
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
   for(const k of['q','e','r','f']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.title=sk.desc||'';el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
   const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
-  updatePerkRow();UI.refreshTouch&&UI.refreshTouch();
+  updatePerkRow();updateAutoBtn();UI.refreshTouch&&UI.refreshTouch();
 };
 /* ---------- level-up perks ---------- */
 function perkRowHtml(){
@@ -4990,7 +5005,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

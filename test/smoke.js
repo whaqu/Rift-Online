@@ -347,6 +347,21 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(!g.UI.modal,'no perk popup on level up '+(g.UI.modal&&JSON.stringify(g.UI.modal.title||'')));
     g.SES.pf.perks=perks;
   }
+  // desktop auto attack: unlocked at Lv.5, aims at the nearest enemy, never breaks stealth
+  {
+    await g.API.login('테스트','newpass123');g.enterGame();step(3);g.UI.close&&g.UI.close();
+    await g.API.call('gmJob','warrior');g.derive();g.skReset();
+    for(const m of g.MOBS)g.removeMob(m,false);g.compactMobs();
+    const P=g.P;P.x=300;P.z=0;P.dead=false;P.hp=g.S.maxHp;P.dashT=0;P.spinT=0;
+    const m=g.makeMobObj(99001,'slime',302,0,50,false,false,false);m.spawning=false;m.sp=0;m.hp=m.maxHp=1e12;m.freeze=999;
+    const lv=g.SES.pf.level,au=g.save.auto,tryOnce=()=>{m.hp=m.maxHp;P.atkCd=0;g.mouse.down=false;g.mouse.gx=P.x-5;g.mouse.gz=P.z;g.tryAttackInput();return m.hp<m.maxHp};
+    g.save.auto=true;g.SES.pf.level=4;T(!tryOnce(),'no auto attack below Lv.5');
+    g.SES.pf.level=5;T(tryOnce(),'auto attack hits the nearest enemy while the mouse points away');
+    T(g.aimDir().x<0,'skills still aim at the mouse');
+    P.stealth=3;T(!tryOnce(),'auto attack keeps stealth');P.stealth=0;
+    g.save.auto=false;T(!tryOnce(),'switch off stops it');
+    g.SES.pf.level=lv;g.save.auto=au;
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

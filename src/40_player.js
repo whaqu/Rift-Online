@@ -54,6 +54,7 @@ function nearestMob(range,from){
   return best;
 }
 function aimDir(){
+  if(P.autoAim){const m=P.autoAim,dx=m.x-P.x,dz=m.z-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m}}   // only while an automatic basic attack fires
   if(IS_TOUCH||mv.on){const m=nearestMob(15);if(m){const dx=m.x-P.x,dz=m.z-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m}}return{x:Math.sin(P.face),z:Math.cos(P.face),m:null}}
   const dx=mouse.gx-P.x,dz=mouse.gz-P.z,l=Math.hypot(dx,dz)||1;return{x:dx/l,z:dz/l,m:null};
 }
@@ -71,7 +72,9 @@ function playerFacing(dt){
     if(a.m&&(P.atkAnim>=0||P.atkCd>.05||(save.auto&&!inTown(P.x,P.z))))tf=Math.atan2(a.x,a.z);
     else if(P.ix||P.iz)tf=Math.atan2(P.ix,P.iz);
   }else{
-    if(Math.hypot(mouse.gx-P.x,mouse.gz-P.z)>.4)tf=Math.atan2(mouse.gx-P.x,mouse.gz-P.z);
+    const t=P.autoT;
+    if(t&&!t.dead&&!mouse.down&&P.atkAnim>=0)tf=Math.atan2(t.x-P.x,t.z-P.z);
+    else if(Math.hypot(mouse.gx-P.x,mouse.gz-P.z)>.4)tf=Math.atan2(mouse.gx-P.x,mouse.gz-P.z);
   }
   P.face=lerpAng(P.face,tf,1-Math.exp(-dt*22));
 }
@@ -122,12 +125,16 @@ function tickPlayer(dt){
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
   else tickSkills(dt);
 }
+const AUTO_LV=5;
+const canAuto=()=>IS_TOUCH||SES.pf.level>=AUTO_LV;
 function tryAttackInput(){
   if(P.dead||inTown(P.x,P.z)||UI.modal)return;
   const want=mouse.down||keys.j||mv.atk;
-  let auto=false;
-  if(save.auto&&!want&&IS_TOUCH){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;const m=nearestMob(reach);auto=!!m}
-  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy())doAttack();
+  let auto=null;
+  // auto attack never breaks stealth; on desktop it unlocks at AUTO_LV
+  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
+  P.autoT=auto;
+  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy()){P.autoAim=auto;doAttack();P.autoAim=null}
 }
 
 /* ----- basic attack ----- */

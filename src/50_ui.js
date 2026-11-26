@@ -332,8 +332,10 @@ function interact(){
 /* ---------- HUD ---------- */
 const MENU=[['chat','채팅','Ent',()=>openChatInput()],['bag','가방','I',openInventory],['people','파티','P',openParty],['gear','설정','Esc',openSettings],['star','일일','J',()=>openDaily()]];
 function buildHud(){
-  const m=$('menu');m.innerHTML=MENU.map((b,i)=>'<div class="mbtn" data-i="'+i+'" title="'+b[1]+'">'+ic(b[0],'#e4e6ec',20)+'<small>'+b[2]+'</small></div>').join('');
-  m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&!UI.modal)MENU[+t.dataset.i][3]()};
+  const m=$('menu');m.innerHTML='<div class="mbtn auto hidden" id="mauto">'+ic('sword','#e4e6ec',20)+'<small></small></div>'+MENU.map((b,i)=>'<div class="mbtn" data-i="'+i+'" title="'+b[1]+'">'+ic(b[0],'#e4e6ec',20)+'<small>'+b[2]+'</small></div>').join('');
+  // desktop auto attack switch: leftmost icon, mouse only (no shortcut key)
+  $('mauto').onclick=e=>{e.stopPropagation();if(UI.modal)return;save.auto=!save.auto;save.custom=true;writeSave();updateAutoBtn();UI.toast(save.auto?'자동 공격 켜짐':'자동 공격 꺼짐')};
+  m.onclick=e=>{const t=e.target.closest('.mbtn');if(t&&t.dataset.i!=null&&!UI.modal)MENU[+t.dataset.i][3]()};
   $('quick').innerHTML=POTION_ORDER.map((b,i)=>'<div class="qs" data-b="'+b+'" style="border-color:'+POTIONS[b].col+'55">'+ic('potion',POTIONS[b].col,26)+'<span class="kk">'+(i+1)+'</span><span class="ct"></span><div class="cdm"></div></div>').join('');
   $('quick').onclick=e=>{const t=e.target.closest('.qs');if(t)usePotionKey(t.dataset.b)};
   $('skills').innerHTML=['dash','q','e','r','f'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R',f:'F'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
@@ -343,6 +345,11 @@ function buildHud(){
   ci.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){let t=ci.value.trim(),ch='all';if(t.startsWith('/p ')){ch='party';t=t.slice(3)}if(t){if(ch==='party'&&!NET.party)UI.toast('파티가 없습니다');else netChatSend(ch,t)}ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}else if(e.key==='Escape'){ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}};
   ci.onfocus=()=>{for(const k in keys)keys[k]=false};
 }
+function updateAutoBtn(){
+  const b=$('mauto');if(!b||!SES.pf)return;
+  b.classList.toggle('hidden',SES.pf.level<AUTO_LV);b.classList.toggle('on',!!save.auto);
+  b.title='자동 공격 '+(save.auto?'켜짐':'꺼짐');b.querySelector('small').textContent=save.auto?'켜짐':'꺼짐';
+}
 UI.refreshHud=function(){
   if(!SES.pf||!P)return;const pf=SES.pf;
   $('pname').textContent=pf.name;$('pjob').textContent=JOBS[pf.job].name;$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
@@ -350,7 +357,7 @@ UI.refreshHud=function(){
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
   for(const k of['q','e','r','f']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.title=sk.desc||'';el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
   const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
-  updatePerkRow();UI.refreshTouch&&UI.refreshTouch();
+  updatePerkRow();updateAutoBtn();UI.refreshTouch&&UI.refreshTouch();
 };
 /* ---------- level-up perks ---------- */
 function perkRowHtml(){
