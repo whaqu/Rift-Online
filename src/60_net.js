@@ -5,6 +5,7 @@ const NET={on:false,sb:null,ch:null,shard:0,peers:{},party:null,invite:null,last
 const SHARD_MAX=12;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script'));document.head.appendChild(s)})}
 function netSend(event,payload){if(!NET.on||!NET.ch)return;try{NET.ch.send({type:'broadcast',event,payload})}catch(e){}}
+const myInfo=()=>({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()});
 function netSys(kind,val){if(kind==='lv')netChatSend('sys',SES.name+'님이 레벨 '+val+'에 도달했습니다.')}
 function netFx(k,d){
   if(!NET.on)return;const now=performance.now();if(now-NET.lastFx<70)return;NET.lastFx=now;
@@ -57,13 +58,14 @@ function netJoin(i){
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
         if(n>SHARD_MAX&&i<6){try{NET.sb.removeChannel(ch)}catch(e){}fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
-        if(st==='SUBSCRIBED'){try{ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()})}catch(e){}setTimeout(()=>{if(!done){NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}},1800)}
+        if(st==='SUBSCRIBED'){try{ch.track(myInfo())}catch(e){}setTimeout(()=>{if(!done){NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}},1800)}
         else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){if(!done)fin(false);else{NET.on=false;UI.setNet(false,'연결 끊김');UI.renderPeers()}}
       });
     setTimeout(()=>fin(false),7000);
   });
 }
-function netPresence(){if(NET.on&&NET.ch)try{NET.ch.track({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()})}catch(e){}}
+/* call after level / job / weapon changes: refresh presence and push a position packet right away */
+function netPresence(){NET.lastPos=0;if(NET.on&&NET.ch)try{NET.ch.track(myInfo())}catch(e){}}
 
 /* ---------- peers ---------- */
 function syncPeers(){
@@ -71,22 +73,28 @@ function syncPeers(){
   const seen={};
   for(const k in st){
     if(k===SES.name)continue;const m=st[k]&&st[k][st[k].length-1];if(!m)continue;seen[k]=1;let p=NET.peers[k];
-    if(!p)p=NET.peers[k]={name:k,x:0,z:0,tx:0,tz:0,f:0,tf:0,moving:false,model:null,label:null,got:false,hp:100,dead:false,anim:Math.random()*5,cls:'warrior',job:'warrior',lv:1};
-    const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c;
-    const w=typeof m.w==='string'&&m.w.length<24?m.w:null;
-    if(c!==p.cls||j!==p.job||w!==p.w){p.cls=c;p.job=j;p.w=w;if(p.model){entG.remove(p.model.g);p.model=null}}
-    p.lv=+m.lv||1;if(p.label)p.label.el.textContent=peerLabel(p);
+    if(!p)p=NET.peers[k]={name:k,x:0,z:0,tx:0,tz:0,f:0,tf:0,moving:false,model:null,label:null,got:false,hp:100,dead:false,anim:Math.random()*5,cls:'warrior',job:'warrior',lv:0};
+    if(!p.live)applyPeerInfo(p,m);   // live packets are newer than presence
   }
   for(const k in NET.peers){if(!seen[k])dropPeer(k)}
   UI.renderPeers();checkParty();
 }
-const peerLabel=p=>'Lv.'+p.lv+' '+p.name;
+const peerLabel=p=>(p.lv?'Lv.'+p.lv+' ':'')+p.name;
+/* level / class / job / weapon of another player; returns true when something changed */
+function applyPeerInfo(p,m){
+  const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c,w=typeof m.w==='string'&&m.w.length<24?m.w:null,lv=clamp(Math.floor(+m.lv)||0,0,99)||p.lv;
+  const look=c!==p.cls||j!==p.job||w!==p.w,changed=look||lv!==p.lv;
+  if(look){p.cls=c;p.job=j;p.w=w;if(p.model){entG.remove(p.model.g);p.model=null}}
+  p.lv=lv;if(p.label)p.label.el.textContent=peerLabel(p);
+  return changed;
+}
 function dropPeer(k){const p=NET.peers[k];if(!p)return;if(p.model)entG.remove(p.model.g);if(p.label)p.label.remove();delete NET.peers[k]}
 function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
   p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
+  if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
@@ -192,7 +200,7 @@ function netUpdate(dt){
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
       if(moved||now-NET.lastPos>1200){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0})}
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }

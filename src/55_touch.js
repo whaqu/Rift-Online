@@ -39,7 +39,7 @@ function setTouchMode(on){
   IS_TOUCH=on;document.body.classList.toggle('touch',on);
   for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;
   if(on)initTouch();
-  if(!save.custom){save.shadows=!on;save.auto=on;save.outline=!on;const q=on?0:1;const rb=save.treeQ!==q;save.treeQ=q;writeSave();try{applyShadows()}catch(e){}if(rb)try{buildWorld()}catch(e){}}
+  if(!save.custom){save.auto=on;writeSave()}
   if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}
   if(!on)try{canvas.focus()}catch(e){}
 }

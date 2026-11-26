@@ -20,8 +20,9 @@ const fmtN=n=>Math.floor(n).toLocaleString('ko-KR');
 const SET_KEY='rw_settings_v1';
 /* default is keyboard/mouse UI; touch UI only on phones/tablets (mobile UA)  also flips at runtime when keyboard/mouse or touch input is seen (see 55_touch.js) */
 let IS_TOUCH=(()=>{try{const ua=navigator.userAgent||'',mob=/Android|iPhone|iPad|iPod|Mobile/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);if(typeof matchMedia!=='function')return mob;const fine=matchMedia('(any-pointer:fine)').matches;return mob?!fine||matchMedia('(pointer:coarse)').matches:false}catch(e){return false}})();
-const save={fx:true,treeQ:IS_TOUCH?0:1,vol:.7,shadows:!IS_TOUCH,auto:IS_TOUCH,outline:!IS_TOUCH,lastName:''};
-function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s)Object.assign(save,s)}catch(e){}}
+const GFX_V=2,GFX_DEFAULT={fx:true,treeQ:1,shadows:true,outline:true};   // all graphics options start on, on every device
+const save=Object.assign({vol:.7,auto:IS_TOUCH,lastName:'',gv:GFX_V},GFX_DEFAULT);
+function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s){Object.assign(save,s);if(s.gv!==GFX_V){Object.assign(save,GFX_DEFAULT,{gv:GFX_V});writeSave()}}}catch(e){}}   // older saves get the new defaults once
 function writeSave(){try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
 
 /* ---------------- audio (all synthesized) ---------------- */

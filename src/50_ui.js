@@ -243,7 +243,7 @@ function openParty(){
     let h='';
     if(!NET.on)return '<div class="card">오프라인 모드에서는 파티와 거래를 사용할 수 없습니다.<br><span class="dim">온라인 서버에 접속하면 다른 플레이어와 함께 사냥할 수 있습니다.</span></div>';
     h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><b>내 파티</b>'+(NET.party?'<button class="btn sm red" data-a="pleave">탈퇴</button>':'')+'</div>';
-    if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
+    if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+(p.lv||'?')+' '+(JOBS[p.job]?JOBS[p.job].name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
     else h+='<div class="dim" style="margin-top:4px">파티가 없습니다. 아래 플레이어를 초대하세요.</div>';
     h+='</div><div class="card"><b>접속 중인 플레이어</b><div class="list" style="margin-top:6px;max-height:34vh">';
     const names=Object.keys(NET.peers);
@@ -260,7 +260,7 @@ UI.renderParty=()=>{
   const box=$('partybox');if(!box)return;
   if(!NET.party){box.innerHTML='';if(UI.rerender&&UI.modal==='파티 · 플레이어')UI.rerender();return}
   let h='';for(const n of NET.party.members){const me=n===SES.name,p=me?null:NET.peers[n];const hp=me?Math.round(P.hp/S.maxHp*100):p?p.hp:0;
-    h+='<div class="pm'+(n===NET.party.leader?' ld':'')+'" data-n="'+esc(n)+'"><b>'+esc(n)+'</b> <span class="dim">Lv.'+(me?SES.pf.level:p?p.lv:'?')+'</span><div class="b"><i style="width:'+hp+'%"></i></div></div>'}
+    h+='<div class="pm'+(n===NET.party.leader?' ld':'')+'" data-n="'+esc(n)+'"><b>'+esc(n)+'</b> <span class="dim">Lv.'+(me?SES.pf.level:p&&p.lv||'?')+'</span><div class="b"><i style="width:'+hp+'%"></i></div></div>'}
   box.innerHTML=h;
   if(UI.rerender&&UI.modal==='파티 · 플레이어')UI.rerender();
 };

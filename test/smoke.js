@@ -320,6 +320,24 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.SES.pf.level=98;T(g.skillOf('f')===null,'no ultimate below max level');g.SES.pf.level=99;T(g.skillOf('f')===g.ULT.rogue,'ultimate at max level');
     await setup('summoner');for(const s of['q','e']){g.trySkill(s)}run(5);g.skReset();T(g.ACTS.length===0&&g.DECOYS.length===0,'reset clears running skills');
   }
+  // other players' level/job arrive with every position packet; graphics default to everything on
+  {
+    await g.API.login('테스트','newpass123');g.enterGame();step(3);
+    const pres={'동료2':[{name:'동료2',cls:'mage',job:'mage',lv:7}]},sent=[],tracked=[];
+    g.NET.on=true;g.NET.ch={send(m){sent.push(m)},track(m){tracked.push(m)},presenceState:()=>pres};
+    g.syncPeers();const p=g.NET.peers['동료2'];T(p&&p.lv===7,'level from presence');
+    g.onPos({n:'동료2',x:1,z:1,f:0,h:90,i:[42,'archer','archer',null]});T(p.lv===42&&p.cls==='archer','position packet updates level and class');
+    g.syncPeers();T(p.lv===42&&p.cls==='archer','stale presence does not roll it back');
+    g.NET.lastPos=-1e9;step(40);const pk=sent.filter(m=>m.event==='p').pop();T(pk&&pk.payload.i[0]===g.SES.pf.level&&pk.payload.i[1]===g.SES.pf.cls,'my packet carries level and class');
+    const n0=tracked.length;g.onLevelUp();T(tracked.length>n0&&tracked[tracked.length-1].lv===g.SES.pf.level,'level up refreshes presence');
+    delete g.NET.peers['동료2'];g.NET.on=false;g.NET.ch=null;g.UI.close&&g.UI.close();
+    const keep=JSON.stringify(g.save);
+    localStorage.setItem('rw_settings_v1',JSON.stringify({shadows:false,outline:false,treeQ:0,fx:false,vol:.3,custom:true}));g.loadSave();
+    T(g.save.shadows&&g.save.outline&&g.save.treeQ===1&&g.save.fx&&g.save.vol===.3,'old settings get graphics on once');
+    localStorage.setItem('rw_settings_v1',JSON.stringify(Object.assign({},g.save,{shadows:false})));g.loadSave();T(g.save.shadows===false,'later choice is kept');
+    g.save.custom=false;g.save.shadows=true;g.setTouchMode(true);T(g.save.shadows&&g.save.outline&&g.save.treeQ===1,'touch keeps graphics on');g.setTouchMode(false);
+    Object.assign(g.save,JSON.parse(keep));
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});
