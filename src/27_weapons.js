@@ -4,8 +4,8 @@ const WBLD=[0x8a8f98,0xaab0bc,0xd8dee8,0xc4e4ff,0xc4fff0,0xffdcc8,0xfff2b8,0xffd
 function wmats(t){
   const c=WACC[t-1],em=t>=4;
   return{t,c,
-    blade:M(WBLD[t-1],{metalness:.7,roughness:.25,emissive:em?c:0x1a2030,emissiveIntensity:em?.16+.05*t:.08}),
-    edge:EM(c,.4+.12*t),
+    blade:M(WBLD[t-1],{metalness:.7,roughness:.25,emissive:em?c:0x1a2030,emissiveIntensity:em?.04+.015*t:.04}),
+    edge:EM(c,.25+.05*t),
     grip:M(t>=6?0x3a2a50:0x4a2c18),
     gold:M(t>=7?0xffe6a0:0xe8b73a,{metalness:.6,roughness:.35}),
     wood:M(t>=5?0x5a3a6a:0x6b4a2b),
@@ -14,7 +14,21 @@ function wmats(t){
   };
 }
 const wclear=g=>{while(g.children.length)g.remove(g.children[0])};
-function wglow(k,m,x,y,z,s){if(m.t<4)return null;const gl=glow(m.c,(s||1.4)*(.7+m.t*.08),.3+.05*m.t);gl.position.set(x,y,z);k.add(gl);return gl}
+/* orbiting runes / sparks circling the weapon (animated in animHeroFor via o.wfx); none below tier 3 */
+let WCUR=null;
+const WFXN=[0,0,2,3,4,5,6,8];
+function wglow(k,m,x,y,z,s){
+  const n=WFXN[m.t-1];if(!n||!WCUR)return null;
+  s=s||1.4;const list=[];
+  for(let i=0;i<n;i++){
+    const rune=i%3===2?SP(.035+.003*m.t,EM(m.c,2),0,0,0,k,5,4):OC(.05+.004*m.t,EM(m.c,1.8),0,0,0,k);
+    if(i%3!==2)rune.scale.set(.7,1.5,.3);
+    list.push(rune);
+  }
+  WCUR.wfx.push({list,x,y,z,r:.3+.1*s,h:.22+.2*s,sp:1.6+.18*m.t});
+  return null;
+}
+const wglw=(c,sz,op)=>glow(c,sz*.7,op*.45);
 /* tier 8 gets an orbiting-looking rune ring, tier 6+ a small gem */
 function wcrown(k,m,yc,r){if(m.t>=8){const ring=mesh(new THREE.TorusGeometry(r||.3,.022,4,14),EM(m.c,1.5),0,yc,0,k);ring.rotation.x=Math.PI/2}}
 /* straight blade along +y */
@@ -39,16 +53,16 @@ function wscale(k,t){k.scale.setScalar(.94+.03*t)}
 function wbook(k,m,cover,pageGlow,o){
   BX(.46,.07,.62,cover,0,-.3,0,k);BX(.4,.08,.55,M(0xf4ecd8),0,-.27,0,k);BX(.06,.1,.64,m.gold,-.24,-.3,0,k);
   BX(.2,.09,.2,EM(pageGlow,.9+.1*m.t),0,-.22,0,k);
-  const gl=glow(pageGlow,1.6+.1*m.t,.55);gl.position.set(0,-.15,0);k.add(gl);
+  const gl=wglw(pageGlow,1.6+.1*m.t,.55);gl.position.set(0,-.15,0);k.add(gl);
   const runes=[];for(let i=0;i<3;i++){const r=OC(.07,EM(pageGlow,1.4),0,0,0,k);r.position.set(Math.cos(i*2.1)*.35,.15+i*.1,Math.sin(i*2.1)*.35);runes.push(r)}
-  o.orb=runes[0];o.orbGlow=gl;
+  o.orb=runes[0];o.orbGlow=gl;wglow(k,m,0,-.2,0,1.2);
 }
 function wstaff(k,m,len,orbCol,orbR,o){
   CY(.05,.06,len,m.wood,0,len/2-.8,0,k);
   const top=len-.75,orb=SP(orbR,EM(orbCol,1.3),0,top+.08,0,k,10,8);
   const cl=mesh(new THREE.TorusGeometry(orbR*1.25,.04,5,10),m.gold,0,top-.1,0,k);cl.rotation.x=Math.PI/2;
   if(m.t>=5)for(let i=0;i<4;i++){const p=CN(.05,.34,m.gold,Math.cos(i*1.57)*orbR*1.2,top+.1,Math.sin(i*1.57)*orbR*1.2,k,4);p.rotation.z=-Math.cos(i*1.57)*.4;p.rotation.x=Math.sin(i*1.57)*.4}
-  const gl=glow(orbCol,1.7+.1*m.t,.7);gl.position.set(0,top+.08,0);k.add(gl);o.orb=orb;o.orbGlow=gl;wcrown(k,m,top-.3,orbR*1.5);
+  const gl=wglw(orbCol,1.7+.1*m.t,.7);gl.position.set(0,top+.08,0);k.add(gl);o.orb=orb;o.orbGlow=gl;wcrown(k,m,top-.3,orbR*1.5);wglow(k,m,0,top-.1,0,1.2);
 }
 function wpistol(k,m){
   BX(.1,.5,.1,m.steel,0,-.22,0,k);BX(.12,.16,.14,m.gold,0,-.02,0,k);BX(.09,.2,.09,m.grip,0,.04,-.12,k).rotation.x=.35;
@@ -68,8 +82,8 @@ const WLOOK={
     const k=grp(0,0,0,o.weapon),col=t>=3?m.c:0x5ee7ff;
     if(ty===0)wstaff(k,m,2.5,col,.17+.012*t,o);
     else if(ty===1)wbook(k,m,M(t>=4?0x3a2a7a:0x5a3a2a),col,o);
-    else{CY(.025,.035,.95,m.wood,0,-.1,0,k,5);const g=OC(.1+.01*t,EM(col,1.5),0,.42,0,k);g.scale.set(.8,1.4,.8);const gl=glow(col,1.3+.1*t,.75);gl.position.set(0,.42,0);k.add(gl);
-      for(const s of[-1,1])CN(.03,.2,m.gold,s*.09,.34,0,k,4).rotation.z=-s*.4;o.orb=g;o.orbGlow=gl;wcrown(k,m,.2,.2)}
+    else{CY(.025,.035,.95,m.wood,0,-.1,0,k,5);const g=OC(.1+.01*t,EM(col,1.5),0,.42,0,k);g.scale.set(.8,1.4,.8);const gl=wglw(col,1.3+.1*t,.75);gl.position.set(0,.42,0);k.add(gl);
+      for(const s of[-1,1])CN(.03,.2,m.gold,s*.09,.34,0,k,4).rotation.z=-s*.4;o.orb=g;o.orbGlow=gl;wcrown(k,m,.2,.2);wglow(k,m,0,.3,0,.9)}
     wscale(k,t);
   },
   archer(o,ty,t,m){
@@ -104,8 +118,8 @@ const WLOOK={
       for(let i=0;i<8;i++){const a=i/8*TAU,sp=CN(.06,.2,m.steel,Math.cos(a)*.22,1.1,Math.sin(a)*.22,k,4);sp.rotation.z=-Math.cos(a)*1.3;sp.rotation.x=Math.sin(a)*1.3}
       CN(.07,.22,m.steel,0,1.36,0,k,4);const bd=mesh(new THREE.TorusGeometry(.2,.03,4,10),m.gold,0,.88,0,k);bd.rotation.x=Math.PI/2;o.orb=null;o.orbGlow=null;wglow(k,m,0,1.1,0,1.7)}
     else{CY(.04,.04,.4,m.gold,0,.05,0,k,6);CY(.15,.18,.05,m.gold,0,-.15,0,k,10);CY(.21,.1,.32,m.gold,0,.38,0,k,10);
-      CY(.19,.19,.03,EM(col,1.4),0,.54,0,k,10);const gl=glow(col,2+.15*t,.8);gl.position.set(0,.62,0);k.add(gl);
-      const rg=mesh(new THREE.TorusGeometry(.3,.025,4,14),EM(col,1.3),0,.95,0,k);rg.rotation.x=Math.PI/2;o.orb=rg;o.orbGlow=gl}
+      CY(.19,.19,.03,EM(col,1.4),0,.54,0,k,10);const gl=wglw(col,2+.15*t,.8);gl.position.set(0,.62,0);k.add(gl);
+      const rg=mesh(new THREE.TorusGeometry(.3,.025,4,14),EM(col,1.3),0,.95,0,k);rg.rotation.x=Math.PI/2;o.orb=rg;o.orbGlow=gl;wglow(k,m,0,.4,0,1.1)}
     wscale(k,t);
   },
   lancer(o,ty,t,m){
@@ -120,7 +134,7 @@ const WLOOK={
   },
   monk(o,ty,t,m){
     for(const q of[grp(0,0,0,o.weapon),wsecond(o)]){
-      if(ty===0){const gl=glow(m.c,1.3+.12*t,.5);q.add(gl);const bd=mesh(new THREE.TorusGeometry(.17,.03,5,10),EM(m.c,.8+.1*t),0,-.15,0,q);bd.rotation.x=Math.PI/2}
+      if(ty===0){const gl=wglw(m.c,1.3+.12*t,.5);q.add(gl);const bd=mesh(new THREE.TorusGeometry(.17,.03,5,10),EM(m.c,.8+.1*t),0,-.15,0,q);bd.rotation.x=Math.PI/2}
       else if(ty===1){BX(.34,.4,.34,m.blade,0,-.12,0,q);BX(.4,.1,.14,m.gold,0,-.32,.1,q);for(let i=-1;i<=1;i++)CN(.05,.16,m.steel,i*.11,-.4,.14,q,4).rotation.x=-Math.PI/2;BX(.36,.08,.36,m.gold,0,.1,0,q);wglow(q,m,0,-.2,0,1.2)}
       else{for(let i=-1;i<=1;i++){const cl=BX(.04,.62,.02,m.blade,i*.09,-.5,0,q);cl.rotation.z=i*.08;if(t>=3)BX(.012,.6,.03,m.edge,i*.09,-.5,0,q)}BX(.3,.07,.12,m.gold,0,-.08,0,q);wglow(q,m,0,-.45,0,1.3)}
       wscale(q,t);
@@ -141,7 +155,7 @@ const WLOOK={
     else{CY(.03,.03,.5,m.wood,0,.15,0,k,5);BX(.5,.04,.04,m.wood,0,.42,0,k);
       const dl=grp(0,-.5,.0,k);SP(.14,M(0xe8d8b8),0,.2,0,dl,8,6);SP(.1,M(0xe8d8b8),0,-.05,0,dl,6,5);SP(.025,EM(col,1.8),-.05,.22,.12,dl,4,3);SP(.025,EM(col,1.8),.05,.22,.12,dl,4,3);
       for(const s of[-1,1]){BX(.015,.7,.015,M(0xdddddd),s*.24,.07,0,k)}
-      const gl=glow(col,1.8+.12*t,.7);gl.position.set(0,-.3,0);k.add(gl);o.orb=dl;o.orbGlow=gl}
+      const gl=wglw(col,1.8+.12*t,.7);gl.position.set(0,-.3,0);k.add(gl);o.orb=dl;o.orbGlow=gl;wglow(k,m,0,0,0,1.2)}
     wscale(k,t);
   },
   darknight(o,ty,t,m){
@@ -162,7 +176,8 @@ function applyWeaponLook(o,base){
   const ty=wType(b),t=wTier(b);
   wclear(o.weapon);if(o.weapon2){wclear(o.weapon2);o.weapon2.visible=false}
   if(o.shield)o.shield.visible=true;
-  o.orb=null;o.orbGlow=null;
+  o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
   try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
+  WCUR=null;
   o.wbase=b;
 }

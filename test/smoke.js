@@ -165,6 +165,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     }
     const hw=g.makeHeroFor('warrior','warrior',0xffffff);g.applyWeaponLook(hw,'warrior_2');const c2=cnt(hw.weapon);g.applyWeaponLook(hw,'warrior_8');T(cnt(hw.weapon)>c2,'higher tier adds detail (glow/rune ring)');
     g.applyWeaponLook(hw,'mage_3');T(hw.wbase==='warrior_1','foreign class weapon falls back');
+    const h5=g.makeHeroFor('mage','mage',0xffffff);g.applyWeaponLook(h5,'mage_5');T(h5.wfx.length>0&&h5.wfx[0].list.length===4,'tier5 weapon has orbiting runes');
+    const p0=h5.wfx[0].list[0].position.x;g.animHeroFor(h5,.5,0,-1,false,1);const p1=h5.wfx[0].list[0].position.x;g.animHeroFor(h5,1.3,0,-1,false,1);T(p1!==h5.wfx[0].list[0].position.x,'runes orbit over time');
+    g.applyWeaponLook(h5,'mage_1');T(h5.wfx.length===0,'tier1 has no orbiting runes');
     console.error=oe;T(be===0,'weapon look builds clean ('+be+')');
   }
   // render all panels (smoke) + handlers
