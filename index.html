@@ -216,6 +216,9 @@ body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
 .eqs{text-align:center;font-size:11px;color:var(--dim);padding:5px 2px;background:#1b2030;border:1px solid var(--bd);border-radius:8px;cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:2px}
 .eqs.emp{opacity:.55;cursor:default}
 .sb{font-size:11.5px;margin-top:4px;line-height:1.5}.sb b{color:var(--ac2);margin-right:6px}.sb span{display:block;color:#7a8098}.sb span.on{color:#9fe8b0}
+#guard{position:fixed;inset:0;z-index:2147483647;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:14px;padding:24px;text-align:center;background:#0b0d12;color:#e8e4d8}
+#guard b{font-size:20px;color:#ffcf6a}
+#guard p{margin:0;line-height:1.6}
 </style>
 </head>
 <body>
@@ -321,7 +324,8 @@ let IS_TOUCH=(()=>{try{const ua=navigator.userAgent||'',mob=/Android|iPhone|iPad
 const GFX_V=2,GFX_DEFAULT={fx:true,treeQ:1,shadows:true,outline:true};   // all graphics options start on, on every device
 const save=Object.assign({vol:.7,auto:IS_TOUCH,lastName:'',gv:GFX_V},GFX_DEFAULT);
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s){Object.assign(save,s);if(s.gv!==GFX_V){Object.assign(save,GFX_DEFAULT,{gv:GFX_V});writeSave()}}}catch(e){}}   // older saves get the new defaults once
-function writeSave(){try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
+const GUARD={tripped:false};   // set by the developer tools guard (61_guard.js)
+function writeSave(){if(GUARD.tripped)return;try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
 
 /* ---------------- audio (all synthesized) ---------------- */
 const AU={ctx:null,mg:null,sg:null,mus:null,mode:null,tick:null,step:0,vm:1,pj:1,zid:0,amb:null};
@@ -1489,6 +1493,7 @@ const RW_CFG={
 const SES={name:'',token:'',pf:null,online:false,mode:'?'};
 
 async function rpc(fn,args){
+  if(GUARD.tripped)throw new Error('DEVTOOLS');
   const ctl=typeof AbortController!=='undefined'?new AbortController():null;
   const to=ctl?setTimeout(()=>ctl.abort(),9000):0;
   let r;
@@ -1507,7 +1512,7 @@ const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
   let db={acc:{},items:[],auc:[],nid:1,aid:1};
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
-  const wr=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+  const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
   const xpNeed=l=>30+7*l*l;
   const jobOK=id=>JOBS[id];
@@ -1732,6 +1737,7 @@ const API={
     SES.name=name;SES.token=token;SES.pf=r;return r;
   },
   async call(fn,...a){
+    if(GUARD.tripped)throw new Error('DEVTOOLS');
     let r;
     if(SES.mode==='online')r=await rpc(NAMES[fn],Object.assign({p_name:SES.name,p_token:SES.token},ARGS[fn](a)));
     else r=LocalAPI[fn](SES.name,SES.token,...a);
@@ -4663,7 +4669,7 @@ function showTitle(mode){
     if(!s){toLogin();return}
     $('start').classList.add('hidden');showLoading('접속 중…');
     try{await API.resume(s.name,s.token);await enterWithLoading()}
-    catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}hideLoading();toLogin(errKo(e.message))}
+    catch(e){if(GUARD.tripped)return;try{localStorage.removeItem('rw_sess')}catch(e2){}hideLoading();toLogin(errKo(e.message))}
   };
 }
 
@@ -4702,11 +4708,12 @@ function netChatSend(ch,text){
 }
 
 async function netInit(){
-  if(NET.tried)return;NET.tried=true;
+  if(NET.tried||GUARD.tripped)return;NET.tried=true;
   if(SES.mode!=='online'){UI.setNet(false,'오프라인');return}
   UI.setNet(false,'접속 중…');
   try{
     if(!window.supabase)await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
+    if(GUARD.tripped)return;
     NET.sb=window.supabase.createClient(RW_CFG.url,RW_CFG.key,{realtime:{params:{eventsPerSecond:30}}});
     for(let i=1;i<=6;i++){
       const ok=await netJoin(i);if(ok)break;
@@ -4719,7 +4726,7 @@ function netJoin(i){
   return new Promise(res=>{
     let done=false;const name='rw-field-'+i;
     const ch=NET.sb.channel(name,{config:{broadcast:{self:false},presence:{key:SES.name}}});
-    const fin=v=>{if(done)return;done=true;res(v)};
+    const fin=v=>{if(done)return;done=true;res(v&&!GUARD.tripped)};
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
       .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))
@@ -4885,10 +4892,39 @@ function netUpdate(dt){
 }
 function netClearModels(){for(const k in NET.peers){const p=NET.peers[k];if(p.model){entG.remove(p.model.g);p.model=null}if(p.label){p.label.remove();p.label=null}}}
 
+/* ---------------- developer tools guard ----------------
+   `debugger` only stops while developer tools are open, so a long gap around it means they are.
+   Once tripped nothing is saved or sent any more; only a reload brings the game back. */
+const GUARD_MS=100,GUARD_EVERY=1000;
+let guardTimer=0;
+function guardProbe(){
+  if(GUARD.tripped)return;
+  const t=performance.now();
+  debugger;
+  if(performance.now()-t>GUARD_MS)guardTrip();
+}
+function guardTrip(){
+  if(GUARD.tripped)return;
+  GUARD.tripped=true;
+  clearInterval(guardTimer);
+  const quiet=f=>{try{f()}catch(e){}};
+  quiet(()=>{for(const k in KB)delete KB[k];KBn=0;GAT.pend.weed=GAT.pend.wood=0});   // drop unsent rewards
+  quiet(()=>clearInterval(UI.tradeTimer));
+  quiet(()=>NET.sb&&NET.sb.removeAllChannels());NET.on=false;NET.ch=null;   // leave the field so others are not stuck
+  quiet(()=>{clearInterval(AU.tick);AU.ctx&&AU.ctx.suspend()});
+  quiet(()=>{mouse.down=false;for(const k in keys)keys[k]=false;document.activeElement&&document.activeElement.blur()});
+  const d=document.createElement('div');d.id='guard';
+  d.innerHTML='<b>개발자 도구가 감지되었습니다</b><p>게임을 멈추고 저장을 중단했습니다.<br>개발자 도구를 닫은 뒤 새로고침해주세요.</p><button class="btn" id="guardgo">새로고침</button>';
+  document.body.appendChild(d);
+  quiet(()=>{$('guardgo').onclick=()=>location.reload()});
+}
+function guardStart(){if(guardTimer||GUARD.tripped)return;guardTimer=setInterval(guardProbe,GUARD_EVERY);guardProbe()}
+if(!window.__RW_TEST)guardStart();
+
 /* ---------------- main ---------------- */
 let loopOn=false;
 window.onKeyPress=(k,e)=>{
-  if(!P)return;
+  if(!P||GUARD.tripped)return;
   if(k==='escape'){if(UI.modal)UI.close();else openSettings();return}
   if(UI.modal){if(k==='i'||k==='p'||k==='j')UI.close();return}
   if(k==='enter'){openChatInput();return}
@@ -4985,6 +5021,7 @@ function frame(dt){
   renderFrame();
 }
 function loop(now){
+  if(GUARD.tripped)return;
   requestAnimationFrame(loop);
   let dt=Math.min(.05,(now-G.last)/1000);G.last=now;if(!(dt>0))return;
   G.t+=dt;let sdt=dt;if(G.hs>0){G.hs-=dt;sdt=dt*.05}   // hit-stop: sim crawls for a few frames on heavy hits
@@ -5005,7 +5042,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

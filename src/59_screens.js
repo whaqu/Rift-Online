@@ -21,6 +21,6 @@ function showTitle(mode){
     if(!s){toLogin();return}
     $('start').classList.add('hidden');showLoading('접속 중…');
     try{await API.resume(s.name,s.token);await enterWithLoading()}
-    catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}hideLoading();toLogin(errKo(e.message))}
+    catch(e){if(GUARD.tripped)return;try{localStorage.removeItem('rw_sess')}catch(e2){}hideLoading();toLogin(errKo(e.message))}
   };
 }

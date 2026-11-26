@@ -362,6 +362,17 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.save.auto=false;T(!tryOnce(),'switch off stops it');
     g.SES.pf.level=lv;g.save.auto=au;
   }
+  // developer tools guard (last: once tripped the game stays stopped)
+  {
+    await g.API.login('테스트','newpass123');g.enterGame();step(3);g.UI.close&&g.UI.close();
+    g.guardProbe();T(!g.GUARD.tripped,'no trip without developer tools');
+    const db=localStorage.getItem('rw_local_db_v1'),set=localStorage.getItem('rw_settings_v1'),gold=g.SES.pf.gold;
+    g.guardTrip();T(g.GUARD.tripped,'guard trips');
+    let err='';try{await g.API.call('buy','hp1',1)}catch(e){err=e.message}T(err==='DEVTOOLS','server calls are refused');
+    try{g.LocalAPI.buy(g.SES.name,g.SES.token,'hp1',1)}catch(e){}
+    g.save.vol=.123;g.writeSave();
+    T(localStorage.getItem('rw_local_db_v1')===db&&localStorage.getItem('rw_settings_v1')===set,'nothing is saved after the trip');
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

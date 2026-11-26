@@ -33,11 +33,12 @@ function netChatSend(ch,text){
 }
 
 async function netInit(){
-  if(NET.tried)return;NET.tried=true;
+  if(NET.tried||GUARD.tripped)return;NET.tried=true;
   if(SES.mode!=='online'){UI.setNet(false,'오프라인');return}
   UI.setNet(false,'접속 중…');
   try{
     if(!window.supabase)await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
+    if(GUARD.tripped)return;
     NET.sb=window.supabase.createClient(RW_CFG.url,RW_CFG.key,{realtime:{params:{eventsPerSecond:30}}});
     for(let i=1;i<=6;i++){
       const ok=await netJoin(i);if(ok)break;
@@ -50,7 +51,7 @@ function netJoin(i){
   return new Promise(res=>{
     let done=false;const name='rw-field-'+i;
     const ch=NET.sb.channel(name,{config:{broadcast:{self:false},presence:{key:SES.name}}});
-    const fin=v=>{if(done)return;done=true;res(v)};
+    const fin=v=>{if(done)return;done=true;res(v&&!GUARD.tripped)};
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
       .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))

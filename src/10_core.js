@@ -23,7 +23,8 @@ let IS_TOUCH=(()=>{try{const ua=navigator.userAgent||'',mob=/Android|iPhone|iPad
 const GFX_V=2,GFX_DEFAULT={fx:true,treeQ:1,shadows:true,outline:true};   // all graphics options start on, on every device
 const save=Object.assign({vol:.7,auto:IS_TOUCH,lastName:'',gv:GFX_V},GFX_DEFAULT);
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s){Object.assign(save,s);if(s.gv!==GFX_V){Object.assign(save,GFX_DEFAULT,{gv:GFX_V});writeSave()}}}catch(e){}}   // older saves get the new defaults once
-function writeSave(){try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
+const GUARD={tripped:false};   // set by the developer tools guard (61_guard.js)
+function writeSave(){if(GUARD.tripped)return;try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
 
 /* ---------------- audio (all synthesized) ---------------- */
 const AU={ctx:null,mg:null,sg:null,mus:null,mode:null,tick:null,step:0,vm:1,pj:1,zid:0,amb:null};

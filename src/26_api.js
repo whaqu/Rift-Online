@@ -8,6 +8,7 @@ const RW_CFG={
 const SES={name:'',token:'',pf:null,online:false,mode:'?'};
 
 async function rpc(fn,args){
+  if(GUARD.tripped)throw new Error('DEVTOOLS');
   const ctl=typeof AbortController!=='undefined'?new AbortController():null;
   const to=ctl?setTimeout(()=>ctl.abort(),9000):0;
   let r;
@@ -26,7 +27,7 @@ const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
   let db={acc:{},items:[],auc:[],nid:1,aid:1};
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
-  const wr=()=>{try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
+  const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
   const xpNeed=l=>30+7*l*l;
   const jobOK=id=>JOBS[id];
@@ -251,6 +252,7 @@ const API={
     SES.name=name;SES.token=token;SES.pf=r;return r;
   },
   async call(fn,...a){
+    if(GUARD.tripped)throw new Error('DEVTOOLS');
     let r;
     if(SES.mode==='online')r=await rpc(NAMES[fn],Object.assign({p_name:SES.name,p_token:SES.token},ARGS[fn](a)));
     else r=LocalAPI[fn](SES.name,SES.token,...a);
