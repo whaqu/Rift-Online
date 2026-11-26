@@ -444,6 +444,9 @@ const canvas=$('gl');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+/* look tuning: lights are scaled so bright albedo never clips, ACES filmic curve rolls highlights off */
+const TUNE={th:1.0,hemi:.72,sun:.92,rim:1,exp:1.0,sat:1.14,con:.36,bloom:.3,vig:.78};
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=TUNE.exp;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d1020);
 const camera=new THREE.PerspectiveCamera(40,1,.5,320);
 const hemi=new THREE.HemisphereLight(0xbfd8ff,0x2a2038,1.0);scene.add(hemi);
@@ -794,7 +797,7 @@ function makeHero0(cls,tint){
   const skin=M(0xf1c7a0),dark=M(0x262a40);
   const legL=grp(-.22,.85,0,body),legR=grp(.22,.85,0,body),torso=grp(0,1.15,0,body),head=grp(0,1.95,0,body),armL=grp(-.66,1.6,0,body),armR=grp(.66,1.6,0,body);
   const o={g,body,torso,head,legL,legR,armL,armR,cls,weapon:null,shadowBlob:null};
-  const eye=(x,y,z)=>{const e=SP(.05,M(0x10131f,{roughness:.2}),x,y,z,head,6,5);e.scale.set(1,1.25,.7);SP(.016,EM(0xffffff,1),x+.018,y+.025,z+.03,head,4,3);BX(.11,.025,.03,M(0x2a1e18),x,y+.1,z-.01,head).rotation.z=x>0?-.15:.15;return e};
+  const eye=(x,y,z)=>SP(.045,M(0x10131f),x,y,z,head,6,5);
   if(cls==='warrior'){
     const steel=M(0xaab6d6,{metalness:.55,roughness:.4}),blue=M(tint||0x2f56c8),gold=M(0xe8b73a,{metalness:.6,roughness:.35});
     CY(.17,.15,.8,steel,0,-.4,0,legL);CY(.17,.15,.8,steel,0,-.4,0,legR);BX(.3,.18,.46,dark,0,-.78,.08,legL);BX(.3,.18,.46,dark,0,-.78,.08,legR);
@@ -1352,6 +1355,14 @@ const POTIONS={
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
 };
+/* gathering materials (sold at the shop: weed 10G, wood 20G; reserved for future upgrade recipes) */
+const MATS={
+  weed:{name:'잡초',price:10,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 10G · 강화 재료로도 쓰일 예정'},
+  wood:{name:'목재',price:20,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 20G · 강화 재료로도 쓰일 예정'}
+};
+const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
+const gatSpeed=lv=>1+.16*(lv-1),gatDouble=lv=>.015*(lv-1);
+const itemPrice=it=>isGear(it)?sellValue(it):it.kind==='mat'?(MATS[it.base]?MATS[it.base].price:0):Math.floor(POTIONS[it.base].price*.25);
 const POTION_ORDER=['hp1','hp2','hp3','spd','atk','def'];
 const ENCH={
   burn:{name:'화염',d:'공격 시 화상 (초당 공격력의 {v}%)',per:25,col:'#ff7a2a'},
@@ -1367,13 +1378,13 @@ const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
   {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x5fa84a,alt:0x4f9a40},
   {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer','wraith'],ground:0x4a4f58,alt:0x3e4350},
-  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x7a4a38,alt:0x6a3c30},
-  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x4a4a8a,alt:0x3a3a78},
+  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x5e4a44,alt:0x524038},
+  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x585a86,alt:0x4a4c78},
   {id:5,name:'뇌우 고원',r0:246,r1:308,lo:40,hi:62,types:['golem','bomber','archer','bat','stormhawk','stormhawk'],ground:0x5a6678,alt:0x4a5668},
   {id:6,name:'공허의 균열',r0:308,r1:372,lo:60,hi:72,types:['golem','skel','archer','phantom','phantom','wraith'],ground:0x3a2a52,alt:0x2e2044},
-  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['yeti','frostwolf','frostwolf','icewitch'],ground:0xcfe0ee,alt:0xb4cbe0},
-  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['scorpion','scorpion','mummy','mummy','jackal'],ground:0xc8a468,alt:0xb48f55},
-  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['sentinel','sentinel','seraph','stormhawk'],ground:0xd8d4e8,alt:0xbfb8dc}
+  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['yeti','frostwolf','frostwolf','icewitch'],ground:0xb8cce4,alt:0xa4bcd8},
+  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['scorpion','scorpion','mummy','mummy','jackal'],ground:0xb8955a,alt:0xb48f55},
+  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['sentinel','sentinel','seraph','stormhawk'],ground:0xc4c0d8,alt:0xb0acc8}
 ];
 const WORLD_R=576;
 /* day / night: one cycle = 16 min on the shared wall clock, night is phase [.55,.95) (same rule as the server) */
@@ -1390,6 +1401,8 @@ const mobDmg=ml=>6+ml*2.2;
 
 /* ---------------- svg icons ---------------- */
 const ICONS={
+  leaf:'<path d="M20 3C10 3 4 8 4 15c0 2 .8 3.600 2 4.600C6.600 14.500 10 10.500 15 8.500c-4 3-6.500 6.500-7.500 11C9 20.200 10.500 20.500 12 20.500c6 0 8-7.500 8-17.500z"/>',
+  log:'<path d="M3 9c0-2 4-3.500 9-3.500s9 1.500 9 3.500v7c0 2-4 3.500-9 3.500S3 18 3 16V9zm9-1.600c-3.800 0-6.400.8-6.400 1.600s2.600 1.600 6.400 1.600 6.400-.8 6.400-1.600S15.800 7.400 12 7.400z"/>',
   sword:'<path d="M14.5 3.5l6 .1.1 6-9.8 9.8-2.4-2.4L14.5 3.5zM7 14l3 3-2.2 2.2-1.6-.5-2.4 2.3-1-1 2.3-2.4-.5-1.6L7 14z"/>',
   staff:'<path d="M16 2a4 4 0 013 6.6l-1.6 1.6-3.2-3.2L13.8 5.4A4 4 0 0116 2zM11.6 8.4l4 4L5.4 22.6 1.4 18.6 11.6 8.4z"/>',
   bow:'<path d="M5 2c9 2 15 8 17 17-1 .3-2 .6-3 .8C16 12 12 8 4.2 5.2 4.5 4.2 4.7 3.1 5 2zm-1 5.2l12.8 12.8-1.4 1.4L2.6 8.6 4 7.2z"/>',
@@ -1429,10 +1442,12 @@ function skIcon(sk,sz){return ic(SKICON[sk.type]||'star',hex6(sk.col||0xffffff),
 function ico(svg,col){return '<span class="ico" style="--tc:'+col+'">'+svg+'</span>'}
 function ic(n,col,sz){return '<svg class="ic" viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="'+(col||'currentColor')+'">'+(ICONS[n]||'')+'</svg>'}
 function itemIcon(it){
+  if(it.kind==='mat'){const m=MATS[it.base],c=m?m.col:'#fff';return ico(ic(m?m.icon:'leaf',c,26),c)}
   if(it.kind==='potion'){const p=POTIONS[it.base],c=p?p.col:'#fff';return ico(ic('potion',c,26),c)}
   const c=TIER_COL[wTier(it.base)-1];if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
+  if(it.kind==='mat'){const m=MATS[it.base];return m?m.name:it.base}
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
   return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
 }
@@ -1486,12 +1501,12 @@ const LocalAPI=(()=>{
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
-      daily:{ready:a.last_daily!==d,streak:es,day:dd},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
   function give(n,kind,base,q){
-    if(kind==='potion'){const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}}
+    if(kind==='potion'||kind==='mat'){const it=db.items.find(i=>i.owner===n&&i.kind===kind&&i.base===base&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}}
     const it={id:db.nid++,owner:n,kind,base,enh:0,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(it);return it;
   }
   function applyXp(a,x){a.xp+=x;while(a.level<99&&a.xp>=xpNeed(a.level)){a.xp-=xpNeed(a.level);a.level++}if(a.level>=99)a.xp=0}
@@ -1561,8 +1576,17 @@ const LocalAPI=(()=>{
     },
     sell(n,t,id,q){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&!i.gone);if(!it||it.listed||it.eq)E('BAD_ITEM');
-      let v;if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
+      let v;if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else if(it.kind==='mat'){const qq=clamp(q|0||1,1,it.qty);v=(MATS[it.base]?MATS[it.base].price:0)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
       a.gold+=v;wr();return pf(a);
+    },
+    gather(n,t,weed,wood){
+      rd();const a=auth(n,t);const lv0=gatLvOf(a.gat_xp||0),ch=gatDouble(lv0);
+      let tk=Math.min(40,(a.gat_tk==null?40:a.gat_tk)+(Date.now()-(a.gat_ts||Date.now()))/1000*4);
+      let w=Math.min(tk|0,clamp(weed|0,0,30));tk-=w;let d=Math.min((tk/2)|0,clamp(wood|0,0,30));tk-=d*2;
+      let gw=0,gd=0;for(let i=0;i<w;i++)gw+=1+(rnd01()<ch?1:0);for(let i=0;i<d;i++)gd+=1+(rnd01()<ch?1:0);
+      a.gat_tk=tk;a.gat_ts=Date.now();a.gat_xp=(a.gat_xp||0)+w+d*5;
+      if(gw>0)give(n,'mat','weed',gw);if(gd>0)give(n,'mat','wood',gd);
+      wr();return{weed:gw,wood:gd,up:gatLvOf(a.gat_xp)>lv0,profile:pf(a)};
     },
     perk(n,t,kind){
       rd();const a=auth(n,t);if(!PERK[kind])E('BAD_ARGS');const k=Object.assign({a:0,h:0,c:0},a.perks||{});
@@ -1624,10 +1648,10 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
+const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel'};
 const ARGS={
-  claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
+  claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
   tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]})
@@ -1850,7 +1874,7 @@ function applyWeaponLook0(o,base){
 
 /* ---------------- world: town + 4 hunting zones ---------------- */
 function mulberry(seed){return function(){seed|=0;seed=seed+0x6D2B79F5|0;let t=Math.imul(seed^seed>>>15,1|seed);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296}}
-const WORLD={obst:[],grid:{},cell:8,npcs:[],lava:[]};
+const WORLD={obst:[],grid:{},cell:8,npcs:[],lava:[],nodes:[],ngrid:{}};
 const NPCS=[
   {kind:'shop',name:'상점',x:-10,z:-7,face:.9},
   {kind:'smith',name:'대장간',x:10,z:-7,face:-.9},
@@ -1858,7 +1882,9 @@ const NPCS=[
   {kind:'job',name:'전직 교관',x:10,z:8,face:-2.2}
 ];
 const SPAWN={x:0,z:7};
-function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/WORLD.cell)+','+Math.floor(z/WORLD.cell);(WORLD.grid[k]||(WORLD.grid[k]=[])).push(o)}
+function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/WORLD.cell)+','+Math.floor(z/WORLD.cell);(WORLD.grid[k]||(WORLD.grid[k]=[])).push(o);return o}
+/* gatherable nodes: weeds (grass tufts) and trees; parts = [[instancedMesh,index],..] hidden while 'cut' */
+function regNode(k,x,z,parts,ob,s){const n={k,x,z,parts,ob,or:ob?ob.r:0,mats:null,cut:0,s:s||1};WORLD.nodes.push(n);const g=Math.floor(x/8)+','+Math.floor(z/8);(WORLD.ngrid[g]||(WORLD.ngrid[g]=[])).push(n);return n}
 function pushOut(e,r){
   const d=Math.hypot(e.x,e.z),lim=WORLD_R-1.2;if(d>lim){e.x*=lim/d;e.z*=lim/d}
   const cx=Math.floor(e.x/WORLD.cell),cz=Math.floor(e.z/WORLD.cell);
@@ -1880,14 +1906,31 @@ function instSet(mesh,i,x,y,z,sx,sy,sz,ry,col){
 function instMesh(geo,mat,n){const m=new THREE.InstancedMesh(geo,mat,n);m.castShadow=true;m.receiveShadow=true;m.frustumCulled=false;worldG.add(m);return m}
 function instDone(m){m.instanceMatrix.needsUpdate=true;if(m.instanceColor)m.instanceColor.needsUpdate=true}
 
+/* plaza flagstones: irregular warm/cool stones, dark grout, moss and wear, plus a matching height map for relief */
 function cobbleTex(){
-  const S=512,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');
-  g.fillStyle='#8c8678';g.fillRect(0,0,S,S);
-  const R=mulberry(7);
-  for(let y=0;y<S;y+=32)for(let x=-(y/32%2)*16;x<S;x+=32){
-    const v=Math.floor(R()*26);g.fillStyle='rgb('+(150+v)+','+(144+v)+','+(130+v)+')';g.fillRect(x+2,y+2,28,28);
-  }
-  const t=new THREE.CanvasTexture(c);if(t.wrapS!==undefined){t.wrapS=t.wrapT=THREE.RepeatWrapping;t.repeat.set(5,5)}return t;
+  const S=1024,c=document.createElement('canvas');c.width=c.height=S;const g=c.getContext('2d');
+  const h=document.createElement('canvas');h.width=h.height=S;const hg=h.getContext('2d');
+  g.fillStyle='#4a453e';g.fillRect(0,0,S,S);hg.fillStyle='#000';hg.fillRect(0,0,S,S);
+  const R=mulberry(7),rr=(x,y,w,hh,r)=>{const q=Math.min(r,w/2,hh/2);return[x+q,y,x+w-q,y+hh,q]};
+  const rect=(ctx,x,y,w,hh,r)=>{ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+hh,r);ctx.arcTo(x+w,y+hh,x,y+hh,r);ctx.arcTo(x,y+hh,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath()};
+  const pal=[[128,118,104],[116,110,104],[138,124,104],[104,104,108],[124,112,96],[96,98,102]];
+  let y=0;
+  while(y<S){const rowH=56+Math.floor(R()*28);let x=-Math.floor(R()*60);
+    while(x<S){const w=52+Math.floor(R()*54),base=pal[Math.floor(R()*pal.length)],v=Math.floor((R()-.5)*26),ins=3;
+      g.fillStyle='rgb('+(base[0]+v)+','+(base[1]+v)+','+(base[2]+v)+')';rect(g,x+ins,y+ins,w-ins*2,rowH-ins*2,9);g.fill();
+      // top-left highlight / bottom-right shade for a bevelled stone
+      g.lineWidth=3;g.strokeStyle='rgba(255,246,226,.22)';rect(g,x+ins+1.5,y+ins+1.5,w-ins*2-3,rowH-ins*2-3,8);g.stroke();
+      const gr=g.createLinearGradient(x,y,x+w,y+rowH);gr.addColorStop(0,'rgba(255,255,255,.07)');gr.addColorStop(1,'rgba(0,0,0,.16)');g.fillStyle=gr;rect(g,x+ins,y+ins,w-ins*2,rowH-ins*2,9);g.fill();
+      for(let i=0;i<14;i++){g.fillStyle='rgba('+(R()<.5?'255,255,255':'30,24,18')+','+(.03+R()*.07)+')';g.fillRect(x+ins+R()*(w-8),y+ins+R()*(rowH-8),1+R()*5,1+R()*4)}
+      hg.fillStyle='rgb('+(150+Math.floor(R()*70))+','+(150)+','+(150)+')';rect(hg,x+ins,y+ins,w-ins*2,rowH-ins*2,9);hg.fill();
+      x+=w}
+    y+=rowH}
+  // moss in the joints + soft dirt patches
+  for(let i=0;i<420;i++){const x=R()*S,yy=R()*S;g.fillStyle='rgba('+(60+R()*30)+','+(88+R()*40)+','+(44+R()*20)+','+(.1+R()*.18)+')';g.beginPath();g.arc(x,yy,2+R()*7,0,TAU);g.fill()}
+  for(let i=0;i<40;i++){const x=R()*S,yy=R()*S,r=30+R()*80,gr=g.createRadialGradient(x,yy,0,x,yy,r);gr.addColorStop(0,'rgba(40,30,20,.16)');gr.addColorStop(1,'rgba(40,30,20,0)');g.fillStyle=gr;g.fillRect(x-r,yy-r,r*2,r*2)}
+  const t=new THREE.CanvasTexture(c),bt=new THREE.CanvasTexture(h);
+  for(const q of[t,bt]){if(q.wrapS!==undefined){q.wrapS=q.wrapT=THREE.RepeatWrapping;q.repeat.set(3.4,3.4);q.anisotropy=4}}
+  t.userData={bump:bt};return t;
 }
 
 
@@ -2021,6 +2064,38 @@ function grassGeo(n,h,w,lean,seed){
     g.computeBoundingSphere();return g;
   }catch(e){return new THREE.ConeGeometry(w,h,4)}
 }
+
+/* ---- procedural ground detail: per-zone patterns layered on the vertex-coloured ground ---- */
+const GD_COMMON=`
+float gh(vec2 p){p=fract(p*vec2(.1031,.1030));p+=dot(p,p.yx+33.33);return fract((p.x+p.y)*p.x);}
+float gn(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);return mix(mix(gh(i),gh(i+vec2(1,0)),f.x),mix(gh(i+vec2(0,1)),gh(i+vec2(1,1)),f.x),f.y);}
+float gf(vec2 p){float a=.5,s=0.;for(int i=0;i<4;i++){s+=a*gn(p);p=p*2.03+vec2(17.3,9.1);a*=.5;}return s;}
+float gr(vec2 p){return 1.-abs(gf(p)*2.-1.);}
+vec3 gv(vec2 p){vec2 i=floor(p),f=fract(p);float d1=9.,d2=9.;float id=0.;for(int y=-1;y<=1;y++)for(int x=-1;x<=1;x++){vec2 g=vec2(float(x),float(y));vec2 o=vec2(gh(i+g),gh(i+g+57.1));float d=length(g+o-f);if(d<d1){d2=d1;d1=d;id=gh(i+g+13.7);}else if(d<d2)d2=d;}return vec3(d2-d1,id,d1);}
+void gd(int z,vec2 p,float t,out vec3 m,out vec3 e){
+  m=vec3(1.);e=vec3(0.);
+  float n=gf(p*.07),n2=gf(p*.9),n3=gf(p*.23+5.);
+  if(z==1){m=mix(vec3(.78,.93,.76),vec3(1.12,1.1,.92),n)*(.9+.2*n2);float dirt=smoothstep(.62,.72,gf(p*.045+7.));m=mix(m,vec3(1.35,.95,.62)*(.85+.3*n2),dirt*.6);m*=1.+.05*sin(p.x*.55+n*5.);}
+  else if(z==2){m=mix(vec3(.5,.58,.5),vec3(.8,.82,.7),n)*(.62+.3*n2);m=mix(m,vec3(.85,.68,.5)*(.6+.3*n2),smoothstep(.6,.7,n3)*.5);float c=gr(p*.22);m*=1.-.35*smoothstep(.95,.99,c);}
+  else if(z==3){float c=gr(p*.085+n*.5);float lava=smoothstep(.945,.99,c);m=mix(vec3(.5,.46,.46),vec3(.85,.78,.76),n)*(.72+.3*n2)*(1.-.7*lava);e=vec3(1.5,.5,.12)*lava*(1.1+.45*sin(t*1.7+p.x*.15));float ash=smoothstep(.55,.7,n3);m=mix(m,vec3(.42,.4,.42),ash*.5);}
+  else if(z==4){vec3 v=gv(p*.55);m=vec3(.8+.3*v.y)*(1.-.3*smoothstep(.1,0.,v.x));m*=vec3(.9,.9,1.02);float sp=step(.994,gh(floor(p*3.)));e=vec3(.5,.55,1.)*sp*(.5+.5*sin(t*3.+p.x));e+=vec3(.25,.15,.5)*smoothstep(.1,0.,v.x)*.5;}
+  else if(z==5){float s=sin(p.x*.19+p.y*.11+n*6.)*.5+.5;m=mix(vec3(.58,.62,.72),vec3(.9,.9,.86),s)*(.8+.3*n2);float c=gr(p*.14);m*=1.-.3*smoothstep(.95,.99,c);}
+  else if(z==6){float c=gr(p*.07+n*.6);float f=smoothstep(.93,.99,c);m=mix(vec3(.8,.72,1.),vec3(1.3,1.15,1.5),n)*(.8+.35*n2)*(1.-.6*f);e=vec3(1.3,.2,1.)*f*(1.+.5*sin(t*2.1+p.y*.2))+vec3(.4,.1,.6)*smoothstep(.85,.93,c)*.5;}
+  else if(z==7){float dr=sin(p.x*.22+p.y*.13+n*9.)*.5+.5;m=mix(vec3(.62,.74,.95),vec3(.95,.97,1.),smoothstep(.2,.8,mix(n,dr,.5)))*(.88+.14*n2);m=mix(m,vec3(.55,.68,.9),smoothstep(.62,.75,n3)*.45);float sp=step(.996,gh(floor(p*6.)));e=vec3(.6,.75,1.)*sp*(.5+.5*sin(t*4.+p.x*2.));}
+  else if(z==8){float w=sin(p.x*.75+p.y*.42+n*7.)*.5+.5;m=mix(vec3(.72,.64,.52),vec3(1.08,.98,.82),w)*(.85+.3*n2);m=mix(m,vec3(.7,.55,.45),smoothstep(.62,.72,n3)*.5);}
+  else if(z==9){vec2 q=p/7.;vec2 f=fract(q);vec2 id=floor(q);float line=smoothstep(.045,.0,min(min(f.x,1.-f.x),min(f.y,1.-f.y)));float chk=gh(id);float vein=smoothstep(.9,.99,gr(p*.05+chk*9.));m=vec3(.83+.14*chk)*(.93+.1*n2)*(1.-.14*vein);m=mix(m,vec3(1.15,.95,.55),line*.85);e=vec3(.9,.7,.25)*line*.18;}
+}`;
+function groundMat(){
+  const m=new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1,metalness:0});
+  const R0=ZONES.map(z=>z.r0);
+  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;sh.uniforms.uR0={value:R0};
+    sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;').replace('#include <begin_vertex>','#include <begin_vertex>\nvGW=(modelMatrix*vec4(position,1.)).xyz;');
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;uniform float uTime;uniform float uR0['+R0.length+'];\n'+GD_COMMON)
+      .replace('#include <color_fragment>','#include <color_fragment>\nvec3 gM=vec3(1.),gE=vec3(0.);{float d=length(vGW.xz);int zi=0;for(int i=1;i<'+R0.length+';i++)if(d>=uR0[i])zi=i;float tn=0.;if(zi<'+(R0.length-1)+')tn=smoothstep(uR0[zi+1]-7.,uR0[zi+1]+1.,d);vec3 m1,e1;gd(zi,vGW.xz,uTime,m1,e1);gM=m1;gE=e1;if(tn>0.){vec3 m2,e2;gd(zi+1,vGW.xz,uTime,m2,e2);gM=mix(m1,m2,tn);gE=mix(e1,e2,tn);}float fade=smoothstep(14.,40.,length(vGW.xz));gM=mix(vec3(1.),gM,fade);gE*=fade;}\ndiffuseColor.rgb*=gM;')
+      .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=gE;');
+  };
+  return m;
+}
 const GRASSM={};
 function grassMat(o){
   const k=JSON.stringify(o||{});if(GRASSM[k])return GRASSM[k];
@@ -2030,7 +2105,7 @@ function grassMat(o){
   return GRASSM[k]=m;
 }
 function buildWorld(){
-  clearGroup(worldG);WORLD.obst.length=0;WORLD.grid={};WORLD.lava.length=0;WORLD.wisps.length=0;WORLD.ponds.length=0;WORLD.pulse.length=0;WORLD.cracks=null;WORLD.emblem=null;
+  clearGroup(worldG);WORLD.obst.length=0;WORLD.grid={};WORLD.nodes.length=0;WORLD.ngrid={};if(window.GAT)GAT.cut.length=0;WORLD.lava.length=0;WORLD.wisps.length=0;WORLD.ponds.length=0;WORLD.pulse.length=0;WORLD.cracks=null;WORLD.emblem=null;
   const R=mulberry(20240611);
   /* ground */
   const SIZE=(WORLD_R+14)*2,SEG=220;
@@ -2049,16 +2124,16 @@ function buildWorld(){
     }
     geo.setAttribute('color',new THREE.BufferAttribute(col,3));
   }
-  const gm=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({vertexColors:true,flatShading:true,roughness:1,metalness:0}));gm.receiveShadow=true;worldG.add(gm);
+  const gm=new THREE.Mesh(geo,groundMat());gm.receiveShadow=true;worldG.add(gm);
   /* town plaza */
-  const plaza=new THREE.Mesh(new THREE.CircleGeometry(17.5,48),new THREE.MeshStandardMaterial({map:cobbleTex(),roughness:.95,flatShading:true}));plaza.rotation.x=-Math.PI/2;plaza.position.y=.04;plaza.receiveShadow=true;worldG.add(plaza);
+  const ct=cobbleTex(),plaza=new THREE.Mesh(new THREE.CircleGeometry(17.5,64),new THREE.MeshStandardMaterial({map:ct,bumpMap:ct.userData.bump,bumpScale:2.2,roughness:.9}));plaza.rotation.x=-Math.PI/2;plaza.position.y=.04;plaza.receiveShadow=true;worldG.add(plaza);
   const edge=new THREE.Mesh(new THREE.RingGeometry(17.5,18.3,48),new THREE.MeshStandardMaterial({color:0x6b6558,roughness:1,flatShading:true}));edge.rotation.x=-Math.PI/2;edge.position.y=.06;worldG.add(edge);
   const safe=new THREE.Mesh(new THREE.RingGeometry(18.9,19.1,64),flatMat(0x8fe8ff,.35));safe.rotation.x=-Math.PI/2;safe.position.y=.08;worldG.add(safe);
   /* fountain */
   const stone=M(0x9a96a8,{roughness:.9}),water=M(0x5ec8ff,{emissive:0x2a80b0,emissiveIntensity:.5,transparent:true,opacity:.85});
   CY(2.8,3.1,.9,stone,0,.45,0,worldG,16);CY(2.3,2.3,.6,water,0,.85,0,worldG,16);CY(.5,.7,2.6,stone,0,1.5,0,worldG,8);SP(.8,stone,0,2.9,0,worldG,8,6);
   const fgl=glow(0x7fd6ff,6,.35);fgl.position.set(0,2,0);worldG.add(fgl);addObst(0,0,3.2);
-  {const em=new THREE.Mesh(new THREE.PlaneGeometry(17,17),new THREE.MeshBasicMaterial({map:emblemTex(),transparent:true,opacity:.5,blending:THREE.AdditiveBlending,depthWrite:false}));em.rotation.x=-Math.PI/2;em.position.y=.075;worldG.add(em);WORLD.emblem=em}
+  {const em=new THREE.Mesh(new THREE.PlaneGeometry(17,17),new THREE.MeshBasicMaterial({map:emblemTex(),transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));em.rotation.x=-Math.PI/2;em.position.y=.075;worldG.add(em);WORLD.emblem=em}
   {const fl=instMesh(new THREE.IcosahedronGeometry(.2,0),M(0xffffff),22);fl.castShadow=false;const fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff];
     for(let i=0;i<22;i++){const a=i/22*TAU;instSet(fl,i,Math.cos(a)*4.5,.28,Math.sin(a)*4.5,1,1,1,0,fc[i%4])}instDone(fl)}
   /* torches */
@@ -2129,13 +2204,13 @@ function buildWorld(){
   {const N=sc(190,1),sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x7a5434,{roughness:.95,flatShading:false}),N),rd=instMesh(treeGeo('round'),sm,N),pn=instMesh(treeGeo('pine'),sm,N);let k=0,kr=0,kp=0;
     const cols=[0x4c9a46,0x5aae4e,0x3e8a40,0x68b856,0x7ab84a],pcols=[0x2e7a46,0x34864c,0x286e40];
     placeIn(1,N,1.2,(i,x,z)=>{const s=.8+R()*.7,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);
-      if(R()<.55)instSet(rd,kr++,x,0,z,s,s*(.9+R()*.25),s,ry,cols[Math.floor(R()*cols.length)]);else instSet(pn,kp++,x,0,z,s,s*(.95+R()*.3),s,ry,pcols[Math.floor(R()*3)]);
-      addObst(x,z,.6*s+.2);k=i+1});
+      let cm,ci;if(R()<.55){cm=rd;ci=kr;instSet(rd,kr++,x,0,z,s,s*(.9+R()*.25),s,ry,cols[Math.floor(R()*cols.length)])}else{cm=pn;ci=kp;instSet(pn,kp++,x,0,z,s,s*(.95+R()*.3),s,ry,pcols[Math.floor(R()*3)])}
+      regNode('wood',x,z,[[tr,i],[cm,ci]],addObst(x,z,.6*s+.2),s);k=i+1});
     tr.count=k;rd.count=kr;pn.count=kp;instDone(tr);instDone(rd);instDone(pn);
     const NR=sc(40,1),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff),NR);let kk=0;placeIn(1,NR,1.2,(i,x,z)=>{const s=.7+R()*1.0;instSet(rk,i,x,s*.5,z,s*1.2,s*.8,s,R()*6,0x8a8f98);addObst(x,z,s*.9);kk=i+1});rk.count=kk;instDone(rk)}
   // z2 dead forest
   {const N=sc(170,2),tr=instMesh(treeGeo('dead'),M(0x34303a,{roughness:1,flatShading:false}),N);let k=0;
-    placeIn(2,N,1,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,0,z,s,s*(.85+R()*.4),s,R()*6);addObst(x,z,.5*s+.2);k=i+1});tr.count=k;instDone(tr);
+    placeIn(2,N,1,(i,x,z)=>{const s=.8+R()*.9;instSet(tr,i,x,0,z,s,s*(.85+R()*.4),s,R()*6);regNode('wood',x,z,[[tr,i]],addObst(x,z,.5*s+.2),s);k=i+1});tr.count=k;instDone(tr);
     const NR=sc(70,2),gs=instMesh(new THREE.BoxGeometry(.9,1.4,.3),M(0x8a8f9a),NR);let kk=0;placeIn(2,NR,.8,(i,x,z)=>{const s=.8+R()*.5;instSet(gs,i,x,.7*s,z,s,s,s,R()*6);addObst(x,z,.55);kk=i+1});gs.count=kk;instDone(gs)}
   // z3 volcanic
   {const N=sc(130,3),rk=instMesh(new THREE.DodecahedronGeometry(1,0),M(0xffffff,{roughness:1}),N);let k=0;
@@ -2160,7 +2235,7 @@ function buildWorld(){
 
   // z7 frozen tundra: snowy pines + ice spires
   {const N=230,sm=M(0xffffff,{roughness:.85,flatShading:false}),tr=instMesh(treeGeo('trunk'),M(0x4a3a30,{flatShading:false}),N),cn=instMesh(treeGeo('pine'),sm,N),cn2=instMesh(treeGeo('snow'),M(0xf4faff,{roughness:.6,flatShading:false}),N);let k=0;
-    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);instSet(cn,i,x,0,z,s,s,s,ry,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,0,z,s,s,s,ry);addObst(x,z,.6*s+.2);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
+    placeIn(7,N,1.2,(i,x,z)=>{const s=.8+R()*.9,ry=R()*6;instSet(tr,i,x,0,z,s,s,s,ry);instSet(cn,i,x,0,z,s,s,s,ry,pick([0x2e5a5a,0x3a6a68,0x2a4a58]));instSet(cn2,i,x,0,z,s,s,s,ry);regNode('wood',x,z,[[tr,i],[cn,i],[cn2,i]],addObst(x,z,.6*s+.2),s);k=i+1});tr.count=cn.count=cn2.count=k;instDone(tr);instDone(cn);instDone(cn2);
     const N2=130,ic=instMesh(new THREE.OctahedronGeometry(1,0),M(0xffffff,{emissive:0x3a7aa8,emissiveIntensity:.7,roughness:.25}),N2);let k2=0;
     placeIn(7,N2,1.2,(i,x,z)=>{const s=.9+R()*1.6;instSet(ic,i,x,s*1.5,z,s*.55,s*1.6,s*.55,R()*6,pick([0xbfe6ff,0x8ad0ff,0xe8f6ff]));if(i%5===0){const g=glow(0x9fe0ff,s*4,.35);g.position.set(x,s*1.5,z);worldG.add(g);WORLD.pulse.push({s:g,b:.35,ph:R()*6})}addObst(x,z,s*.6);k2=i+1});ic.count=k2;instDone(ic)}
   // z8 ancient desert ruins: broken columns, cacti, glowing obelisks
@@ -2178,9 +2253,10 @@ function buildWorld(){
 
   /* ground cover */
   try{
-  const cover=(zi,n,geo,mat,fn)=>{n=Math.round(sc(n,zi)*(IS_TOUCH?.55:1));const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=!!mat.vertexColors;let k=0;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);k=i+1});m.count=k;instDone(m);return m};
-  const tm=M(0xffffff,{roughness:1}),gcols=[0x5a9a48,0x6aae52,0x4a8a40,0x7ab85a];
   const GB=grassGeo(12,.8,.1,.38,11),GL=grassGeo(7,.55,.3,.95,23),GT=grassGeo(12,1.2,.08,.3,37);
+  const cover=(zi,n,geo,mat,fn)=>{n=Math.round(sc(n,zi)*(IS_TOUCH?.55:1));const m=instMesh(geo,mat,n);m.castShadow=false;m.receiveShadow=!!mat.vertexColors;let k=0;const wd=geo===GB||geo===GL||geo===GT;placeIn(zi,n,.05,(i,x,z)=>{fn(m,i,x,z);if(wd)regNode('weed',x,z,[[m,i]],null);k=i+1});m.count=k;instDone(m);return m};
+  const tm=M(0xffffff,{roughness:1}),gcols=[0x5a9a48,0x6aae52,0x4a8a40,0x7ab85a];
+  
   cover(1,4200,GB,grassMat(),(m,i,x,z)=>{const s=.75+R()*.8;instSet(m,i,x,0,z,s,s*(.8+R()*.6),s,R()*6,gcols[Math.floor(R()*4)])});
   cover(1,1000,GL,grassMat(),(m,i,x,z)=>{const s=.8+R()*.8;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x3f8a3a,0x4e9c44,0x5aa84a]))});
   cover(1,500,GT,grassMat(),(m,i,x,z)=>{const s=.8+R()*.7;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x6aa84a,0x7ab852,0x8ab85a]))});
@@ -2231,7 +2307,7 @@ function updateAtmo(dt,zi){
   _nsc.copy(_ac.sc).lerp(_ct.set(0x93a8ff),nk*.85);_nrc.copy(_ac.rc).lerp(_ct.set(0xb4c4ff),nk*.5);
   if(scene.background&&scene.background.copy)scene.background.copy(_nb);
   if(scene.fog){if(scene.fog.color&&scene.fog.color.copy)scene.fog.color.copy(_nb);scene.fog.density=_ac.fd*(1+.22*nk)}
-  hemi.color.copy(_ns);hemi.groundColor.copy(_ng);hemi.intensity=_ac.hi*(1-.5*nk);sun.intensity=_ac.sun*(1-.7*nk);sun.color.copy(_nsc);rim.color.copy(_nrc);rim.intensity=_ac.ri*(1+.5*nk);
+  hemi.color.copy(_ns);hemi.groundColor.copy(_ng);hemi.intensity=_ac.hi*TUNE.hemi*(1-.5*nk);sun.intensity=_ac.sun*TUNE.sun*(1-.7*nk);sun.color.copy(_nsc);rim.color.copy(_nrc);rim.intensity=_ac.ri*TUNE.rim*(1+.5*nk);
 }
 function updateWorldFx(dt,t){
   GRASS_U.uTime.value=t;
@@ -2247,7 +2323,7 @@ function updateWorldFx(dt,t){
 /* ---------------- post processing: bloom + colour grade + vignette (setting: save.fx, default on) ---------------- */
 const POST={ok:false,bad:false,w:0,h:0};
 const FSV='varying vec2 vUv;void main(){vUv=uv;gl_Position=vec4(position.xy,0.,1.);}';
-function postMat(frag,uni){return new THREE.ShaderMaterial({uniforms:uni,vertexShader:FSV,fragmentShader:frag,depthTest:false,depthWrite:false})}
+function postMat(frag,uni){return new THREE.ShaderMaterial({uniforms:uni,vertexShader:FSV,fragmentShader:frag,depthTest:false,depthWrite:false,toneMapped:false})}
 function postInit(){
   const isGL2=renderer.capabilities&&renderer.capabilities.isWebGL2;
   const opt={minFilter:THREE.LinearFilter,magFilter:THREE.LinearFilter,format:THREE.RGBAFormat};
@@ -2256,20 +2332,20 @@ function postInit(){
   POST.b1=new THREE.WebGLRenderTarget(4,4,opt);POST.b2=new THREE.WebGLRenderTarget(4,4,opt);
   POST.cam=new THREE.OrthographicCamera(-1,1,1,-1,0,1);POST.scene=new THREE.Scene();
   POST.quad=new THREE.Mesh(new THREE.PlaneGeometry(2,2),null);POST.quad.frustumCulled=false;POST.scene.add(POST.quad);
-  POST.bright=postMat('uniform sampler2D tD;uniform float uTh;varying vec2 vUv;void main(){vec3 c=texture2D(tD,vUv).rgb;float l=dot(c,vec3(.2126,.7152,.0722));float k=smoothstep(uTh,uTh+.12,l);gl_FragColor=vec4(c*k*k,1.);}',{tD:{value:null},uTh:{value:.88}});
+  POST.bright=postMat('uniform sampler2D tD;uniform float uTh;varying vec2 vUv;void main(){vec3 c=texture2D(tD,vUv).rgb;float l=dot(c,vec3(.2126,.7152,.0722));float k=smoothstep(uTh,uTh+.5,l);gl_FragColor=vec4(c*k,1.);}',{tD:{value:null},uTh:{value:.88}});
   POST.blur=postMat('uniform sampler2D tD;uniform vec2 uDir;varying vec2 vUv;void main(){vec3 c=texture2D(tD,vUv).rgb*.2270;'
     +'c+=texture2D(tD,vUv+uDir*1.3846).rgb*.3162;c+=texture2D(tD,vUv-uDir*1.3846).rgb*.3162;'
     +'c+=texture2D(tD,vUv+uDir*3.2308).rgb*.0703;c+=texture2D(tD,vUv-uDir*3.2308).rgb*.0703;gl_FragColor=vec4(c,1.);}',{tD:{value:null},uDir:{value:new THREE.Vector2()}});
   POST.comp=postMat(
-    'uniform sampler2D tD;uniform sampler2D tB;uniform float uB;uniform float uT;uniform vec2 uRes;varying vec2 vUv;'
+    THREE.ShaderChunk.tonemapping_pars_fragment+'uniform float uSat;uniform float uCon;uniform float uVig;uniform sampler2D tD;uniform sampler2D tB;uniform float uB;uniform float uT;uniform vec2 uRes;varying vec2 vUv;'
     +'float hash(vec2 p){return fract(sin(dot(p,vec2(12.9898,78.233)))*43758.5453);}'
     +'void main(){vec3 c=texture2D(tD,vUv).rgb;vec3 b=texture2D(tB,vUv).rgb;c+=b*uB;'
-    +'float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,1.16);'
-    +'c*=mix(vec3(.93,.97,1.07),vec3(1.06,1.01,.93),smoothstep(.15,.85,l));'
-    +'c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),.32);c=c*.97+.015;'
-    +'vec2 d=vUv-.5;d.x*=uRes.x/uRes.y;float v=smoothstep(1.05,.32,length(d));c*=mix(.66,1.,v);'
+    +'c=ACESFilmicToneMapping(c);float l=dot(c,vec3(.299,.587,.114));c=mix(vec3(l),c,uSat);'
+    +'c*=mix(vec3(.96,.985,1.04),vec3(1.025,1.005,.97),smoothstep(.12,.8,l));'
+    +'c=clamp(c,0.,1.);c=mix(c,c*c*(3.-2.*c),uCon);'
+    +'vec2 d=vUv-.5;d.x*=uRes.x/uRes.y;float v=smoothstep(1.05,.32,length(d));c*=mix(uVig,1.,v);'
     +'c+=(hash(vUv*uRes+uT)-.5)*.018;gl_FragColor=vec4(c,1.);}',
-    {tD:{value:null},tB:{value:null},uB:{value:.5},uT:{value:0},uRes:{value:new THREE.Vector2(1,1)}});
+    {toneMappingExposure:{value:1},uSat:{value:1.1},uCon:{value:.3},uVig:{value:.62},tD:{value:null},tB:{value:null},uB:{value:.4},uT:{value:0},uRes:{value:new THREE.Vector2(1,1)}});
   POST.ok=true;
 }
 function postSize(){
@@ -2284,11 +2360,12 @@ function renderFrame(){
   try{
     if(!POST.ok)postInit();postSize();
     renderer.setRenderTarget(POST.rt);renderer.render(scene,camera);
-    POST.bright.uniforms.tD.value=POST.rt.texture;postPass(POST.bright,POST.b1);
+    POST.bright.uniforms.uTh.value=TUNE.th;POST.bright.uniforms.tD.value=POST.rt.texture;postPass(POST.bright,POST.b1);
     for(let i=0;i<2;i++){
       POST.blur.uniforms.tD.value=POST.b1.texture;POST.blur.uniforms.uDir.value.set((1+i)/POST.bw,0);postPass(POST.blur,POST.b2);
       POST.blur.uniforms.tD.value=POST.b2.texture;POST.blur.uniforms.uDir.value.set(0,(1+i)/POST.bh);postPass(POST.blur,POST.b1);
     }
+    {const u=POST.comp.uniforms;u.toneMappingExposure.value=TUNE.exp;u.uSat.value=TUNE.sat;u.uCon.value=TUNE.con;u.uVig.value=TUNE.vig;u.uB.value=TUNE.bloom}
     POST.comp.uniforms.tD.value=POST.rt.texture;POST.comp.uniforms.tB.value=POST.b1.texture;POST.comp.uniforms.uT.value=(POST.comp.uniforms.uT.value+1)%997;
     postPass(POST.comp,null);
   }catch(e){POST.bad=true;console.error('post fx disabled',e);try{renderer.setRenderTarget(null)}catch(_){}renderer.render(scene,camera)}
@@ -3077,6 +3154,64 @@ function updateMobLabels(){
 }
 function hideMobLabels(){for(const L of mobLabels)L.el.style.display='none'}
 
+/* ---------- gathering: cut weeds (grass) and chop trees -> materials; mastery speeds it up ---------- */
+const GAT={act:null,cut:[],fall:[],pend:{weed:0,wood:0},busy:false,tf:0,_m:new THREE.Matrix4(),_r:new THREE.Matrix4(),_z:new THREE.Matrix4().makeScale(0,0,0)};
+const gatLvNow=()=>gatLvOf(SES.pf&&SES.pf.gather?SES.pf.gather.xp:0);
+function gatTime(n){const sp=gatSpeed(gatLvNow());return n.k==='weed'?Math.max(.2,.6/sp):Math.max(.35,(.9+.9*n.s)/sp)}
+function nearNode(){
+  if(!P||P.dead||UI.modal||GAT.act)return null;
+  const cx=Math.floor(P.x/8),cz=Math.floor(P.z/8);let best=null,bd=1e9;
+  for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){const a=WORLD.ngrid[(cx+i)+','+(cz+j)];if(!a)continue;
+    for(const n of a){if(n.cut)continue;const reach=n.k==='weed'?1.9:2.5+n.s*.4,d=d2(n.x,n.z,P.x,P.z);if(d>=reach*reach)continue;const sc=Math.sqrt(d)-(n.k==='wood'?2.4:0);if(sc<bd){bd=sc;best=n}}}
+  return best;
+}
+function startGather(n){if(!n||GAT.act||!P||P.dead)return;GAT.act={n,t:0,need:gatTime(n),px:P.x,pz:P.z,pt:0};P.face=Math.atan2(n.x-P.x,n.z-P.z)}
+function cancelGather(){GAT.act=null}
+function gatPart(n,fn){for(let q=0;q<n.parts.length;q++){const m=n.parts[q][0],i=n.parts[q][1];fn(m,i,q);m.instanceMatrix.needsUpdate=true}}
+function cutNode(n){
+  n.cut=n.k==='weed'?45:100;n.mats=[];
+  for(const[m,i]of n.parts){const mm=new THREE.Matrix4();m.getMatrixAt(i,mm);n.mats.push(mm)}
+  if(n.ob)n.ob.r=0;GAT.cut.push(n);GAT.fall.push({n,t:0,dur:n.k==='weed'?.16:.6,dir:Math.random()<.5?1:-1});
+}
+function tickGather(dt){
+  if(!P)return;
+  for(let i=GAT.fall.length-1;i>=0;i--){const f=GAT.fall[i],n=f.n;f.t+=dt;const u=Math.min(1,f.t/f.dur);
+    gatPart(n,(m,idx,q)=>{
+      if(u>=1){m.setMatrixAt(n.parts[q][1],GAT._z);return}
+      if(n.k==='weed')GAT._r.makeScale(1,1-u,1);else GAT._r.makeRotationX(f.dir*u*u*1.5);
+      GAT._m.copy(n.mats[q]).multiply(GAT._r);m.setMatrixAt(n.parts[q][1],GAT._m)});
+    if(u>=1)GAT.fall.splice(i,1)}
+  for(let i=GAT.cut.length-1;i>=0;i--){const n=GAT.cut[i];n.cut-=dt;if(n.cut>0)continue;
+    if(GAT.fall.some(f=>f.n===n)){n.cut=.5;continue}
+    gatPart(n,(m,idx,q)=>m.setMatrixAt(n.parts[q][1],n.mats[q]));if(n.ob)n.ob.r=n.or;n.cut=0;n.mats=null;GAT.cut.splice(i,1)}
+  const a=GAT.act;
+  if(a){
+    if(P.dead||UI.modal||P.dashT>0||Math.hypot(P.x-a.px,P.z-a.pz)>.7){cancelGather()}
+    else{
+      a.t+=dt;a.pt-=dt;
+      if(a.pt<=0){a.pt=a.n.k==='weed'?.1:.13;const wc=a.n.k==='weed'?[0x6fcf4a,0x9be063,0x4fae3a]:[0xc8935a,0x8a5e36,0xe0b27a];
+        emit(a.n.x+rnd(-.4,.4),a.n.k==='weed'?.4:rnd(.5,1.6),a.n.z+rnd(-.4,.4),rnd(-1.6,1.6),rnd(1.2,2.8),rnd(-1.6,1.6),rnd(.4,.7),pick(wc),9);
+        sfx(a.n.k==='weed'?'swing':'hit',.35)}
+      if(a.t>=a.need){const n=a.n;cancelGather();cutNode(n);GAT.pend[n.k]++;
+        dmgNum(n.x,n.k==='weed'?1.2:2.4,n.z,'+'+MATS[n.k].name,'gold');sfx('pickup');
+        for(let i=0;i<(n.k==='weed'?6:12);i++)emit(n.x,rnd(.3,1.4),n.z,rnd(-2.2,2.2),rnd(1,3.4),rnd(-2.2,2.2),rnd(.5,.9),pick(n.k==='weed'?[0x6fcf4a,0x9be063]:[0xc8935a,0xe0b27a]),9)}
+    }
+  }
+  GAT.tf+=dt;if(GAT.tf>1.2){GAT.tf=0;flushGather()}
+}
+async function flushGather(){
+  const w=GAT.pend.weed,d=GAT.pend.wood;if(GAT.busy||!(w+d)||!SES.token)return;
+  if(typeof claiming!=='undefined'&&claiming)return;
+  GAT.pend.weed=GAT.pend.wood=0;GAT.busy=true;const lv0=gatLvNow();
+  try{
+    const r=await API.call('gather',w,d);
+    if(r&&r.up||gatLvNow()>lv0){const lv=gatLvNow();UI.toast('채집 숙련 Lv.'+lv+' 달성! 채집 속도 +'+Math.round((gatSpeed(lv)-1)*100)+'% · 추가 획득 '+(gatDouble(lv)*100).toFixed(1)+'%');sfx('level')}
+    if(r&&((r.weed|0)>w||(r.wood|0)>d))dmgNum(P.x,2.8,P.z,'추가 획득!','gold');
+    UI.refreshHud();UI.afterProfile&&UI.afterProfile();if(UI.modal&&UI.rerender)UI.rerender();
+  }catch(e){if(/NET/.test(e.message)){GAT.pend.weed+=w;GAT.pend.wood+=d}}
+  GAT.busy=false;if(GAT.pend.weed+GAT.pend.wood>0)setTimeout(flushGather,0);
+}
+
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const UI={modal:null,rerender:null,sel:null,toastT:0,vgT:0,lastHud:0,lastMini:0,chatLines:[],trade:null,tradeTimer:0};
@@ -3090,7 +3225,7 @@ UI.renderPeers=()=>{let n=1;for(const k in NET.peers)n++;$('netn').textContent=N
 UI.afterProfile=()=>{if(UI.rerender)UI.rerender()};
 UI.feed=d=>{
   let txt,col='#ccc';
-  if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='armor'){txt=armorName(d.base);col=TIER_COL[wTier(d.base)-1]}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
+  if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='armor'){txt=armorName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='mat'){const p=MATS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
   UI.feedText('획득: '+txt,col);
 };
 UI.feedText=(txt,col)=>{const f=$('feed'),d=document.createElement('div');d.textContent=txt;d.style.borderLeftColor=col||'#888';f.appendChild(d);while(f.children.length>5)f.removeChild(f.children[0]);setTimeout(()=>{try{f.removeChild(d)}catch(e){}},6000)};
@@ -3127,11 +3262,12 @@ const fmtG=n=>fmtN(n)+' G';
 function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base,it.enh)):it.kind==='armor'?'방어 '+fmtN(armorDef(it.base,it.enh))+' · 체력 +'+fmtN(armorHp(it.base,it.enh)):''}
 function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</span>').join('')}
 function itemRow(it,o){
-  o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:'#e4e6ec';let sub;
+  o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:'#e4e6ec';let sub;
   if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)}
   else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
+  else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
   else{const p=POTIONS[it.base];sub=p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc}
-  return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
+  return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'||it.kind==='mat'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
 const myItems=()=>SES.pf.items.filter(i=>!i.listed);
 const byId=id=>SES.pf.items.find(i=>i.id==id);
@@ -3143,7 +3279,9 @@ async function guarded(fn,okMsg){
 /* ---------- inventory ---------- */
 function statsHtml(){
   derive();const pen=Math.round(S.armor*100);
-  return '<div class="kv"><span>공격력</span><span>'+fmtN(S.atk)+'</span><span>최대 체력</span><span>'+fmtN(S.maxHp)+'</span><span>공격 속도</span><span>'+S.aps.toFixed(2)+'/초</span><span>치명타</span><span>'+Math.round(S.crit*100)+'%</span><span>이동 속도</span><span>'+S.spd.toFixed(1)+'</span><span>방어력</span><span>'+fmtN(S.def||0)+'</span><span>피해 감소</span><span>'+pen+'%</span>'+(S.vamp?'<span>흡혈</span><span>'+Math.round(S.vamp*100)+'%</span>':'')+'</div>';
+  const gx=(SES.pf.gather&&SES.pf.gather.xp)||0,gl=gatLvOf(gx),gp=gl>=GAT_MAX?100:Math.floor((gx-(gl>1?gatNeed(gl-1):0))/(gatNeed(gl)-(gl>1?gatNeed(gl-1):0))*100);
+  const gh='<div class="dim" style="margin-top:6px">채집 숙련 <b style="color:#7fd35a">Lv.'+gl+(gl>=GAT_MAX?' (최대)':' · '+gp+'%')+'</b> · 채집 속도 +'+Math.round((gatSpeed(gl)-1)*100)+'% · 추가 획득 '+(gatDouble(gl)*100).toFixed(1)+'%</div>';
+  return '<div class="kv"><span>공격력</span><span>'+fmtN(S.atk)+'</span><span>최대 체력</span><span>'+fmtN(S.maxHp)+'</span><span>공격 속도</span><span>'+S.aps.toFixed(2)+'/초</span><span>치명타</span><span>'+Math.round(S.crit*100)+'%</span><span>이동 속도</span><span>'+S.spd.toFixed(1)+'</span><span>방어력</span><span>'+fmtN(S.def||0)+'</span><span>피해 감소</span><span>'+pen+'%</span>'+(S.vamp?'<span>흡혈</span><span>'+Math.round(S.vamp*100)+'%</span>':'')+'</div>'+gh;
 }
 function setBonusHtml(){
   derive();let h='';
@@ -3156,7 +3294,7 @@ function equipRow(){
   return '<div class="eqrow">'+ASLOTS.map(sl=>{const it=pf.items.find(i=>i.kind==='armor'&&i.eq&&aSlot(i.base)===sl);return '<div class="eqs'+(it?'':' emp')+'" '+(it?'data-a="sel" data-v="'+it.id+'"':'')+'>'+(it?itemIcon(it):ico(ic(sl,'#667',26),'#667'))+'<span>'+ASLOT_N[sl]+(it&&it.enh?' +'+it.enh:'')+'</span></div>'}).join('')+'</div>';
 }
 function openInventory(){
-  UI.sel=null;
+  UI.sel=null;flushGather();
   UI.page('가방',()=>{
     const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||(a.kind>b.kind?-1:1)||(wTier(b.base||'x_1')-wTier(a.base||'x_1')));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
@@ -3168,7 +3306,8 @@ function openInventory(){
         if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 장비는 판매할 수 없습니다.</div>';
         if(sel.kind==='weapon'&&wType(sel.base))det+='<div class="dim" style="margin-top:6px">'+WTMOD[wType(sel.base)].d+'</div>';
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
-      }else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
+      }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
+      else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
     const pf=SES.pf,jn=JOBS[pf.job].name;
     return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
@@ -3178,12 +3317,14 @@ function openInventory(){
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
 UI.handlers.none=()=>{};
 UI.handlers.equip=v=>{sfx('equip');return guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel();netPresence()}})};
+UI.handlers.sellall=v=>{const it=byId(+v);if(!it)return;sfx('coin');guarded(()=>API.call('sell',+v,it.qty),'모두 판매했습니다')};
 UI.handlers.sell=v=>{const it=byId(+v);if(!it)return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 UI.handlers.usep=v=>{usePotionKey(v);setTimeout(()=>UI.rerender&&UI.rerender(),50)};
 UI.handlers.toauc=v=>{UI.close();openAuction('post',+v)};
 
 /* ---------- shop ---------- */
 function openShop(){
+  flushGather();
   let tab='buy',qty=1,aset='plate',atier=1;
   UI.page('상점',()=>{
     const pf=SES.pf;let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='buy'?'on':'')+'" data-a="stab" data-v="buy">구매</div><div class="tab '+(tab==='armor'?'on':'')+'" data-a="stab" data-v="armor">방어구</div><div class="tab '+(tab==='sell'?'on':'')+'" data-a="stab" data-v="sell">판매</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
@@ -3198,13 +3339,15 @@ function openShop(){
       for(const sl of ASLOTS){const b=sl+'_'+atier+'_'+aset,pr=AVALUE[atier-1],cl=TIER_COL[atier-1];h+='<div class="item" style="--tc:'+cl+'">'+ico(ic(sl,cl,26),cl)+'<div><div class="nm" style="color:'+cl+'">'+armorName(b)+'</div><div class="sub">방어 '+armorDef(b,0)+' · 체력 +'+armorHp(b,0)+'</div></div><div class="rt"><div class="gold">'+fmtG(pr)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<pr?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
-      const items=myItems().filter(i=>!i.eq);
-      h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(isGear(i)?sellValue(i):Math.floor(POTIONS[i.base].price*.25))+'</div>'+(i.kind==='potion'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
+      const items=myItems().filter(i=>!i.eq);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
+      if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">채집 재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
+      h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(itemPrice(i))+'</div>'+(i.kind==='potion'||i.kind==='mat'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }
     return h;
   });
   UI.handlers.stab=v=>{tab=v;UI.rerender()};UI.handlers.aset=v=>{aset=v;UI.rerender()};UI.handlers.atier=v=>{atier=+v;UI.rerender()};UI.handlers.sqty=v=>{qty=+v;UI.rerender()};
   UI.handlers.buy=v=>{sfx('coin');return guarded(()=>API.call('buy',v,qty),'구매했습니다')};
+  UI.handlers.sellmats=async()=>{sfx('coin');await guarded(async()=>{for(const i of myItems().filter(x=>x.kind==='mat'))await API.call('sell',i.id,i.qty)},'채집 재료를 모두 판매했습니다')};
   UI.handlers.sellrow=async v=>{const it=byId(+v);if(!it)return;if(isGear(it)&&(it.enh>=5||(it.ench||[]).length)&&!(await UI.confirm('강화·인첸트된 장비입니다.\n정말 판매할까요?')))return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 }
 
@@ -3392,8 +3535,8 @@ function nearNpc(){
   return best;
 }
 function interact(){
-  if(UI.modal)return;const n=nearNpc();if(!n)return;
-  flushKills();
+  if(UI.modal)return;const n=nearNpc();if(!n){const nd=nearNode();if(nd)startGather(nd);return}
+  flushKills();flushGather();
   ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob})[n.kind]();
 }
 
@@ -3455,8 +3598,10 @@ UI.hudTick=function(dt){
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];qs[i].querySelector('.cdm').style.transform='scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1)+')'}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
-  const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
-  if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
+  const n=nearNpc(),pr=$('prompt'),use=$('tb-use'),nd=!n?nearNode():null,ga=GAT.act;
+  if(ga&&!UI.modal){const pc=Math.min(100,Math.round(ga.t/ga.need*100)),lb=(ga.n.k==='weed'?'잡초 베는 중':'벌목 중')+' '+pc+'%';pr.innerHTML=lb;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=pc+'%'}}
+  else if(nd){const lb=nd.k==='weed'?'잡초 베기':'나무 베기';pr.innerHTML=(IS_TOUCH?'':'<kbd>F</kbd>')+lb;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=lb}}
+  else if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
   else{pr.classList.remove('show');if(use)use.classList.add('hidden')}
   UI.lastMini+=dt;if(UI.lastMini>.12){UI.lastMini=0;drawMini();updatePartyBars()}
 };
@@ -3831,6 +3976,7 @@ window.onKeyPress=(k,e)=>{
   if(k==='p')return openParty();
   if(k==='j')return openDaily();
   if((k==='e'||k==='f')&&nearNpc()){interact();return}
+  if(k==='f'){interact();return}
   if(k==='e')return trySkill('e');
   if(k==='q')return trySkill('q');
   if(k==='r')return trySkill('r');
@@ -3894,7 +4040,7 @@ function frame(dt){
     const modal=!!UI.modal;
     playerFacing(dt);
     if(P.dead||modal){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
-    tickPlayer(dt);
+    tickPlayer(dt);tickGather(dt);
     if(!modal)tryAttackInput();
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);
     netUpdate(dt);
@@ -3938,7 +4084,7 @@ async function boot(){
     if(s&&s.mode===mode&&s.name&&s.token){await API.resume(s.name,s.token);enterGame()}
   }catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}}
 }
-if(window.__RW_TEST)window.__RW={mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,WORLD,GAT,nearNode,startGather,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

@@ -145,7 +145,7 @@ function makeHero0(cls,tint){
   const skin=M(0xf1c7a0),dark=M(0x262a40);
   const legL=grp(-.22,.85,0,body),legR=grp(.22,.85,0,body),torso=grp(0,1.15,0,body),head=grp(0,1.95,0,body),armL=grp(-.66,1.6,0,body),armR=grp(.66,1.6,0,body);
   const o={g,body,torso,head,legL,legR,armL,armR,cls,weapon:null,shadowBlob:null};
-  const eye=(x,y,z)=>{const e=SP(.05,M(0x10131f,{roughness:.2}),x,y,z,head,6,5);e.scale.set(1,1.25,.7);SP(.016,EM(0xffffff,1),x+.018,y+.025,z+.03,head,4,3);BX(.11,.025,.03,M(0x2a1e18),x,y+.1,z-.01,head).rotation.z=x>0?-.15:.15;return e};
+  const eye=(x,y,z)=>SP(.045,M(0x10131f),x,y,z,head,6,5);
   if(cls==='warrior'){
     const steel=M(0xaab6d6,{metalness:.55,roughness:.4}),blue=M(tint||0x2f56c8),gold=M(0xe8b73a,{metalness:.6,roughness:.35});
     CY(.17,.15,.8,steel,0,-.4,0,legL);CY(.17,.15,.8,steel,0,-.4,0,legR);BX(.3,.18,.46,dark,0,-.78,.08,legL);BX(.3,.18,.46,dark,0,-.78,.08,legR);

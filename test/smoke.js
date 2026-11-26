@@ -226,6 +226,23 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
    {const d2=JSON.parse(localStorage.getItem('rw_local_db_v1'));d2.acc['일일시험'].tokens=80;d2.acc['일일시험'].ts=Date.now();localStorage.setItem('rw_local_db_v1',JSON.stringify(d2))}
    const k0=g.SES.pf.gold;g.registerKill(gm);await sleep(60);await g.flushKills();await sleep(60);await g.flushKills();T(g.SES.pf.gold>k0,'golden kill paid');
   }
+  { // gathering: weeds + trees -> inventory -> shop sell, mastery
+    const nodes=g.WORLD.nodes;T(nodes.some(n=>n.k==='weed')&&nodes.some(n=>n.k==='wood'),'gather nodes registered (weed+wood)');
+    const wd=nodes.find(n=>n.k==='weed'),tr=nodes.filter(n=>n.k==='wood').sort((a,b)=>b.s-a.s)[0];
+    g.P.x=wd.x;g.P.z=wd.z;g.P.dead=false;g.UI.modal=null;const nn=g.nearNode();T(nn&&nn.k==='weed','near a weed node');
+    g.startGather(nn);T(!!g.GAT.act,'gather channel starts');for(let i=0;i<60&&g.GAT.act;i++)g.tickGather(.05);T(!g.GAT.act&&wd.cut>0,'weed cut after channel');
+    g.P.x=tr.x;g.P.z=tr.z;g.GAT.act=null;const tn=g.nearNode();T(tn&&tn.k==='wood','near a tree node');
+    const need0=g.GAT.act;g.startGather(tn);const nd=g.GAT.act.need;T(nd>1.2,'big tree takes long at Lv1 ('+nd.toFixed(2)+'s)');for(let i=0;i<120&&g.GAT.act;i++)g.tickGather(.05);T(tr.cut>0,'tree chopped');
+    g.UI.modal=null;await g.flushGather();for(let k=0;k<20&&(g.GAT.busy||g.GAT.pend.weed+g.GAT.pend.wood>0);k++)await sleep(30);await sleep(30);
+    const wi=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='weed'),di=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='wood');
+    T(wi&&wi.qty>=1&&di&&di.qty>=1,'weed + wood in inventory');T(g.SES.pf.gather&&g.SES.pf.gather.xp>=6,'mastery xp gained');
+    const gold0=g.SES.pf.gold,wq=wi.qty;await g.API.call('sell',wi.id,wq);T(g.SES.pf.gold-gold0===10*wq,'weed sells for 10G each');
+    const g1=g.SES.pf.gold,dq=di.qty;await g.API.call('sell',di.id,dq);T(g.SES.pf.gold-g1===20*dq,'wood sells for 20G each');
+    T(!g.SES.pf.items.some(i=>i.kind==='mat'),'materials gone after selling');
+    T(g.gatLvOf(0)===1&&g.gatLvOf(25)===2&&g.gatLvOf(1e6)===20,'mastery level curve');
+    g.tickGather(200);T(wd.cut===0&&tr.cut===0,'nodes respawn');
+    g.openInventory();g.UI.close&&g.UI.close();
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

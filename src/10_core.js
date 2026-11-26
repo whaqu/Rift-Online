@@ -167,6 +167,9 @@ const canvas=$('gl');
 const renderer=new THREE.WebGLRenderer({canvas,antialias:true,powerPreference:'high-performance'});
 renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
 renderer.shadowMap.enabled=true;renderer.shadowMap.type=THREE.PCFSoftShadowMap;
+/* look tuning: lights are scaled so bright albedo never clips, ACES filmic curve rolls highlights off */
+const TUNE={th:1.0,hemi:.72,sun:.92,rim:1,exp:1.0,sat:1.14,con:.36,bloom:.3,vig:.78};
+renderer.toneMapping=THREE.ACESFilmicToneMapping;renderer.toneMappingExposure=TUNE.exp;
 const scene=new THREE.Scene();scene.background=new THREE.Color(0x0d1020);
 const camera=new THREE.PerspectiveCamera(40,1,.5,320);
 const hemi=new THREE.HemisphereLight(0xbfd8ff,0x2a2038,1.0);scene.add(hemi);

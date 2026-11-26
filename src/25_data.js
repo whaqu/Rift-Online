@@ -192,6 +192,14 @@ const POTIONS={
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
 };
+/* gathering materials (sold at the shop: weed 10G, wood 20G; reserved for future upgrade recipes) */
+const MATS={
+  weed:{name:'잡초',price:10,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 10G · 강화 재료로도 쓰일 예정'},
+  wood:{name:'목재',price:20,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 20G · 강화 재료로도 쓰일 예정'}
+};
+const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
+const gatSpeed=lv=>1+.16*(lv-1),gatDouble=lv=>.015*(lv-1);
+const itemPrice=it=>isGear(it)?sellValue(it):it.kind==='mat'?(MATS[it.base]?MATS[it.base].price:0):Math.floor(POTIONS[it.base].price*.25);
 const POTION_ORDER=['hp1','hp2','hp3','spd','atk','def'];
 const ENCH={
   burn:{name:'화염',d:'공격 시 화상 (초당 공격력의 {v}%)',per:25,col:'#ff7a2a'},
@@ -207,13 +215,13 @@ const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
   {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x5fa84a,alt:0x4f9a40},
   {id:2,name:'망자의 숲',r0:72,r1:128,lo:8,hi:18,types:['skel','skel','archer','wraith'],ground:0x4a4f58,alt:0x3e4350},
-  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x7a4a38,alt:0x6a3c30},
-  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x4a4a8a,alt:0x3a3a78},
+  {id:3,name:'화염 황무지',r0:128,r1:186,lo:16,hi:28,types:['bomber','skel','archer','bat','hound','hound'],ground:0x5e4a44,alt:0x524038},
+  {id:4,name:'수정 협곡',r0:186,r1:246,lo:26,hi:42,types:['golem','archer','bomber','spider','spider'],ground:0x585a86,alt:0x4a4c78},
   {id:5,name:'뇌우 고원',r0:246,r1:308,lo:40,hi:62,types:['golem','bomber','archer','bat','stormhawk','stormhawk'],ground:0x5a6678,alt:0x4a5668},
   {id:6,name:'공허의 균열',r0:308,r1:372,lo:60,hi:72,types:['golem','skel','archer','phantom','phantom','wraith'],ground:0x3a2a52,alt:0x2e2044},
-  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['yeti','frostwolf','frostwolf','icewitch'],ground:0xcfe0ee,alt:0xb4cbe0},
-  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['scorpion','scorpion','mummy','mummy','jackal'],ground:0xc8a468,alt:0xb48f55},
-  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['sentinel','sentinel','seraph','stormhawk'],ground:0xd8d4e8,alt:0xbfb8dc}
+  {id:7,name:'얼어붙은 설원',r0:372,r1:438,lo:70,hi:80,types:['yeti','frostwolf','frostwolf','icewitch'],ground:0xb8cce4,alt:0xa4bcd8},
+  {id:8,name:'고대 사막 유적',r0:438,r1:506,lo:78,hi:89,types:['scorpion','scorpion','mummy','mummy','jackal'],ground:0xb8955a,alt:0xb48f55},
+  {id:9,name:'천공의 성역',r0:506,r1:576,lo:88,hi:99,types:['sentinel','sentinel','seraph','stormhawk'],ground:0xc4c0d8,alt:0xb0acc8}
 ];
 const WORLD_R=576;
 /* day / night: one cycle = 16 min on the shared wall clock, night is phase [.55,.95) (same rule as the server) */
@@ -230,6 +238,8 @@ const mobDmg=ml=>6+ml*2.2;
 
 /* ---------------- svg icons ---------------- */
 const ICONS={
+  leaf:'<path d="M20 3C10 3 4 8 4 15c0 2 .8 3.600 2 4.600C6.600 14.500 10 10.500 15 8.500c-4 3-6.500 6.500-7.500 11C9 20.200 10.500 20.500 12 20.500c6 0 8-7.500 8-17.500z"/>',
+  log:'<path d="M3 9c0-2 4-3.500 9-3.500s9 1.500 9 3.500v7c0 2-4 3.500-9 3.500S3 18 3 16V9zm9-1.600c-3.800 0-6.400.8-6.400 1.600s2.600 1.600 6.400 1.600 6.400-.8 6.400-1.600S15.800 7.400 12 7.400z"/>',
   sword:'<path d="M14.5 3.5l6 .1.1 6-9.8 9.8-2.4-2.4L14.5 3.5zM7 14l3 3-2.2 2.2-1.6-.5-2.4 2.3-1-1 2.3-2.4-.5-1.6L7 14z"/>',
   staff:'<path d="M16 2a4 4 0 013 6.6l-1.6 1.6-3.2-3.2L13.8 5.4A4 4 0 0116 2zM11.6 8.4l4 4L5.4 22.6 1.4 18.6 11.6 8.4z"/>',
   bow:'<path d="M5 2c9 2 15 8 17 17-1 .3-2 .6-3 .8C16 12 12 8 4.2 5.2 4.5 4.2 4.7 3.1 5 2zm-1 5.2l12.8 12.8-1.4 1.4L2.6 8.6 4 7.2z"/>',
@@ -269,10 +279,12 @@ function skIcon(sk,sz){return ic(SKICON[sk.type]||'star',hex6(sk.col||0xffffff),
 function ico(svg,col){return '<span class="ico" style="--tc:'+col+'">'+svg+'</span>'}
 function ic(n,col,sz){return '<svg class="ic" viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="'+(col||'currentColor')+'">'+(ICONS[n]||'')+'</svg>'}
 function itemIcon(it){
+  if(it.kind==='mat'){const m=MATS[it.base],c=m?m.col:'#fff';return ico(ic(m?m.icon:'leaf',c,26),c)}
   if(it.kind==='potion'){const p=POTIONS[it.base],c=p?p.col:'#fff';return ico(ic('potion',c,26),c)}
   const c=TIER_COL[wTier(it.base)-1];if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
+  if(it.kind==='mat'){const m=MATS[it.base];return m?m.name:it.base}
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
   return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
 }

@@ -1,0 +1,7 @@
+# alpha snapshots (oldest → newest)
+- a1_10classes_6zones — 10 classes, 2-step advancement, Lv99, day/night, daily rewards
+- a2_weapon-armor_9zones — weapon kinds, armor/set bonuses, 9 zones
+- a3_monsters_feel_perks — 19 monsters, hit feel/sound, level-up perks
+- a4_weapon-looks — per-weapon appearance
+- a5_hoods_grass_fx_trees — hoods, grass, post-processing, trees (state just before the quality pass)
+- `a6_quality-pass_gather.html` — 외관 품질 패스(ACES 톤매핑·조명 재조정, 마을 돌바닥 텍스처, 구역별 절차적 지면 디테일, 얼굴 초기형 복원) + 채집 시스템(잡초 10G·목재 20G, 채집 숙련 Lv1~20).
