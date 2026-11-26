@@ -53,8 +53,8 @@ svg.ic{vertical-align:middle;flex:none}
 #pinfo .r3{display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:var(--dim)}
 #perkrow{pointer-events:auto;display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;cursor:pointer;min-height:0}#perkrow:empty{display:none}
 #perkrow .pk{font-size:10px;font-weight:700;padding:1px 5px;border-radius:7px;background:rgba(10,12,20,.6);border:1px solid rgba(255,255,255,.12);text-shadow:0 1px 2px #000;line-height:14px}
-#perkrow .pkb{font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;background:linear-gradient(#f3d27a,#c79a3a);color:#2a1d05;border:0;animation:pkp 1s ease-in-out infinite;line-height:14px}
-@keyframes pkp{50%{transform:scale(1.08);box-shadow:0 0 8px rgba(255,214,110,.8)}}
+#perkrow .pkb{font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;background:linear-gradient(#f3d27a,#c79a3a);color:#2a1d05;border:0;animation:pkp .8s ease-in-out infinite;line-height:14px}
+@keyframes pkp{0%,100%{opacity:1;box-shadow:0 0 12px 3px rgba(255,224,120,.95);filter:brightness(1.2)}50%{opacity:.35;box-shadow:none;filter:brightness(.8)}}
 .pkc{padding:12px;border:1px solid var(--bd);border-radius:10px;background:#1b2030;margin-bottom:8px;display:flex;align-items:center;gap:12px}.pkc b{font-size:15px}.pkc .dim{font-size:12px}.pkc .btn{margin-left:auto}
 #pinfo .gold{color:#ffd96a;font-weight:700;text-shadow:0 1px 2px #000}
 #hud-tr{right:12px;top:10px;display:flex;flex-direction:column;align-items:flex-end;gap:7px}
@@ -2983,7 +2983,7 @@ async function flushKills(){
 function onLevelUp(){
   derive();P.hp=S.maxHp;sfx('level');dmgNum(P.x,3.8,P.z,'LEVEL UP','info');shockRing(P.x,P.z,5,0xffe27a,.6);shockRing(P.x,P.z,9,0xfff3b0,.9);pillar(P.x,P.z,0xffe27a,12,.8);burst(P.x,1,P.z,40,0xffe27a,9,1,2);flashDisc(P.x,P.z,4,0xffe27a,.5);cam.shake=Math.max(cam.shake,.3);
   UI.feedText('레벨 '+SES.pf.level+' 달성','#ffe27a');netSys('lv',SES.pf.level);netPresence();
-  UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch();if(SES.pf.level===MAXLV)UI.toast('만렙 달성! 궁극기 해금: '+ULT[SES.pf.cls].name+' (F)');setTimeout(()=>{if(P&&!P.dead&&!UI.modal&&perkOf(SES.pf).pts>0)openPerks()},900);
+  UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch();if(SES.pf.level===MAXLV)UI.toast('만렙 달성! 궁극기 해금: '+ULT[SES.pf.cls].name+' (F)');
 }
 
 /* ---------------- monsters: authority simulation + remote ghosts ---------------- */

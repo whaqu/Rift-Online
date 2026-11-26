@@ -148,5 +148,5 @@ async function flushKills(){
 function onLevelUp(){
   derive();P.hp=S.maxHp;sfx('level');dmgNum(P.x,3.8,P.z,'LEVEL UP','info');shockRing(P.x,P.z,5,0xffe27a,.6);shockRing(P.x,P.z,9,0xfff3b0,.9);pillar(P.x,P.z,0xffe27a,12,.8);burst(P.x,1,P.z,40,0xffe27a,9,1,2);flashDisc(P.x,P.z,4,0xffe27a,.5);cam.shake=Math.max(cam.shake,.3);
   UI.feedText('레벨 '+SES.pf.level+' 달성','#ffe27a');netSys('lv',SES.pf.level);netPresence();
-  UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch();if(SES.pf.level===MAXLV)UI.toast('만렙 달성! 궁극기 해금: '+ULT[SES.pf.cls].name+' (F)');setTimeout(()=>{if(P&&!P.dead&&!UI.modal&&perkOf(SES.pf).pts>0)openPerks()},900);
+  UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch();if(SES.pf.level===MAXLV)UI.toast('만렙 달성! 궁극기 해금: '+ULT[SES.pf.cls].name+' (F)');
 }

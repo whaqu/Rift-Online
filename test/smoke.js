@@ -338,6 +338,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.save.custom=false;g.save.shadows=true;g.setTouchMode(true);T(g.save.shadows&&g.save.outline&&g.save.treeQ===1,'touch keeps graphics on');g.setTouchMode(false);
     Object.assign(g.save,JSON.parse(keep));
   }
+  // levelling up never pops the perk window; only the top-left button blinks
+  {
+    await g.API.login('테스트','newpass123');g.enterGame();step(3);g.UI.close&&g.UI.close();
+    const perks=g.SES.pf.perks;g.SES.pf.perks={a:0,h:0,c:0,pts:3};g.P.dead=false;g.onLevelUp();
+    g.SES.pf.daily.ready=false;g.UI.close&&g.UI.close();g.onLevelUp();
+    await new Promise(r=>setTimeout(r,1200));
+    T(!g.UI.modal,'no perk popup on level up '+(g.UI.modal&&JSON.stringify(g.UI.modal.title||'')));
+    g.SES.pf.perks=perks;
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});
