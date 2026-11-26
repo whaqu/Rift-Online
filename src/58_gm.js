@@ -9,7 +9,7 @@ function gmMenuButton(){
 async function gmApply(fn,...a){
   await flushKills();
   await API.call(fn,...a);
-  derive();P.buff=null;P.cd={q:0,e:0,r:0};P.hp=S.maxHp;
+  derive();kitReset();P.buff=null;P.cd={q:0,e:0,r:0};P.hp=S.maxHp;
   buildPlayerModel();UI.refreshHud();netPresence();
 }
 function openGM(){

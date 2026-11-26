@@ -275,7 +275,7 @@ const ICONS={
 };
 const SKICON={nova:'burst',buff:'shield',ground:'flame',rain:'rain',volley:'volley',dash:'dash',chain:'bolt'};
 const hex6=n=>'#'+('000000'+(n>>>0).toString(16)).slice(-6);
-function skIcon(sk,sz){return ic(SKICON[sk.type]||'star',hex6(sk.col||0xffffff),sz||30)}
+function skIcon(sk,sz){return ic(sk.icon||SKICON[sk.type]||'star',hex6(sk.col||0xffffff),sz||30)}
 function ico(svg,col){return '<span class="ico" style="--tc:'+col+'">'+svg+'</span>'}
 function ic(n,col,sz){return '<svg class="ic" viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="'+(col||'currentColor')+'">'+(ICONS[n]||'')+'</svg>'}
 function itemIcon(it){

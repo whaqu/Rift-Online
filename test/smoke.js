@@ -286,6 +286,69 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(code(()=>A.gmResetInv('일반유저',u.token))==='NOT_ADMIN'&&code(()=>A.gmPassword('일반유저',u.token,'pw1234','newpass123'))==='NOT_ADMIN','normal account refused');
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
+  // class kits: every class has its own combat system
+  {
+    await g.API.login('테스트','newpass123');g.enterGame();step(3);
+    let uid=20000,dummies=[];
+    const setup=async job=>{
+      await g.API.call('gmJob',job);g.derive();g.kitReset();g.UI.close&&g.UI.close();
+      for(const m of g.MOBS)g.removeMob(m,false);g.compactMobs();
+      for(const b of g.PB)g.entG.remove(b.m);g.PB.length=0;
+      const P=g.P;P.dead=false;P.x=300;P.z=0;P.vx=P.vz=0;P.cd={q:0,e:0,r:0};P.hp=g.S.maxHp;P.buff=null;P.shield=0;P.dashT=0;P.dashCd=0;P.spinT=0;P.atkCd=0;g.UI.refreshHud();
+      dummies=[];return g.kit();
+    };
+    const dummy=(dx,dz)=>{const m=g.makeMobObj(uid++,'slime',g.P.x+dx,g.P.z+dz,50,false,false,false);m.spawning=false;m.sp=0;m.hp=m.maxHp=1e12;m.freeze=999;m.dmg=1;dummies.push(m);return m};
+    const aim=(dx,dz)=>{g.mouse.gx=g.P.x+dx;g.mouse.gz=g.P.z+dz;g.P.face=Math.atan2(dx,dz)};
+    const run=(n,fn)=>{for(let i=0;i<n;i++){g.P.iframes=1;if(fn)fn();step(1)}};
+    const lost=m=>m.maxHp-m.hp;
+    let k,m,m2,h0;
+    // every class: Q/E/R usable, labels and gauge render, nothing breaks over time
+    for(const c of g.CLASSES){
+      for(const job of[c,...g.JOB_KIDS(c)]){
+        k=await setup(job);m=dummy(0,2.5);dummy(2,3);aim(0,2.5);
+        for(let a=0;a<4;a++){g.P.atkCd=0;if(g.kitCanAttack())g.doAttack();run(4)}
+        aim(0,2.5);g.trySkill('q');run(20);aim(0,2.5);g.trySkill('e');run(20);aim(0,2.5);g.trySkill('r');run(30);
+        for(const s of['q','e']){g.P.cd[s]=0;aim(0,2.5);g.trySkill(s);run(15)}
+        g.kitHud();run(60);
+        T(Number.isFinite(g.P.x)&&Number.isFinite(g.P.hp)&&Number.isFinite(g.kitAtkMul())&&k.cls===c&&lost(m)>0,'kit runs for '+job);
+      }
+    }
+    k=await setup('warrior');m=dummy(0,2);aim(0,2);g.doAttack();T(k.rage>0,'warrior gains rage by hitting');
+    g.P.cd.e=0;g.trySkill('e');T(k.parry>0,'parry stance');g.P.iframes=0;h0=g.P.hp;g.hurtPlayer(500,m.x,m.z);
+    T(g.P.hp===h0&&k.parry===0&&lost(m)>0&&g.P.cd.e<=3,'parry blocks and counters');
+    k.rage=100;g.P.cd.q=0;g.trySkill('q');T(k.rage===0&&k.whirl&&k.whirl.t>2.5,'full rage = long whirlwind');h0=lost(m);run(80);T(lost(m)>h0,'whirlwind keeps hitting');
+    k=await setup('mage');m=dummy(0,6);aim(0,6);
+    T(k.el===0,'mage starts with fire');g.trySkill('q');run(60);T(k.el===1&&lost(m)>0,'meteor then ice next');
+    g.P.cd.q=0;aim(0,6);g.trySkill('q');T(k.el===2,'ice then lightning');g.P.cd.q=0;h0=lost(m);aim(0,6);g.trySkill('q');T(k.el===0&&lost(m)>h0,'lightning cycles back to fire');
+    h0=g.P.z;aim(0,8);g.P.ix=g.P.iz=0;g.trySkill('e');T(Math.abs(g.P.z-h0-8)<1,'blink moves the mage');
+    k=await setup('archer');m=dummy(0,9);aim(0,9);g.keys.q=true;g.trySkill('q');T(k.charge&&g.P.cd.q<=0&&!g.kitCanAttack(),'holding Q charges');
+    run(100,()=>aim(0,9));T(k.charge&&lost(m)===0,'charge waits while held');g.keys.q=false;aim(0,9);g.tickPlayer(.016);run(30);T(!k.charge&&lost(m)>0&&g.P.cd.q>0,'release fires the arrow');
+    g.P.cd.q=0;g.trySkill('q');run(110);T(!k.charge,'tap/touch fires automatically at full charge');
+    g.P.cd.e=0;aim(0,5);g.trySkill('e');T(k.traps.length===1,'trap placed on leap');
+    k=await setup('rogue');m=dummy(0,2);aim(0,2);g.trySkill('q');T(g.P.cd.q<=0,'finisher needs combo points');
+    for(let i=0;i<5;i++){g.P.atkCd=0;aim(0,2);g.doAttack()}T(k.cp===5,'combo points build to 5: '+k.cp);
+    h0=lost(m);g.trySkill('q');T(k.cp===0&&lost(m)>h0,'finisher spends points');
+    g.P.cd.e=0;g.trySkill('e');T(g.P.stealth>0&&k.ambush,'shadow step hides');g.P.atkCd=0;g.doAttack();T(!k.ambush&&!(g.P.stealth>0),'attacking ends stealth');
+    k=await setup('cleric');m=dummy(0,2);aim(0,2);g.trySkill('e');T(g.P.cd.e<=0,'beam needs light');g.P.hp=g.S.maxHp*.5;h0=g.P.hp;aim(0,0.1);g.trySkill('q');run(150);
+    T(k.light>0&&g.P.hp>h0&&lost(m)>0,'sanctuary heals, burns and charges light');k.light=100;aim(0,2);h0=lost(m);g.P.cd.e=0;g.trySkill('e');T(k.light===0&&lost(m)>h0,'judgement beam spends light');
+    k=await setup('lancer');m=dummy(0,2);m2=dummy(0,4.4);aim(0,3);g.doAttack();const near=lost(m),tip=lost(m2);T(tip>near*1.2,'spear tip hits harder '+near+' '+tip);
+    aim(0,9);g.trySkill('q');T(g.P.leap,'leap starts');run(50);T(!g.P.leap&&g.P.z>6,'leap lands on target');
+    g.P.cd.e=0;aim(0,9);g.trySkill('e');T(k.spear&&g.P.cd.e<=0,'spear thrown, can be recalled');run(40);T(k.spear&&k.spear.state==='stuck','spear sticks in the ground');g.trySkill('e');run(80);T(!k.spear&&g.P.cd.e>0,'spear recalled, cooldown starts');
+    k=await setup('monk');m=dummy(0,2.5);aim(0,2.5);g.trySkill('q');T(k.stage===1&&g.P.cd.q<=0,'combo step 2 ready');run(20);aim(0,2.5);g.trySkill('q');T(k.stage===2,'combo step 3 ready');run(20);aim(0,2.5);g.trySkill('q');T(k.stage===0&&g.P.cd.q>0,'finisher starts cooldown');
+    g.P.cd.q=0;run(20);g.trySkill('q');run(160);T(k.stage===0&&g.P.cd.q>0,'dropped combo resets');
+    k.orbs=5;g.P.cd.e=0;h0=lost(m);aim(0,2.5);g.trySkill('e');T(k.orbs===0&&k.shots.length===5,'five orbs fired');run(120);T(lost(m)>h0&&k.shots.length===0,'orbs home in');
+    k=await setup('gunner');m=dummy(0,6);aim(0,6);for(let i=0;i<11;i++){g.P.atkCd=0;g.doAttack()}T(k.ammo===1,'11 shots leave 1');g.doAttack();T(k.ammo===0&&!g.kitCanAttack(),'empty magazine reloads');
+    run(110);T(k.ammo===12&&g.kitCanAttack(),'reload finished');g.P.cd.q=0;aim(0,6);g.trySkill('q');run(60);T(k.ammo<12&&k.burst===0,'burst empties magazine');
+    g.P.cd.e=0;aim(0,6);g.trySkill('e');T(k.ammo===12&&k.expl===4,'roll reloads with explosive rounds');
+    k=await setup('summoner');m=dummy(0,7);aim(0,7);g.trySkill('e');T(g.P.cd.e<=0,'no spirits to detonate');
+    for(let i=0;i<4;i++){g.P.cd.q=0;g.trySkill('q')}T(k.spirits.length===3,'max three spirits');h0=lost(m);run(120);T(lost(m)>h0,'spirits attack on their own');
+    h0=lost(m);g.P.cd.e=0;aim(0,7);g.trySkill('e');run(40);T(k.spirits.length===0&&lost(m)>h0,'spirits detonate');
+    k=await setup('darknight');m=dummy(0,2.5);g.P.hp=g.S.maxHp;const a1=g.kitAtkMul();g.P.hp=g.S.maxHp*.3;T(g.kitAtkMul()>a1+.3,'lower hp = more power');
+    g.P.hp=g.S.maxHp;aim(0,2.5);g.trySkill('q');T(lost(m)>0&&g.P.hp<g.S.maxHp&&g.P.hp>g.S.maxHp*.85,'blood slash costs hp and drains');
+    g.P.cd.e=0;g.P.hp=g.S.maxHp;g.trySkill('e');T(k.form,'dark blade on');run(100);T(g.P.hp<g.S.maxHp,'dark blade drains hp');g.P.hp=g.S.maxHp*.16;run(60);T(!k.form&&g.P.hp>0,'drain stops before death');
+    // switching job or dying leaves no stale state
+    k=await setup('summoner');for(let i=0;i<3;i++){g.P.cd.q=0;aim(0,3);g.trySkill('q')}const objs=k.objs.slice();g.kitReset();T(objs.every(o=>!o.parent)&&!g.P.kit,'kit objects removed on reset');
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

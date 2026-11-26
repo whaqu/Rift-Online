@@ -191,7 +191,8 @@ function openJob(){
   UI.page('전직 교관',()=>{
     const pf=SES.pf,cur=JOBS[pf.job],kids=JOB_KIDS(pf.job);
     let h='<div class="card" style="margin-bottom:10px"><div class="row sp"><div><span class="dim">현재 직업</span> <b style="font-size:16px">'+cur.name+'</b> <span class="dim">(Lv.'+pf.level+')</span></div><span class="gold">'+fmtG(pf.gold)+'</span></div>'
-      +'<div class="dim" style="margin-top:4px">'+(cur.tier?cur.desc:'1차 전직은 Lv.20, 2차 전직(각성)은 Lv.50부터 가능합니다.')+'</div></div>';
+      +'<div class="dim" style="margin-top:4px">'+(cur.tier?cur.desc:'1차 전직은 Lv.20, 2차 전직(각성)은 Lv.50부터 가능합니다.')+'</div>'
+      +'<div style="margin-top:6px;font-size:12.5px"><b class="gold">'+CLS[pf.cls].sys+'</b> '+CLS[pf.cls].sysDesc+'</div></div>';
     if(!kids.length)h+='<div class="card">최종 직업입니다. 더 이상 전직할 수 없습니다.</div>';
     else{
       h+='<div class="dim" style="margin-bottom:6px">'+(cur.tier===0?'1차 전직':'2차 전직')+' — 한 번 선택하면 되돌릴 수 없습니다.</div><div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(290px,1fr))">';
@@ -346,8 +347,9 @@ UI.refreshHud=function(){
   if(!SES.pf||!P)return;const pf=SES.pf;
   $('pname').textContent=pf.name;$('pjob').textContent=JOBS[pf.job].name;$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
   $('xpfill').style.width=Math.min(100,pf.xp/pf.need*100)+'%';
+  kitHud();
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
-  for(const k of['q','e','r']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
+  for(const k of['q','e','r']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30);el._k=null}}
   const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
   updatePerkRow();UI.refreshTouch&&UI.refreshTouch();
 };
@@ -412,7 +414,7 @@ function drawMini(){
 /* ---------- login ---------- */
 const LG={mode:'in',cls:'warrior'};
 function initLogin(){
-  const desc=()=>{const d=$('clsdesc');if(d)d.innerHTML='<b>'+CLS[LG.cls].name+'</b> — '+CLS[LG.cls].blurb};
+  const desc=()=>{const d=$('clsdesc');if(d)d.innerHTML='<b>'+CLS[LG.cls].name+'</b> — '+CLS[LG.cls].blurb+'<br><span style="color:#d2a84a">'+CLS[LG.cls].sys+'</span> · '+CLS[LG.cls].sysDesc};
   $('clsgrid').innerHTML=CLASSES.map(k=>'<div class="c'+(k===LG.cls?' on':'')+'" data-k="'+k+'">'+ic(WICON[k],'#d2a84a',24)+'<b>'+CLS[k].name+'</b></div>').join('');
   $('clsgrid').onclick=e=>{const t=e.target.closest('.c');if(!t)return;LG.cls=t.dataset.k;loginPick(LG.cls);desc();for(const c of $('clsgrid').children)c.classList.toggle('on',c===t)};
   desc();

@@ -60,8 +60,8 @@ function compactMobs(){for(let i=MOBS.length-1;i>=0;i--)if(MOBS[i].dead)MOBS.spl
 /* ---------- authority helpers ---------- */
 function isAuth(){return !(typeof NET!=='undefined'&&NET.party&&NET.party.leader!==SES.name)}
 function targets(){
-  const T=[];if(!P.dead)T.push({x:P.x,z:P.z,me:true});
-  if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got&&!p.dead)T.push({x:p.x,z:p.z,name:n})}}
+  const T=[];if(!P.dead&&!(P.stealth>0))T.push({x:P.x,z:P.z,me:true});
+  if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got&&!p.dead&&!p.stealth)T.push({x:p.x,z:p.z,name:n})}}
   return T;
 }
 function allPos(){const T=[{x:P.x,z:P.z}];if(typeof NET!=='undefined'&&NET.party){for(const n of NET.party.members){if(n===SES.name)continue;const p=NET.peers[n];if(p&&p.got)T.push({x:p.x,z:p.z})}}return T}
@@ -246,7 +246,7 @@ function aiMob(m,dt,nt,sp){
 }
 /* contact damage — evaluated on every client for the local player */
 function contactCheck(m){
-  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead)return;
+  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0)return;
   if(m.type==='bat'&&m.ghost&&!m.warn&&false)return;
   if(d2(m.x,m.z,P.x,P.z)<(m.r+P.r)*(m.r+P.r)){if(hurtPlayer(m.dmg,m.x,m.z)){m.hitCd=.9;if(m.type==='bat'&&!m.ghost){m.state='retreat';m.st=.8}}}
 }

@@ -26,7 +26,7 @@ function derive(){
   return S;
 }
 function newPlayer(){
-  derive();
+  kitReset();derive();
   P={x:SPAWN.x,z:SPAWN.z,vx:0,vz:0,face:Math.PI,r:.6,ix:0,iz:0,hp:S.maxHp,hpShow:100,
     atkCd:0,atkAnim:-1,atkDur:.3,combo:0,comboT:0,swing:1,dashT:0,dashCd:0,dashDX:0,dashDZ:1,iframes:0,
     cd:{q:0,e:0,r:0},cdMax:{q:1,e:1,r:1},buff:null,pot:{hp:0,spd:0,atk:0,def:0},shield:0,
@@ -43,9 +43,9 @@ function skillOf(slot){
   if(slot==='q')return c.q;if(slot==='e')return c.e;
   return j&&j.tier>0?j.r:null;
 }
-const effAtk=()=>S.atk*(P.buff&&P.buff.atk?P.buff.atk:1)*(P.pot.atk>0?1.3:1);
+const effAtk=()=>S.atk*kitAtkMul()*(P.buff&&P.buff.atk?P.buff.atk:1)*(P.pot.atk>0?1.3:1);
 const effAps=()=>S.aps*((S.berserk&&P.hp<S.maxHp*.5)?1.4:1)*(P.buff&&P.buff.aps?P.buff.aps:1);
-const effSpd=()=>S.spd*(P.buff&&P.buff.spd?P.buff.spd:1)*(P.pot.spd>0?1.4:1)*(P.spinT>0?.6:1);
+const effSpd=()=>S.spd*(P.buff&&P.buff.spd?P.buff.spd:1)*(P.pot.spd>0?1.4:1)*(P.spinT>0?.6:1)*((P.kit&&KITS[P.kit.cls].spdMul)?KITS[P.kit.cls].spdMul(P.kit):1);
 
 /* ----- targeting ----- */
 function nearestMob(range,from){
@@ -80,6 +80,10 @@ function movePlayer(dt){
   if(mv.on){ix=mv.x;iz=mv.z}
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
+  if(P.leap){   // lancer leap: fly along the arc, no steering
+    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;
+    if(u>=1){P.leap=null;pushOut(P,P.r);L.done()}return;
+  }
   if(P.dashT>0){
     P.dashT-=dt;P.vx=P.dashDX*(P.dashSp||38);P.vz=P.dashDZ*(P.dashSp||38);
     emit(P.x,1,P.z,rnd(-1,1),rnd(0,1.5),rnd(-1,1),.35,JOB_COL[SES.pf.job]||CLS[S.cls].col,0);
@@ -92,7 +96,7 @@ function movePlayer(dt){
 const STEPS=['step_stone','step_grass','step_grass','step_stone','step_stone','step_stone','step_stone','step_snow','step_sand','step_marble'];
 function footstep(){const z=zoneAt(P.x,P.z);sfx(STEPS[z.id]||'step_stone',.55)}
 function updatePlayerModel(dt){
-  P.animT+=dt;PM.g.position.set(P.x,0,P.z);
+  P.animT+=dt;PM.g.position.set(P.x,P.leap?Math.sin(Math.min(1,P.leap.t/P.leap.dur)*Math.PI)*P.leap.h:0,P.z);
   let fy=P.face;if(P.spinT>0)fy+=(1-P.spinT/.5)*TAU*1.2;
   PM.g.rotation.y=fy;
   if(P.atkAnim>=0){P.atkAnim+=dt/P.atkDur;if(P.atkAnim>=1)P.atkAnim=-1}
@@ -103,7 +107,7 @@ function updatePlayerModel(dt){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
-  PM.g.visible=!(P.dead||(P.iframes>0&&P.dashT<=0&&Math.floor(P.animT*30)%2===0));
+  PM.g.visible=!(P.dead||(P.iframes>0&&P.dashT<=0&&!P.leap&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
 }
 
 /* ----- per-frame timers / regen ----- */
@@ -116,13 +120,14 @@ function tickPlayer(dt){
   if(inTown(P.x,P.z)&&P.hp<S.maxHp&&!P.dead)P.hp=Math.min(S.maxHp,P.hp+S.maxHp*.12*dt);
   if(!P.dead&&P.hp<S.maxHp*.25){P.beatT=(P.beatT||0)-dt;if(P.beatT<=0){P.beatT=1.1;sfx('beat',.8)}}
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
+  kitTick(dt);
 }
 function tryAttackInput(){
   if(P.dead||inTown(P.x,P.z)||UI.modal)return;
   const want=mouse.down||keys.j||mv.atk;
   let auto=false;
   if(save.auto&&!want&&IS_TOUCH){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;const m=nearestMob(reach);auto=!!m}
-  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0)doAttack();
+  if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&kitCanAttack())doAttack();
 }
 
 /* ----- basic attack ----- */
@@ -132,7 +137,8 @@ function hitArc(f,range,arc,dmg,kb,opt){
     if(e.dead||e.spawning)continue;const dx=e.x-P.x,dz=e.z-P.z,dist=Math.hypot(dx,dz);
     if(dist>range+e.r)continue;
     if(arc<TAU-.1){const a=Math.atan2(dx,dz);if(Math.abs(angDiff(f,a))>arc/2+Math.atan2(e.r,Math.max(dist,.1)))continue}
-    dealMob(e,dmg,Object.assign({kx:dx/(dist||1),kz:dz/(dist||1),kb},opt||{}));n++;
+    const md=kitCall('basicMod',e,dist,range);
+    dealMob(e,dmg*(md?md.mul:1),Object.assign({kx:dx/(dist||1),kz:dz/(dist||1),kb},opt||{},md?md.o:{}));n++;if(opt&&opt.first===null)opt.first=e;
   }
   return n;
 }
@@ -148,28 +154,36 @@ function doAttack(){
     slashArc(P.x+a.x*.4,P.z+a.z*.4,f,range,arc,big?sty.bigCol:sty.col,.26);
     if(big)ringBurst(P.x+a.x*range*.7,.9,P.z+a.z*range*.7,10,sty.bigCol,5,.35);
     sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
-    hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb,{big});gatherArc(f,range,arc,big?1.5:1);
+    const ho={big,first:null},hn=hitArc(f,range,arc,dmg,big?sty.kbBig:sty.kb,ho);if(hn)kitCall('onHit',hn,big,ho.first);gatherArc(f,range,arc,big?1.5:1);
     for(const b of EB){const dx=b.x-P.x,dz=b.z-P.z,d=Math.hypot(dx,dz);if(d<range+.5&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<arc/2){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3);sfx('hit')}}
     netFx('slash',{x:P.x+a.x*.4,z:P.z+a.z*.4,f,r:range,a:arc,c:big?1:0});
   }else if(sty.kind==='orb'){
     sfx('magic');const sx=P.x+a.x*1.2,sz=P.z+a.z*1.2;
     gatherLine(a.x,a.z,Math.min(11,sty.spd*sty.life*.4),1);
-    spawnPB({kind:'orb',x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:0,splash:sty.splash*S.rangeMul,col:sty.col});
-    burst(sx,1.6,sz,4,sty.col,3,.3,0);netFx('shot',{x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,v:'orb',c:sty.col});
+    const oc=kitCall('basicCol')||sty.col;
+    spawnPB({kind:'orb',x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:0,splash:sty.splash*S.rangeMul,col:oc,basic:true});
+    burst(sx,1.6,sz,4,oc,3,.3,0);netFx('shot',{x:sx,z:sz,vx:a.x*sty.spd,vz:a.z*sty.spd,v:'orb',c:oc});
   }else{
     sfx('shot');const sp=rnd(-.03,.03),cs=Math.cos(sp),sn=Math.sin(sp),dx=a.x*cs-a.z*sn,dz=a.x*sn+a.z*cs;
     gatherLine(a.x,a.z,Math.min(14,sty.spd*sty.life),1);
-    spawnPB({kind:'arrow',x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,r:sty.r,dmg:atk,life:sty.life,pierce:sty.pierce+S.pierce,col:sty.col});
+    const sm=kitCall('shot')||{mul:1};
+    spawnPB({kind:'arrow',x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,r:sty.r,dmg:atk*sm.mul,life:sty.life,pierce:sty.pierce+S.pierce,col:sm.col||sty.col,expl:sm.expl,basic:true});
     netFx('shot',{x:P.x+dx,z:P.z+dz,vx:dx*sty.spd,vz:dz*sty.spd,v:'arrow',c:sty.col});
   }
+  kitCall('afterAttack',a);
 }
 
 /* ----- skills ----- */
 function trySkill(slot){
-  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.cd[slot]>0||P.spinT>0)return;
+  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.cd[slot]>0||P.spinT>0||P.leap)return;
   const sk=skillOf(slot);if(!sk)return;
-  castSkill(sk,slot);
-  P.cd[slot]=sk.cd*(1-S.cdr);P.cdMax[slot]=sk.cd*(1-S.cdr);P.atkAnim=0;P.atkDur=.35;
+  const k=kit();if(k.charge)return;
+  let cd=sk.cd;
+  if(slot==='r'){castSkill(sk,slot);kitOnR()}
+  else{   // class skills: false = not used, number = cooldown to apply
+    const r=KITS[S.cls][slot](k,sk);if(r===false)return;if(typeof r==='number')cd=r;
+  }
+  P.cd[slot]=cd*(1-S.cdr);if(cd>0)P.cdMax[slot]=cd*(1-S.cdr);P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
@@ -247,7 +261,7 @@ function dashStrike(dt){
   if(P.dashT<=0)P.dashHit=null;
 }
 function doDash(){
-  if(!P||P.dead||P.dashCd>0||P.dashT>0||UI.modal)return;
+  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||UI.modal)return;
   let dx=P.ix,dz=P.iz;if(!dx&&!dz){dx=Math.sin(P.face);dz=Math.cos(P.face)}
   const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8*(1-S.cdr);
   sfx('dash');burst(P.x,.6,P.z,10,0xffffff,4,.3,0);
@@ -260,9 +274,10 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz){
   if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
+  if(kitCall('block')){P.iframes=.6;return true}
   dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
-  P.iframes=.5;
+  P.iframes=.5;kitCall('onHurt');
   if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);hitStop(.06);
     if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
   burst(P.x,1.2,P.z,10,0xff5a6a,6,.4,10);
@@ -270,7 +285,7 @@ function hurtPlayer(dmg,sx,sz){
   return true;
 }
 function playerDown(){
-  P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;sfx('lose');UI.deadOn(true);
+  kitReset();P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;sfx('lose');UI.deadOn(true);
 }
 function respawn(){
   P.dead=false;P.x=SPAWN.x+rnd(-2,2);P.z=SPAWN.z;P.vx=P.vz=0;P.hp=S.maxHp;P.iframes=1.5;UI.deadOn(false);
