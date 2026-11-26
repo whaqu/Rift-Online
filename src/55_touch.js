@@ -1,7 +1,9 @@
 /* ---------------- mobile controls (auto-detected) ---------------- */
+let TOUCH_BOUND=false;
 function initTouch(){
   if(!IS_TOUCH)return;
   document.body.classList.add('touch');
+  if(TOUCH_BOUND)return;TOUCH_BOUND=true;
   const joy=$('joy'),knob=$('knob');let jid=null,cx=0,cy=0;
   const R=58;
   const setStick=(x,y)=>{
@@ -30,3 +32,27 @@ function initTouch(){
   UI.refreshTouch=()=>{const r=$('tb-r');if(r)r.classList.toggle('hidden',!skillOf('r'));for(const k of['q','e','r']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28))}};
 }
 function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
+
+/* ---- switch between touch UI and keyboard/mouse UI depending on the input actually used ---- */
+function setTouchMode(on){
+  if(on===IS_TOUCH)return;
+  IS_TOUCH=on;document.body.classList.toggle('touch',on);
+  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;
+  if(on)initTouch();
+  if(!save.custom){save.shadows=!on;save.auto=on;save.outline=!on;const q=on?0:1;const rb=save.treeQ!==q;save.treeQ=q;writeSave();try{applyShadows()}catch(e){}if(rb)try{buildWorld()}catch(e){}}
+  if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}
+  if(!on)try{canvas.focus()}catch(e){}
+}
+{
+  let lastT=0;
+  window.addEventListener('keydown',e=>{
+    if(!IS_TOUCH)return;if(e.isComposing||e.keyCode===229||!e.code||e.key==='Unidentified')return;
+    if(['Shift','Control','Alt','Meta','CapsLock'].includes(e.key))return;
+    if(performance.now()-lastT<800)return;setTouchMode(false);
+  },true);
+  window.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='touch'){lastT=performance.now();if(!IS_TOUCH)setTouchMode(true)}
+    else if(e.pointerType==='mouse'&&IS_TOUCH&&performance.now()-lastT>800)setTouchMode(false);
+  },true);
+  window.addEventListener('pointermove',e=>{if(IS_TOUCH&&e.pointerType==='mouse'&&e.movementX*e.movementX+e.movementY*e.movementY>4&&performance.now()-lastT>800)setTouchMode(false)},true);
+}

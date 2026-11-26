@@ -306,11 +306,11 @@ function openSettings(){
       +'<div class="row"><button class="btn sec" data-a="logout">로그아웃</button><button class="btn" data-a="closeS" style="margin-left:auto">닫기</button></div></div>';
   });
   const v=$('vol');if(v)v.oninput=()=>setVol(v.value/100);
-  const s=$('shd');if(s)s.onchange=()=>{save.shadows=s.checked;writeSave();applyShadows()};
-  const fx=$('pfx');if(fx)fx.onchange=()=>{save.fx=fx.checked;writeSave()};
-  const ol=$('oln');if(ol)ol.onchange=()=>{save.outline=ol.checked;writeSave()};
-  const a=$('aut');if(a)a.onchange=()=>{save.auto=a.checked;writeSave()};
-  UI.handlers.tq=v=>{v=+v;if(save.treeQ===v)return;save.treeQ=v;writeSave();UI.toast('나무·풀 모델을 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{buildWorld()}catch(e){console.error('rebuild',e)}UI.toast(v?'나무·풀: 정교하게':'나무·풀: 가볍게');UI.rerender&&UI.rerender()},60)};
+  const s=$('shd');if(s)s.onchange=()=>{save.custom=true;save.shadows=s.checked;writeSave();applyShadows()};
+  const fx=$('pfx');if(fx)fx.onchange=()=>{save.custom=true;save.fx=fx.checked;writeSave()};
+  const ol=$('oln');if(ol)ol.onchange=()=>{save.custom=true;save.outline=ol.checked;writeSave()};
+  const a=$('aut');if(a)a.onchange=()=>{save.custom=true;save.auto=a.checked;writeSave()};
+  UI.handlers.tq=v=>{v=+v;if(save.treeQ===v)return;save.custom=true;save.treeQ=v;writeSave();UI.toast('나무·풀 모델을 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{buildWorld()}catch(e){console.error('rebuild',e)}UI.toast(v?'나무·풀: 정교하게':'나무·풀: 가볍게');UI.rerender&&UI.rerender()},60)};
   UI.handlers.logout=()=>{try{localStorage.removeItem('rw_sess')}catch(e){}location.reload()};
   UI.handlers.closeS=UI.close;
 }

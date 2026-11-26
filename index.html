@@ -295,7 +295,8 @@ const fmtN=n=>Math.floor(n).toLocaleString('ko-KR');
 
 /* ---------------- settings ---------------- */
 const SET_KEY='rw_settings_v1';
-const IS_TOUCH=(typeof matchMedia==='function')?(matchMedia('(pointer:coarse)').matches||(('ontouchstart' in window)&&!matchMedia('(any-pointer:fine)').matches)):('ontouchstart' in window);
+/* default is keyboard/mouse UI; touch UI only on phones/tablets (mobile UA)  also flips at runtime when keyboard/mouse or touch input is seen (see 55_touch.js) */
+let IS_TOUCH=(()=>{try{const ua=navigator.userAgent||'',mob=/Android|iPhone|iPad|iPod|Mobile/i.test(ua)||(/Macintosh/.test(ua)&&navigator.maxTouchPoints>1);if(typeof matchMedia!=='function')return mob;const fine=matchMedia('(any-pointer:fine)').matches;return mob?!fine||matchMedia('(pointer:coarse)').matches:false}catch(e){return false}})();
 const save={fx:true,treeQ:IS_TOUCH?0:1,vol:.7,shadows:!IS_TOUCH,auto:IS_TOUCH,outline:!IS_TOUCH,lastName:''};
 function loadSave(){try{const s=JSON.parse(localStorage.getItem(SET_KEY)||'null');if(s)Object.assign(save,s)}catch(e){}}
 function writeSave(){try{localStorage.setItem(SET_KEY,JSON.stringify(save))}catch(e){}}
@@ -2018,10 +2019,10 @@ function lumpyGeo(r,seed,amp){
 const RND_C=[[0,3.2,0,1.3],[.95,2.75,.3,1],[-.85,2.85,-.35,1.05],[.2,3.95,-.4,.95],[-.3,2.55,.85,.9],[.5,2.6,-.85,.85],[-.2,4.1,.45,.8]];
 /* deterministic pine layout: tiers of branches, each with a main frond and two side fronds */
 function pineLayout(){
-  const R=mulberry(77),out=[];
-  for(let t=0;t<8;t++){
-    const u=t/7,y=1.35+u*4.2,rad=2.15*Math.pow(1-u*.92,.95)+.3,n=Math.round(7-3.6*u);
-    for(let b=0;b<n;b++){out.push({y:y+R()*.18,th:b/n*TAU+t*2.4+R()*.5,L:rad*(.92+R()*.3),w:.2+.16*(1-u)+R()*.05,dr:.32+R()*.3-u*.12})}
+  const R=mulberry(77),out=[],cnt=[5,4,4,3,3];
+  for(let t=0;t<5;t++){
+    const u=t/4,y=1.5+u*3.7,rad=2.0*Math.pow(1-u*.82,.95)+.5,n=cnt[t];
+    for(let b=0;b<n;b++){out.push({y:y+R()*.15,th:b/n*TAU+t*2.2+R()*.4,L:rad*(.92+R()*.22),w:.2+.16*(1-u),dr:.3+R()*.25-u*.1})}
   }
   return out;
 }
@@ -2040,7 +2041,7 @@ function pineBuild(){
   const tuft=(cx,cy,cz,n,len,db,spread,tone)=>{
     for(let i=0;i<n;i++){
       let d=nrm([db[0]+(R()-.5)*2*spread,db[1]+(R()-.5)*2*spread*.8+.12,db[2]+(R()-.5)*2*spread]);
-      const l=len*(.7+R()*.5),w=.058+R()*.04,ra=nrm([R()-.5,R()-.5,R()-.5]);
+      const l=len*(.7+R()*.5),w=.1+R()*.05,ra=nrm([R()-.5,R()-.5,R()-.5]);
       let a=[d[1]*ra[2]-d[2]*ra[1],d[2]*ra[0]-d[0]*ra[2],d[0]*ra[1]-d[1]*ra[0]];a=nrm(a);
       const b1=[cx-a[0]*w,cy-a[1]*w,cz-a[2]*w],b2=[cx+a[0]*w,cy+a[1]*w,cz+a[2]*w],tp=[cx+d[0]*l,cy+d[1]*l-l*.1,cz+d[2]*l];
       const nm=nrm([d[0]*.5,d[1]*.5+.6,d[2]*.5]),tn=tone*(.85+R()*.3);
@@ -2053,20 +2054,17 @@ function pineBuild(){
   lay.forEach((b,bi)=>{
     const o=[Math.sin(b.th),0,Math.cos(b.th)],L=b.L,y=b.y,curl=.1+R()*.2,sag=.06+R()*.1,tone=.9+R()*.2;
     const p1=[o[0]*L*.5,y-sag*L,o[2]*L*.5],p2=[o[0]*L,y+curl*.4,o[2]*L],pi=[o[0]*L*.22,y-sag*L*.3,o[2]*L*.22];
-    limbs.push([0,y,0,p1[0],p1[1],p1[2],.075,.045],[p1[0],p1[1],p1[2],p2[0],p2[1],p2[2],.045,.018]);
+    limbs.push([0,y,0,p1[0],p1[1],p1[2],.11,.07],[p1[0],p1[1],p1[2],p2[0],p2[1],p2[2],.07,.035]);
     const dir=[o[0],.18,o[2]];
-    tuft(pi[0],pi[1],pi[2],12,.55,[o[0],.35,o[2]],.8,tone*.85);tufts.push([pi[0],pi[1]+.12,pi[2],.5]);
-    tuft(p1[0],p1[1],p1[2],16,.68,dir,.75,tone);tufts.push([p1[0],p1[1]+.16,p1[2],.7]);
-    tuft(p2[0],p2[1],p2[2],20,.76,[o[0],.2,o[2]],.8,tone*1.05);tufts.push([p2[0],p2[1]+.14,p2[2],.75]);
-    for(const sd of[-1,1]){const q=[p1[0]+(o[2]*sd)*L*.28+o[0]*L*.16,p1[1]+.06+R()*.1,p1[2]+(-o[0]*sd)*L*.28+o[2]*L*.16],od=nrm([q[0]-p1[0],.25,q[2]-p1[2]]);
-      limbs.push([p1[0],p1[1],p1[2],q[0],q[1],q[2],.03,.012]);tuft(q[0],q[1],q[2],12,.55,od,.8,tone*.95);tufts.push([q[0],q[1]+.12,q[2],.5])}
+    tuft(p1[0],p1[1],p1[2],12,.7,dir,.7,tone);tufts.push([p1[0],p1[1]+.16,p1[2],.7]);
+    tuft(p2[0],p2[1],p2[2],15,.78,[o[0],.2,o[2]],.75,tone*1.05);tufts.push([p2[0],p2[1]+.14,p2[2],.75]);
   });
-  tuft(0,6.15,0,26,.85,[0,1,0],.45,1.05);tuft(0,5.6,0,18,.68,[0,.8,0],.9,1);tufts.push([0,6.2,0,.5]);
+  tuft(0,5.6,0,15,.8,[0,1,0],.45,1.05);tuft(0,5.1,0,12,.7,[0,.8,0],.9,1);tufts.push([0,5.65,0,.5]);
   const gn=new THREE.BufferGeometry();
   gn.setAttribute('position',new THREE.BufferAttribute(new Float32Array(P),3));gn.setAttribute('normal',new THREE.BufferAttribute(new Float32Array(Nn),3));gn.setAttribute('color',new THREE.BufferAttribute(new Float32Array(C),3));gn.computeBoundingSphere();
-  const tp=[[new THREE.CylinderGeometry(.075,.26,6.2,9),0,3.1,0],[new THREE.ConeGeometry(.5,.9,9),0,.3,0]];
+  const tp=[[new THREE.CylinderGeometry(.07,.26,5.6,8),0,2.8,0],[new THREE.ConeGeometry(.5,.9,8),0,.3,0]];
   for(const l of limbs)tp.push([limbGeo(l[0],l[1],l[2],l[3],l[4],l[5],l[6],l[7],5),0,0,0]);
-  for(let q=0;q<6;q++){const th=q*1.1,y=.7+q*.22;tp.push([limbGeo(0,y,0,Math.sin(th)*.7,y+.12,Math.cos(th)*.7,.045,.012,4),0,0,0])}
+  for(let q=0;q<3;q++){const th=q*2.1,y=.75+q*.3;tp.push([limbGeo(0,y,0,Math.sin(th)*.7,y+.12,Math.cos(th)*.7,.045,.012,4),0,0,0])}
   const trunk=mergeGeos(tp);
   const sp=[];tufts.forEach((t,i)=>{if(i%2===0)sp.push([padGeo(t[3]*1.0,t[3]*.42,.05,0,R()*6,0,t[0],t[1]+.02,t[2]),0,0,0])});
   PINEB={needles:gn,trunk,snow:mergeGeos(sp)};return PINEB;
@@ -3659,11 +3657,11 @@ function openSettings(){
       +'<div class="row"><button class="btn sec" data-a="logout">로그아웃</button><button class="btn" data-a="closeS" style="margin-left:auto">닫기</button></div></div>';
   });
   const v=$('vol');if(v)v.oninput=()=>setVol(v.value/100);
-  const s=$('shd');if(s)s.onchange=()=>{save.shadows=s.checked;writeSave();applyShadows()};
-  const fx=$('pfx');if(fx)fx.onchange=()=>{save.fx=fx.checked;writeSave()};
-  const ol=$('oln');if(ol)ol.onchange=()=>{save.outline=ol.checked;writeSave()};
-  const a=$('aut');if(a)a.onchange=()=>{save.auto=a.checked;writeSave()};
-  UI.handlers.tq=v=>{v=+v;if(save.treeQ===v)return;save.treeQ=v;writeSave();UI.toast('나무·풀 모델을 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{buildWorld()}catch(e){console.error('rebuild',e)}UI.toast(v?'나무·풀: 정교하게':'나무·풀: 가볍게');UI.rerender&&UI.rerender()},60)};
+  const s=$('shd');if(s)s.onchange=()=>{save.custom=true;save.shadows=s.checked;writeSave();applyShadows()};
+  const fx=$('pfx');if(fx)fx.onchange=()=>{save.custom=true;save.fx=fx.checked;writeSave()};
+  const ol=$('oln');if(ol)ol.onchange=()=>{save.custom=true;save.outline=ol.checked;writeSave()};
+  const a=$('aut');if(a)a.onchange=()=>{save.custom=true;save.auto=a.checked;writeSave()};
+  UI.handlers.tq=v=>{v=+v;if(save.treeQ===v)return;save.custom=true;save.treeQ=v;writeSave();UI.toast('나무·풀 모델을 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{buildWorld()}catch(e){console.error('rebuild',e)}UI.toast(v?'나무·풀: 정교하게':'나무·풀: 가볍게');UI.rerender&&UI.rerender()},60)};
   UI.handlers.logout=()=>{try{localStorage.removeItem('rw_sess')}catch(e){}location.reload()};
   UI.handlers.closeS=UI.close;
 }
@@ -3787,9 +3785,11 @@ function initLogin(){
 }
 
 /* ---------------- mobile controls (auto-detected) ---------------- */
+let TOUCH_BOUND=false;
 function initTouch(){
   if(!IS_TOUCH)return;
   document.body.classList.add('touch');
+  if(TOUCH_BOUND)return;TOUCH_BOUND=true;
   const joy=$('joy'),knob=$('knob');let jid=null,cx=0,cy=0;
   const R=58;
   const setStick=(x,y)=>{
@@ -3818,6 +3818,30 @@ function initTouch(){
   UI.refreshTouch=()=>{const r=$('tb-r');if(r)r.classList.toggle('hidden',!skillOf('r'));for(const k of['q','e','r']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28))}};
 }
 function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
+
+/* ---- switch between touch UI and keyboard/mouse UI depending on the input actually used ---- */
+function setTouchMode(on){
+  if(on===IS_TOUCH)return;
+  IS_TOUCH=on;document.body.classList.toggle('touch',on);
+  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;
+  if(on)initTouch();
+  if(!save.custom){save.shadows=!on;save.auto=on;save.outline=!on;const q=on?0:1;const rb=save.treeQ!==q;save.treeQ=q;writeSave();try{applyShadows()}catch(e){}if(rb)try{buildWorld()}catch(e){}}
+  if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}
+  if(!on)try{canvas.focus()}catch(e){}
+}
+{
+  let lastT=0;
+  window.addEventListener('keydown',e=>{
+    if(!IS_TOUCH)return;if(e.isComposing||e.keyCode===229||!e.code||e.key==='Unidentified')return;
+    if(['Shift','Control','Alt','Meta','CapsLock'].includes(e.key))return;
+    if(performance.now()-lastT<800)return;setTouchMode(false);
+  },true);
+  window.addEventListener('pointerdown',e=>{
+    if(e.pointerType==='touch'){lastT=performance.now();if(!IS_TOUCH)setTouchMode(true)}
+    else if(e.pointerType==='mouse'&&IS_TOUCH&&performance.now()-lastT>800)setTouchMode(false);
+  },true);
+  window.addEventListener('pointermove',e=>{if(IS_TOUCH&&e.pointerType==='mouse'&&e.movementX*e.movementX+e.movementY*e.movementY>4&&performance.now()-lastT>800)setTouchMode(false)},true);
+}
 
 /* ---------------- daily reward, daily quests, day/night HUD, field events ---------------- */
 const DAILY_TXT=(d,lv)=>{const b=500+lv*60;return[null,fmtG(b),'체력 물약 ×5',fmtG(b*2),'격분·강철 물약 ×3',fmtG(b)+' + 체력 물약 ×8',fmtG(b*3)+' + 신속 ×3','대박: '+fmtG(b*6)+' + 상급 체력 ×5 + 격분 ×5'][d]};
