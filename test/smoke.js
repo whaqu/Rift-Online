@@ -367,11 +367,19 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     await g.API.login('테스트','newpass123');g.enterGame();step(3);g.UI.close&&g.UI.close();
     g.guardProbe();T(!g.GUARD.tripped,'no trip without developer tools');
     const db=localStorage.getItem('rw_local_db_v1'),set=localStorage.getItem('rw_settings_v1'),gold=g.SES.pf.gold;
+    const acc=()=>JSON.parse(localStorage.getItem('rw_local_db_v1')).acc[g.SES.name];
+    {const d=JSON.parse(db),a=d.acc[g.SES.name];a.tokens=60;a.gat_tk=40;localStorage.setItem('rw_local_db_v1',JSON.stringify(d))}
+    const k0=acc().kills,x0=acc().gat_xp||0;
+    for(let i=0;i<3;i++)g.registerKill({zid:1,ml:1,elite:false,x:g.P.x,z:g.P.z,r:1});g.GAT.pend.weed=2;
     g.guardTrip();T(g.GUARD.tripped,'guard trips');
+    T(acc().kills===k0+3,'kills collected before the trip are saved '+k0+'->'+acc().kills);
+    T(acc().gat_xp===x0+2,'gathering collected before the trip is saved');
+    const db2=localStorage.getItem('rw_local_db_v1');
+    g.registerKill({zid:1,ml:1,elite:false,x:g.P.x,z:g.P.z,r:1});await g.flushKills();
     let err='';try{await g.API.call('buy','hp1',1)}catch(e){err=e.message}T(err==='DEVTOOLS','server calls are refused');
     try{g.LocalAPI.buy(g.SES.name,g.SES.token,'hp1',1)}catch(e){}
     g.save.vol=.123;g.writeSave();
-    T(localStorage.getItem('rw_local_db_v1')===db&&localStorage.getItem('rw_settings_v1')===set,'nothing is saved after the trip');
+    T(localStorage.getItem('rw_local_db_v1')===db2&&localStorage.getItem('rw_settings_v1')===set,'nothing is saved after the trip');
   }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
