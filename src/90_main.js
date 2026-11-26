@@ -20,8 +20,9 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 
 function enterGame(){
   loginEnd();
+  $('start').classList.add('hidden');hideLoading();
   $('login').classList.add('hidden');$('hud').classList.remove('hidden');
-  buildHud();initTouch();
+  buildHud();gmMenuButton();initTouch();
   newPlayer();UI.refreshHud();UI.zone=-1;
   cam.x=P.x;cam.z=P.z;
   resetMobs();netClearModels();
@@ -55,12 +56,13 @@ function loginScene(dt){
   if(!LOGIN.g||!LOGIN.on)return;
   LOGIN.t+=dt;const a=Math.sin(LOGIN.t*.18)*.4,cx=0,cz=11.5,dist=8,h=3;
   for(const k in LOGIN.heroes){const o=LOGIN.heroes[k],sel=k===LOGIN.sel;
-    if(o.g.visible!==sel)o.g.visible=sel;if(!sel)continue;
+    const show=sel&&!LOGIN.title;if(o.g.visible!==show)o.g.visible=show;if(!show)continue;
     o.g.scale.set(o.sc,o.sc,o.sc);o.g.rotation.y=lerpAng(o.g.rotation.y,a*.8,dt*3);
     animHeroFor(o,LOGIN.t,0,Math.max(0,Math.sin(LOGIN.t*2.2)*.6)-.1,false,1);
   }
   cam.x=cx;cam.z=cz;updateCam(dt,cx,cz,true);
-  camera.position.set(cx+Math.sin(a)*dist,h,cz+Math.cos(a)*dist);camera.lookAt(cx,1.5,cz);camera.updateMatrixWorld();
+  const cd=LOGIN.title?5.5:dist;   // title: stay in front of the lamp post behind the hero spot
+  camera.position.set(cx+Math.sin(a)*cd,h,cz+Math.cos(a)*cd);camera.lookAt(cx,1.5,cz);camera.updateMatrixWorld();
   const w=innerWidth,hh=innerHeight;
   if(w>=900&&camera.setViewOffset){camera.setViewOffset(w,hh,-w*.17,0,w,hh)}else if(camera.clearViewOffset)camera.clearViewOffset();
 }
@@ -102,19 +104,18 @@ function loop(now){
 }
 
 async function boot(){
+  showLoading('세계를 만드는 중…');await wait(60);   // let the loading screen paint before the heavy build
   loadSave();setVol(save.vol);
   scene.fog=new THREE.FogExp2(0x8fb4d8,.0052);
   sun.castShadow=!!save.shadows;renderer.shadowMap.enabled=!!save.shadows;
   buildWorld();try{buildLoginScene()}catch(e){console.error('login scene',e);LOGIN.g=null}initLogin();
   cam.x=0;cam.z=8;
   if(!loopOn&&typeof requestAnimationFrame==='function'){loopOn=true;requestAnimationFrame(loop)}
+  showLoading('서버에 연결하는 중…');
   const mode=await API.probe();
   $('lstat').textContent=mode==='online'?'서버 연결됨':'서버에 연결할 수 없어 오프라인 모드로 실행됩니다 (이 기기에만 저장)';
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · Space 대시';
-  try{
-    const s=JSON.parse(localStorage.getItem('rw_sess')||'null');
-    if(s&&s.mode===mode&&s.name&&s.token){await API.resume(s.name,s.token);enterGame()}
-  }catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}}
+  hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();

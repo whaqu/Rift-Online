@@ -21,6 +21,7 @@ async function rpc(fn,args){
 }
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
+const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
   let db={acc:{},items:[],auc:[],nid:1,aid:1};
@@ -43,7 +44,7 @@ const LocalAPI=(()=>{
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
-      daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
@@ -67,7 +68,8 @@ const LocalAPI=(()=>{
       rd();seedMarket();
       if(!/^[가-힣A-Za-z0-9_]{2,10}$/.test(name||''))E('BAD_NAME');if(!pass||pass.length<4)E('BAD_PASS');
       if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
-      const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
+      const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:name===LOCAL_GM?99:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
+      if(name===LOCAL_GM){a.perks={a:98,h:98,c:40};a.gat_xp=9025}
       const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5);wr();
       return{token:a.token,profile:pf(a)};
     },
@@ -184,6 +186,23 @@ const LocalAPI=(()=>{
       const fee=Math.floor(x.price*.05);a.gold-=x.price;const s=db.acc[x.seller];if(s)s.gold+=x.price-fee;
       const it=db.items.find(i=>i.id===x.item_id);it.owner=n;it.listed=false;it.eq=false;x.status='sold';x.buyer=n;wr();return pf(a);
     },
+    gmGrowth(n,t,max){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');
+      if(max){a.perks={a:98,h:98,c:40};a.gat_xp=Math.max(a.gat_xp||0,9025)}else a.perks={a:0,h:0,c:0};
+      wr();return pf(a);
+    },
+    gmJob(n,t,job){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
+      const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
+      if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCls(i.base)===j.cls).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
+      wr();return pf(a);
+    },
+    gmWeapon(n,t,base,enh,ench){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const k=ench||[];
+      if(!new RegExp('^('+CLASSES.join('|')+')_[1-8](_[12])?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
+      const mine=wCls(base)===a.cls;if(mine)db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});
+      const it=give(n,'weapon',base,1);it.enh=enh;it.ench=k.map(x=>({k:x,l:3}));it.eq=mine;wr();return pf(a);
+    },
     tradeOpen(){E('BAD_TARGET')},tradeGet(){E('BAD_TRADE')},tradeSet(){E('BAD_TRADE')},tradeOk(){E('BAD_TRADE')},tradeCancel(){E('BAD_TRADE')}
   };
   return API;
@@ -191,12 +210,12 @@ const LocalAPI=(()=>{
 
 /* ---------- unified client wrapper ---------- */
 const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
-  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel'};
+  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth'};
 const ARGS={
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]})
+  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]})
 };
 const API={
   async probe(){

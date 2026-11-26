@@ -255,6 +255,28 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.P.x=tr.x-6;g.P.z=tr.z;g.gatherLine(1,0,10,1);T(true,'ranged strip runs');
     g.openInventory();g.UI.close&&g.UI.close();
   }
+  // GM panel: only the admin account gets the button / actions
+  {
+    const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}};
+    const u=A.register('일반유저','pw1234','warrior');
+    T(!u.profile.admin&&u.profile.level===1,'normal account is not admin');
+    T(code(()=>A.gmJob('일반유저',u.token,'mage'))==='NOT_ADMIN','normal account cannot change job');
+    T(code(()=>A.gmWeapon('일반유저',u.token,'mage_8',20,[]))==='NOT_ADMIN','normal account cannot take weapons');
+    await g.API.register('테스트','pw1234','warrior');
+    T(g.SES.pf.admin&&g.SES.pf.level===99,'test account is admin Lv99');
+    T(g.SES.pf.gather.lv===20&&g.SES.pf.perks.c===40&&g.SES.pf.perks.pts===0,'test account starts maxed');
+    await g.API.call('gmGrowth',false);T(g.SES.pf.perks.pts===98,'perk reset gives points back');
+    await g.API.call('gmGrowth',true);T(g.SES.pf.perks.a===98&&g.SES.pf.gather.lv===20,'max growth');
+    T(code(()=>A.gmGrowth('일반유저',u.token,true))==='NOT_ADMIN','normal account cannot max growth');
+    await g.API.call('gmJob','priest_fire');
+    T(g.SES.pf.cls==='cleric'&&g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq).base==='cleric_1','job change swaps weapon class');
+    await g.API.call('gmWeapon','cleric_8_2',20,['burn','crit']);
+    const w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);T(w.base==='cleric_8_2'&&w.enh===20&&w.ench.length===2,'granted weapon equipped');
+    g.enterGame();step(3);g.openGM();T(g.UI.modal==='GM 패널','GM panel opens');
+    g.UI.handlers.gmtab('weapon');g.UI.handlers.gmtab('job');await g.UI.handlers.gmjob('assassin_dark');await sleep(20);step(3);
+    T(g.SES.pf.job==='assassin_dark','job change from panel');g.UI.close();
+    await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

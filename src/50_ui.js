@@ -424,7 +424,7 @@ function initLogin(){
       if(LG.mode==='up')await API.register(name,pass,LG.cls);else await API.login(name,pass);
       try{localStorage.setItem('rw_sess',JSON.stringify({name:SES.name,token:SES.token,mode:SES.mode}))}catch(e){}
       save.lastName=name;writeSave();
-      enterGame();
+      await enterWithLoading();
     }catch(e){$('lmsg').textContent=errKo(e.message)}
     $('lgo').disabled=false;
   };

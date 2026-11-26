@@ -51,7 +51,7 @@ svg.ic{vertical-align:middle;flex:none}
 #xpfill{background:linear-gradient(180deg,#ffe9a0,#d9a93e 60%,#a9791f);width:0;border-radius:4px;transition:width .3s}
 #xpbar::before{content:'';position:absolute;inset:0;z-index:3;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 1px),rgba(0,0,0,.55) calc(10% - 1px),rgba(0,0,0,.55) 10%);pointer-events:none}
 #pinfo .r3{display:flex;justify-content:space-between;margin-top:5px;font-size:12px;color:var(--dim)}
-#perkrow{display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;cursor:pointer;min-height:0}#perkrow:empty{display:none}
+#perkrow{pointer-events:auto;display:flex;gap:4px;margin-top:4px;flex-wrap:wrap;cursor:pointer;min-height:0}#perkrow:empty{display:none}
 #perkrow .pk{font-size:10px;font-weight:700;padding:1px 5px;border-radius:7px;background:rgba(10,12,20,.6);border:1px solid rgba(255,255,255,.12);text-shadow:0 1px 2px #000;line-height:14px}
 #perkrow .pkb{font-size:10px;font-weight:800;padding:1px 7px;border-radius:7px;background:linear-gradient(#f3d27a,#c79a3a);color:#2a1d05;border:0;animation:pkp 1s ease-in-out infinite;line-height:14px}
 @keyframes pkp{50%{transform:scale(1.08);box-shadow:0 0 8px rgba(255,214,110,.8)}}
@@ -138,6 +138,17 @@ hr{border:0;height:1px;background:linear-gradient(90deg,transparent,#454d6c,tran
 input.tx,select.tx{background:#0d0f17;border:1px solid var(--bd);border-radius:7px;color:var(--tx);padding:9px 12px;font-family:var(--ft);font-size:14px;outline:none;width:100%;-webkit-user-select:text;user-select:text;box-shadow:inset 0 2px 5px rgba(0,0,0,.5);transition:border-color .15s,box-shadow .15s}
 input.tx:focus{border-color:var(--ac);box-shadow:inset 0 2px 5px rgba(0,0,0,.5),0 0 10px rgba(217,176,90,.3)}
 /* login */
+.cover{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;text-align:center;padding:16px}
+.cover.hidden{display:none}
+#loading{z-index:90;background:radial-gradient(ellipse at 50% 40%,#232a44,#0b0d15 75%)}
+#start{z-index:55;background:radial-gradient(ellipse at center,rgba(7,9,15,.35),rgba(7,9,15,.82))}
+.cover .eyebrow{font-size:12px;letter-spacing:.42em;color:var(--ac);font-weight:700}
+.cover h1{font-family:var(--fh);font-weight:400;font-size:clamp(40px,9vw,72px);line-height:1.1;background:linear-gradient(180deg,#fff6d0 0%,#f0d283 45%,#c39236 100%);-webkit-background-clip:text;background-clip:text;color:transparent}
+.cover .sub,#ldtx,#stsub{color:#dfe3f2;text-shadow:0 1px 4px #000}
+#stgo{font-size:18px;padding:13px 54px;margin-top:14px}
+.ldbar{width:min(260px,70vw);height:6px;border-radius:3px;background:#1d2234;overflow:hidden;margin-top:10px}
+.ldbar i{display:block;width:40%;height:100%;border-radius:3px;background:var(--ac2);animation:ldmove 1.1s ease-in-out infinite}
+@keyframes ldmove{from{transform:translateX(-100%)}to{transform:translateX(250%)}}
 #login{position:fixed;inset:0;z-index:50;background:linear-gradient(100deg,rgba(7,9,15,.92) 0%,rgba(7,9,15,.7) 34%,rgba(7,9,15,.12) 62%,rgba(7,9,15,0) 100%);display:flex;align-items:flex-start;justify-content:flex-start;padding:12px 12px 12px max(4vw,16px);overflow:auto;touch-action:pan-y}
 #login .box{position:relative;margin:auto 0;width:min(430px,94vw);background:linear-gradient(180deg,rgba(32,38,58,.82),rgba(18,21,33,.88));backdrop-filter:blur(10px);border:1px solid #3d4562;border-radius:14px;padding:26px 26px 22px;box-shadow:0 24px 70px rgba(0,0,0,.65),inset 0 1px 0 rgba(255,255,255,.1)}
 #login .box::before{content:'';position:absolute;inset:5px;border:1px solid rgba(217,176,90,.22);border-radius:10px;pointer-events:none}
@@ -178,7 +189,7 @@ body.touch #toast{top:12px;left:57%;max-width:40vw;font-size:12px;padding:6px 14
 #tod i{display:inline-block;width:12px;height:12px;border-radius:50%;margin-right:6px}
 #tod i.d{background:#ffd24a;box-shadow:0 0 8px #ffd24a}#tod i.n{background:#dfe6ff;box-shadow:inset -4px -2px 0 #4a5a9a,0 0 8px #8aa0ff}
 #tod small{margin-left:8px;color:#9fe8b0;font-weight:600;font-size:10.5px}
-#qtrack{width:170px;padding:6px 10px 7px;font-size:11px;pointer-events:auto;cursor:pointer;line-height:1.35}
+#qtrack{width:200px;padding:6px 10px 7px;font-size:11px;pointer-events:auto;cursor:pointer;line-height:1.35}
 #qtrack b{display:block;color:var(--ac2);font-family:var(--fh);font-weight:400;font-size:13px;margin-bottom:2px;letter-spacing:.03em}
 #qtrack div{display:flex;justify-content:space-between;gap:6px;color:#c9cee0}#qtrack div span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}#qtrack em{font-style:normal;color:var(--dim);flex:none}
 #qtrack div.ok em{color:#ffd24a;font-weight:700}#qtrack div.dn{opacity:.45;text-decoration:line-through}
@@ -186,10 +197,10 @@ body.touch #qtrack{display:none}
 #evb{position:absolute;top:10px;left:50%;transform:translateX(-50%);padding:5px 18px;border-radius:16px;background:linear-gradient(180deg,rgba(90,34,24,.92),rgba(52,20,18,.92));border:1px solid #e0793a;color:#ffd6b0;font-size:13px;opacity:0;pointer-events:none;transition:opacity .4s;white-space:nowrap;box-shadow:0 0 18px rgba(255,122,58,.4)}
 #evb.on{opacity:1}#evb b{color:#ffb070;margin-right:6px}
 body.touch #evb{top:44px;font-size:11px;padding:3px 12px}
-#combo{position:absolute;right:22px;top:52%;text-align:right;pointer-events:none;opacity:0;transition:opacity .5s;font-family:var(--fh);color:#ffb050;text-shadow:0 2px 0 #5a2a08,0 0 16px rgba(255,150,40,.7)}
+#combo{position:absolute;right:250px;top:52%;text-align:right;pointer-events:none;opacity:0;transition:opacity .5s;font-family:var(--fh);color:#ffb050;text-shadow:0 2px 0 #5a2a08,0 0 16px rgba(255,150,40,.7)}
 #combo.on{opacity:1}#combo small{display:block;font-size:12px;letter-spacing:.12em;color:#ffe0b0}#combo b{font-size:44px;font-weight:400;line-height:1}
 #combo.pop b{animation:cpop .18s ease-out}@keyframes cpop{0%{transform:scale(1.5)}100%{transform:scale(1)}}
-body.touch #combo{top:34%;right:14px}body.touch #combo b{font-size:32px}
+body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
 .mbtn.dot::after{content:'';position:absolute;top:2px;right:2px;width:9px;height:9px;border-radius:50%;background:#ff4d6d;box-shadow:0 0 7px #ff4d6d}
 .pdot{display:inline-block;width:8px;height:8px;border-radius:50%;background:#ff4d6d;margin-left:4px;vertical-align:1px}
 .dgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:7px}
@@ -254,7 +265,14 @@ body.touch #combo{top:34%;right:14px}body.touch #combo b{font-size:32px}
 <div id="invite"><span id="invtx"></span><button class="btn sm" id="invok">수락</button><button class="btn sm sec" id="invno">거절</button></div>
 <div id="toast"></div>
 
-<div id="login">
+<div id="loading" class="cover" role="status">
+  <div class="eyebrow">RIFT ONLINE</div><h1>리프트 온라인</h1><div class="ldbar"><i></i></div><div id="ldtx">불러오는 중…</div>
+</div>
+<div id="start" class="cover hidden">
+  <div class="eyebrow">RIFT ONLINE</div><h1>리프트 온라인</h1><div class="sub">오픈 필드 파티 사냥 RPG</div><button class="btn" id="stgo">게임 시작</button><div id="stsub"></div>
+</div>
+
+<div id="login" class="hidden">
   <div class="box">
     <div class="eyebrow">RIFT ONLINE</div>
     <h1>리프트 온라인</h1>
@@ -274,6 +292,7 @@ body.touch #combo{top:34%;right:14px}body.touch #combo b{font-size:32px}
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>if(!window.THREE)document.getElementById('ldtx').textContent='그래픽 라이브러리를 불러오지 못했습니다. 인터넷 연결을 확인하고 새로고침해주세요.';</script>
 <script>
 'use strict';
 /* =====================================================================
@@ -1454,7 +1473,7 @@ function itemName(it){
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.'};
+const ERR_KO={NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};
 
 /* ---------------- server API ----------------
@@ -1480,6 +1499,7 @@ async function rpc(fn,args){
 }
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
+const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
   let db={acc:{},items:[],auc:[],nid:1,aid:1};
@@ -1502,7 +1522,7 @@ const LocalAPI=(()=>{
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
-      daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
@@ -1526,7 +1546,8 @@ const LocalAPI=(()=>{
       rd();seedMarket();
       if(!/^[가-힣A-Za-z0-9_]{2,10}$/.test(name||''))E('BAD_NAME');if(!pass||pass.length<4)E('BAD_PASS');
       if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
-      const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
+      const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:name===LOCAL_GM?99:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
+      if(name===LOCAL_GM){a.perks={a:98,h:98,c:40};a.gat_xp=9025}
       const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5);wr();
       return{token:a.token,profile:pf(a)};
     },
@@ -1643,6 +1664,23 @@ const LocalAPI=(()=>{
       const fee=Math.floor(x.price*.05);a.gold-=x.price;const s=db.acc[x.seller];if(s)s.gold+=x.price-fee;
       const it=db.items.find(i=>i.id===x.item_id);it.owner=n;it.listed=false;it.eq=false;x.status='sold';x.buyer=n;wr();return pf(a);
     },
+    gmGrowth(n,t,max){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');
+      if(max){a.perks={a:98,h:98,c:40};a.gat_xp=Math.max(a.gat_xp||0,9025)}else a.perks={a:0,h:0,c:0};
+      wr();return pf(a);
+    },
+    gmJob(n,t,job){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
+      const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
+      if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCls(i.base)===j.cls).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
+      wr();return pf(a);
+    },
+    gmWeapon(n,t,base,enh,ench){
+      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const k=ench||[];
+      if(!new RegExp('^('+CLASSES.join('|')+')_[1-8](_[12])?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
+      const mine=wCls(base)===a.cls;if(mine)db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});
+      const it=give(n,'weapon',base,1);it.enh=enh;it.ench=k.map(x=>({k:x,l:3}));it.eq=mine;wr();return pf(a);
+    },
     tradeOpen(){E('BAD_TARGET')},tradeGet(){E('BAD_TRADE')},tradeSet(){E('BAD_TRADE')},tradeOk(){E('BAD_TRADE')},tradeCancel(){E('BAD_TRADE')}
   };
   return API;
@@ -1650,12 +1688,12 @@ const LocalAPI=(()=>{
 
 /* ---------- unified client wrapper ---------- */
 const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
-  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel'};
+  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth'};
 const ARGS={
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]})
+  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]})
 };
 const API={
   async probe(){
@@ -3775,7 +3813,7 @@ function initLogin(){
       if(LG.mode==='up')await API.register(name,pass,LG.cls);else await API.login(name,pass);
       try{localStorage.setItem('rw_sess',JSON.stringify({name:SES.name,token:SES.token,mode:SES.mode}))}catch(e){}
       save.lastName=name;writeSave();
-      enterGame();
+      await enterWithLoading();
     }catch(e){$('lmsg').textContent=errKo(e.message)}
     $('lgo').disabled=false;
   };
@@ -3917,6 +3955,87 @@ function eventTick(dt){
   _huntOn=hi.on;
 }
 {const _ht=UI.hudTick;UI.hudTick=function(dt){_ht.apply(this,arguments);try{eventTick(dt)}catch(e){}}}
+
+/* ---------------- GM panel (관리자 계정 전용) ----------------
+   일반 계정에는 버튼과 창을 아예 만들지 않는다. 실제 권한 검사는 서버(rw_gm_*)가 한다. */
+function gmMenuButton(){
+  if(!SES.pf||!SES.pf.admin)return;
+  const b=document.createElement('div');b.className='mbtn';b.title='GM 패널';b.innerHTML=ic('star','#ffd24a',20)+'<small>GM</small>';
+  b.onclick=e=>{e.stopPropagation();if(!UI.modal)openGM()};
+  $('menu').appendChild(b);
+}
+async function gmApply(fn,...a){
+  await flushKills();
+  await API.call(fn,...a);
+  derive();P.buff=null;P.cd={q:0,e:0,r:0};P.hp=S.maxHp;
+  buildPlayerModel();UI.refreshHud();netPresence();
+}
+function openGM(){
+  if(!SES.pf||!SES.pf.admin)return;
+  let tab='job',cls=SES.pf.cls,wt=0,tier=8,enh=20,ench=[],busy=false;
+  const run=async(fn,msg)=>{if(busy)return;busy=true;try{await fn();sfx('equip');UI.toast(msg)}catch(e){UI.toast(errKo(e.message))}busy=false;UI.rerender&&UI.rerender()};
+  const btn=(a,v,label,on)=>'<button class="btn sm '+(on?'':'sec')+'" data-a="'+a+'" data-v="'+v+'">'+label+'</button>';
+  const line=(title,body)=>'<div class="dim" style="margin:8px 0 4px">'+title+'</div><div class="row wrap" style="gap:6px">'+body+'</div>';
+  const base=()=>cls+'_'+tier+(wt?'_'+wt:'');
+  UI.page('GM 패널',()=>{
+    let h='<div class="tabs">'+[['job','직업'],['weapon','무기'],['grow','성장']].map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
+    h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'?'':line('계열',CLASSES.map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
+    if(tab==='grow'){
+      const k=perkOf(SES.pf),gl=gatLvOf((SES.pf.gather&&SES.pf.gather.xp)||0);
+      h+='<div class="card"><div class="kv"><span>공격력 강화</span><span>'+k.a+'회</span><span>체력 강화</span><span>'+k.h+'회</span><span>쿨타임 강화</span><span>'+k.c+'회</span><span>벌목(채집) 숙련</span><span>Lv.'+gl+'</span></div></div>';
+      h+=line('한 번에 설정',btn('gmgrow',1,'강화·벌목 만렙',true)+btn('gmgrow',0,'강화 초기화 (직접 고르기)'));
+    }else if(tab==='job'){
+      const job=id=>btn('gmjob',id,JOBS[id].name,SES.pf.job===id);
+      h+=line('기본 직업',job(cls))+line('1차 전직',JOB_KIDS(cls).map(job).join(''));
+      for(const p of JOB_KIDS(cls))h+=line('2차 전직 · '+JOBS[p].name,JOB_KIDS(p).map(job).join(''));
+      h+='<div class="dim" style="margin-top:8px">지금 직업: '+JOBS[SES.pf.job].name+' · 누르면 바로 바뀝니다.</div>';
+    }else{
+      h+='<div class="card row sp" style="margin-top:8px;gap:8px;position:sticky;top:0;z-index:1;background:#2a3048"><div><b style="color:'+TIER_COL[tier-1]+'">'+esc(wName(base()))+' +'+enh+'</b><div class="dim">공격력 '+fmtN(weaponAtk(base(),enh))+' · '+CLS[cls].name+(cls===SES.pf.cls?' · 받으면 바로 장착':' · 가방에 보관')+'</div></div><button class="btn" data-a="gmget">받기</button></div>';
+      h+=line('종류',WTMOD.map((m,i)=>btn('gmwt',i,m.n,i===wt)).join(''));
+      h+=line('등급',[1,2,3,4,5,6,7,8].map(i=>btn('gmtier',i,wName(cls+'_'+i+(wt?'_'+wt:'')),i===tier)).join(''));
+      h+=line('강화 +'+enh,[0,5,10,15,20].map(i=>btn('gmenh',i,'+'+i,i===enh)).join('')+btn('gmenhd',-1,'−1')+btn('gmenhd',1,'+1'));
+      h+=line('인첸트 (최대 3개, 3단계)',Object.keys(ENCH).map(k=>btn('gmench',k,ENCH[k].name,ench.includes(k))).join(''));
+    }
+    return h+'</div>';
+  });
+  UI.handlers.gmtab=v=>{tab=v;UI.rerender()};
+  UI.handlers.gmcls=v=>{cls=v;UI.rerender()};
+  UI.handlers.gmwt=v=>{wt=+v;UI.rerender()};
+  UI.handlers.gmtier=v=>{tier=+v;UI.rerender()};
+  UI.handlers.gmenh=v=>{enh=+v;UI.rerender()};
+  UI.handlers.gmenhd=v=>{enh=clamp(enh+(+v),0,20);UI.rerender()};
+  UI.handlers.gmench=v=>{ench=ench.includes(v)?ench.filter(k=>k!==v):ench.concat(v).slice(-3);UI.rerender()};
+  UI.handlers.gmjob=v=>run(()=>gmApply('gmJob',v),JOBS[v].name+'(으)로 바꿨습니다');
+  UI.handlers.gmgrow=v=>run(()=>gmApply('gmGrowth',v==='1'),v==='1'?'강화·벌목 숙련 만렙':'강화를 초기화했습니다');
+  UI.handlers.gmget=()=>run(()=>gmApply('gmWeapon',base(),enh,ench),wName(base())+' 지급');
+}
+
+/* ---------------- loading & title screens ---------------- */
+function showLoading(text){$('ldtx').textContent=text||'불러오는 중…';$('loading').classList.remove('hidden')}
+function hideLoading(){$('loading').classList.add('hidden')}
+const wait=ms=>new Promise(r=>setTimeout(r,ms));
+async function enterWithLoading(){
+  showLoading('캐릭터를 불러오는 중…');await wait(500);
+  enterGame();
+  showLoading('필드로 이동하는 중…');await wait(400);
+  hideLoading();
+}
+/* title screen: "게임 시작" → saved session resumes, otherwise the login box */
+function showTitle(mode){
+  let s=null;try{s=JSON.parse(localStorage.getItem('rw_sess')||'null')}catch(e){}
+  if(!(s&&s.mode===mode&&s.name&&s.token))s=null;
+  $('stsub').textContent=s?s.name+' 님으로 이어합니다':'';
+  $('login').classList.add('hidden');$('start').classList.remove('hidden');LOGIN.title=true;
+  const toLogin=msg=>{LOGIN.title=false;$('start').classList.add('hidden');$('login').classList.remove('hidden');$('lmsg').textContent=msg||''};
+  let used=false;
+  $('stgo').onclick=async()=>{
+    if(used)return;used=true;auInit();
+    if(!s){toLogin();return}
+    $('start').classList.add('hidden');showLoading('접속 중…');
+    try{await API.resume(s.name,s.token);await enterWithLoading()}
+    catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}hideLoading();toLogin(errKo(e.message))}
+  };
+}
 
 /* ---------------- online: shard channel (Realtime broadcast + presence) ----------------
    방 코드 없음 — 접속하면 자동으로 인원이 덜 찬 필드 채널에 배정됩니다.
@@ -4150,8 +4269,9 @@ document.addEventListener&&document.addEventListener('visibilitychange',()=>{if(
 
 function enterGame(){
   loginEnd();
+  $('start').classList.add('hidden');hideLoading();
   $('login').classList.add('hidden');$('hud').classList.remove('hidden');
-  buildHud();initTouch();
+  buildHud();gmMenuButton();initTouch();
   newPlayer();UI.refreshHud();UI.zone=-1;
   cam.x=P.x;cam.z=P.z;
   resetMobs();netClearModels();
@@ -4185,12 +4305,13 @@ function loginScene(dt){
   if(!LOGIN.g||!LOGIN.on)return;
   LOGIN.t+=dt;const a=Math.sin(LOGIN.t*.18)*.4,cx=0,cz=11.5,dist=8,h=3;
   for(const k in LOGIN.heroes){const o=LOGIN.heroes[k],sel=k===LOGIN.sel;
-    if(o.g.visible!==sel)o.g.visible=sel;if(!sel)continue;
+    const show=sel&&!LOGIN.title;if(o.g.visible!==show)o.g.visible=show;if(!show)continue;
     o.g.scale.set(o.sc,o.sc,o.sc);o.g.rotation.y=lerpAng(o.g.rotation.y,a*.8,dt*3);
     animHeroFor(o,LOGIN.t,0,Math.max(0,Math.sin(LOGIN.t*2.2)*.6)-.1,false,1);
   }
   cam.x=cx;cam.z=cz;updateCam(dt,cx,cz,true);
-  camera.position.set(cx+Math.sin(a)*dist,h,cz+Math.cos(a)*dist);camera.lookAt(cx,1.5,cz);camera.updateMatrixWorld();
+  const cd=LOGIN.title?5.5:dist;   // title: stay in front of the lamp post behind the hero spot
+  camera.position.set(cx+Math.sin(a)*cd,h,cz+Math.cos(a)*cd);camera.lookAt(cx,1.5,cz);camera.updateMatrixWorld();
   const w=innerWidth,hh=innerHeight;
   if(w>=900&&camera.setViewOffset){camera.setViewOffset(w,hh,-w*.17,0,w,hh)}else if(camera.clearViewOffset)camera.clearViewOffset();
 }
@@ -4232,21 +4353,20 @@ function loop(now){
 }
 
 async function boot(){
+  showLoading('세계를 만드는 중…');await wait(60);   // let the loading screen paint before the heavy build
   loadSave();setVol(save.vol);
   scene.fog=new THREE.FogExp2(0x8fb4d8,.0052);
   sun.castShadow=!!save.shadows;renderer.shadowMap.enabled=!!save.shadows;
   buildWorld();try{buildLoginScene()}catch(e){console.error('login scene',e);LOGIN.g=null}initLogin();
   cam.x=0;cam.z=8;
   if(!loopOn&&typeof requestAnimationFrame==='function'){loopOn=true;requestAnimationFrame(loop)}
+  showLoading('서버에 연결하는 중…');
   const mode=await API.probe();
   $('lstat').textContent=mode==='online'?'서버 연결됨':'서버에 연결할 수 없어 오프라인 모드로 실행됩니다 (이 기기에만 저장)';
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · Space 대시';
-  try{
-    const s=JSON.parse(localStorage.getItem('rw_sess')||'null');
-    if(s&&s.mode===mode&&s.name&&s.token){await API.resume(s.name,s.token);enterGame()}
-  }catch(e){try{localStorage.removeItem('rw_sess')}catch(e2){}}
+  hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>
