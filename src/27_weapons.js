@@ -169,6 +169,71 @@ const WLOOK={
   }
 };
 
+/* body aura for the top weapon grades: 7 storm (lightning), 8 eternity (gyro rings + clock), 9 celestial (halo + wings) */
+const AUKIND={7:'storm',8:'eternity',9:'celestial'};
+const AUMAT={};
+const aumat=(c,op)=>AUMAT[c+'_'+op]||(AUMAT[c+'_'+op]=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide}));
+function auraBuild(kind){
+  const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
+  const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
+  let anim;
+  if(kind==='storm'){
+    const core=aumat(0xffffff,1),blue=aumat(0x2f9bff,1),seg=new THREE.BoxGeometry(.15,.44,.15);
+    const bolts=[0,1,2,3,4,5].map(i=>{const b=new THREE.Group();g.add(b);for(let j=0;j<5;j++)add(seg,j%2?core:blue,0,0,0,b);return b});
+    const arc=new THREE.TorusGeometry(1.15,.085,4,16,2);
+    const winds=[.35,1.15,1.95].map((y,i)=>{const w=new THREE.Group();w.position.y=y;g.add(w);for(let k=0;k<2;k++){const a=add(arc,blue,0,0,0,w);a.rotation.set(Math.PI/2,0,k*Math.PI);a.scale.setScalar(.8+i*.12)}return w});
+    halo(0x4f7cff,1.1,4.6,.6);
+    let step=-1;
+    anim=t=>{
+      winds.forEach((w,i)=>{w.rotation.y=t*(5+i)*(i%2?-1:1)});
+      const s=Math.floor(t*11);if(s===step)return;step=s;
+      bolts.forEach((b,i)=>{
+        b.visible=(s+i*3)%5<4;
+        const a=i/6*TAU+s*.9,r=1.05+Math.random()*.4;let x=Math.cos(a)*r,y=.3+Math.random()*.7,z=Math.sin(a)*r;
+        b.children.forEach(m=>{const dx=(Math.random()-.5)*.36,dy=.3,dz=(Math.random()-.5)*.36;
+          m.position.set(x+dx/2,y+dy/2,z+dz/2);m.rotation.set(Math.atan2(dz,dy),0,-Math.atan2(dx,dy));x+=dx*1.3;y+=dy;z+=dz*1.3});
+      });
+    };
+  }else if(kind==='eternity'){
+    const pink=aumat(0xe45cff,.9),deep=aumat(0x7a2fd0,.85),pale=aumat(0xffd6ff,.95),bead=new THREE.OctahedronGeometry(.14,0);
+    const rings=[0,1].map(i=>{const tilt=new THREE.Group();tilt.position.y=1.2;tilt.rotation.z=i?-.55:.55;g.add(tilt);const sp=new THREE.Group();tilt.add(sp);
+      add(new THREE.TorusGeometry(1.35+i*.2,.065,4,40),i?deep:pink,0,0,0,sp).rotation.x=Math.PI/2;
+      add(bead,pale,1.35+i*.2,0,0,sp).scale.setScalar(1.5);add(bead,pale,-1.35-i*.2,0,0,sp).scale.setScalar(1.5);return sp});
+    const clock=new THREE.Group();clock.position.set(0,1.9,-1);clock.rotation.x=-.8;clock.scale.setScalar(1.3);g.add(clock);
+    add(new THREE.TorusGeometry(.92,.08,4,36),pink,0,0,0,clock);add(new THREE.TorusGeometry(.72,.015,4,32),deep,0,0,0,clock);
+    const tick=new THREE.BoxGeometry(.08,.19,.04);
+    for(let i=0;i<12;i++){const a=i/12*TAU;add(tick,pale,Math.sin(a)*.82,Math.cos(a)*.82,0,clock).rotation.z=-a}
+    const hands=[.68,.46].map(l=>{const h=new THREE.Group();clock.add(h);add(new THREE.BoxGeometry(.09,l,.04),pale,0,l/2,0,h);return h});
+    halo(0xb04cff,1.2,4.6,.55);
+    anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.9+Math.sin(t*1.3)*.07};
+  }else{
+    const gold=aumat(0xffc21a,1),white=aumat(0xfffbe8,.95),soft=aumat(0xffd24a,.95);
+    const crown=new THREE.Group();crown.position.y=2.85;g.add(crown);
+    add(new THREE.TorusGeometry(.6,.1,6,28),gold,0,0,0,crown).rotation.x=Math.PI/2;
+    const ray=new THREE.ConeGeometry(.05,.24,4);
+    for(let i=0;i<8;i++){const a=i/8*TAU,m=add(ray,white,Math.cos(a)*.84,0,Math.sin(a)*.84,crown);m.rotation.set(0,-a,-Math.PI/2)}
+    const feather=new THREE.ConeGeometry(.13,1,4);
+    const wings=[-1,1].map(sd=>{const w=new THREE.Group();w.position.set(sd*.2,1.7,-.5);w.rotation.x=-1.3;w.scale.setScalar(1.75);g.add(w);
+      for(let i=0;i<6;i++){const a=1.25-i*.34,l=1.45-i*.1,f=add(feather,i%2?soft:white,sd*Math.cos(a)*l/2,Math.sin(a)*l/2,-i*.012,w);f.scale.set(2.3,l,.22);f.rotation.z=sd*(a-Math.PI/2)}
+      return w});
+    const mote=new THREE.OctahedronGeometry(.13,0),motes=[];
+    for(let i=0;i<7;i++)motes.push(add(mote,i%2?gold:white,0,0,0));
+    halo(0xffb820,1.4,5,.6);
+    anim=t=>{
+      crown.rotation.y=t*.9;crown.position.y=2.85+Math.sin(t*2)*.06;
+      wings.forEach((w,i)=>{w.rotation.y=(i?1:-1)*(.22+Math.sin(t*2.2)*.22)});
+      motes.forEach((m,i)=>{const k=(t*.42+i/7)%1,a=i*2.4+t*.8;m.position.set(Math.cos(a)*(1-k*.4),.1+k*2.9,Math.sin(a)*(1-k*.4));m.scale.setScalar(Math.sin(k*Math.PI)+.15);m.rotation.y=t*3});
+    };
+  }
+  anim(0);return{kind,g,anim};
+}
+function auraApply(o,t){
+  const kind=AUKIND[t]||null;
+  if(o.wau&&o.wau.kind===kind)return;
+  if(o.wau){o.g.remove(o.wau.g);o.wau=null}
+  if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
+}
+
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
@@ -180,5 +245,6 @@ function applyWeaponLook0(o,base){
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
   try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
+  try{auraApply(o,t)}catch(e){console.error('weapon aura',t,e)}
   o.wbase=b;
 }

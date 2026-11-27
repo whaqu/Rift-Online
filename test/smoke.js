@@ -515,6 +515,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T(Math.abs(sum(g.weaponRuneFx({base,rune:id+':2'}))-sum(g.runeFx(id+':2'))*g.RUNE_MATCH)<1e-9&&Math.abs(sum(g.weaponRuneFx({base,rune:other+':2'}))-sum(g.runeFx(other+':2')))<1e-9,'grade '+n+' bonus only with its own rune');
     }
     for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,c+'_9_2');T(o.wbase===c+'_9_2'&&g.wName(c+'_9')&&!g.wName(c+'_9').includes('undefined'),'grade 9 '+c)}
+    for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff),k=n=>{g.applyWeaponLook(o,c+'_'+n);g.animHeroFor(o,1.3,0,-1,false,1);return o.wau?o.wau.kind:null};T(k(7)==='storm'&&k(8)==='eternity'&&k(9)==='celestial'&&k(6)===null&&!o.wau,'weapon grade aura '+c)}
     T(g.weaponAtk('mage_9',0)>g.weaponAtk('mage_8',0)&&g.sellValue({kind:'weapon',base:'mage_9',enh:0,ench:[]})===720000,'grade 9 stats and value');
     T(g.wType('mage_4_11')===0&&g.wName('mage_4_11')===g.wName('mage_4'),'removed kinds fall back to the basic kind');
     const me=g.SES.name,tk=g.SES.token,K='rw_local_db_v1',edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
