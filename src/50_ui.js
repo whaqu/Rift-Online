@@ -38,7 +38,7 @@ UI.close=function(){
   flushKills();
 };
 UI.page=function(title,render){
-  UI.rerender=()=>{const bd=$('wbd');if(!bd)return;const st=bd.scrollTop;bd.innerHTML=render();bd.scrollTop=st;bind()};
+  UI.rerender=()=>{const bd=$('wbd');if(!bd)return;const qa=()=>bd.querySelectorAll?[...bd.querySelectorAll('.list')]:[],st=bd.scrollTop,ls=qa().map(l=>l.scrollTop);bd.innerHTML=render();bd.scrollTop=st;qa().forEach((l,i)=>{if(ls[i])l.scrollTop=ls[i]});bind()};
   const bd=UI.open(title,render());bind();
   function bind(){const b=$('wbd');if(b)b.onclick=ev=>{const t=ev.target.closest('[data-a]');if(!t||t.disabled)return;UI.act(t.dataset.a,t.dataset.v,t)}};
 };
@@ -80,7 +80,7 @@ function equipRow(){
   return '<div class="eqrow">'+ASLOTS.map(sl=>{const it=pf.items.find(i=>i.kind==='armor'&&i.eq&&aSlot(i.base)===sl);return '<div class="eqs'+(it?'':' emp')+'" '+(it?'data-a="sel" data-v="'+it.id+'"':'')+'>'+(it?itemIcon(it):ico(ic(sl,'#667',26),'#667'))+'<span>'+ASLOT_N[sl]+(it&&it.enh?' +'+it.enh:'')+'</span></div>'}).join('')+'</div>';
 }
 function openInventory(){
-  UI.sel=null;flushGather();
+  UI.sel=null;UI.multi=new Set();UI.multiMode=false;flushGather();
   UI.page('가방',()=>{
     const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||(a.kind>b.kind?-1:1)||(wTier(b.base||'x_1')-wTier(a.base||'x_1')));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
@@ -95,12 +95,47 @@ function openInventory(){
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
+    const msel=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed),mtot=msel.reduce((s,i)=>s+itemPrice(i)*((i.kind==='potion'||i.kind==='mat')?i.qty:1),0);
+    if(msel.length)det='<div class="row sp"><b>선택 '+msel.length+'개</b><span class="gold">'+fmtG(mtot)+'</span></div><div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="msell">선택 판매</button><button class="btn sm sec" data-a="mclear">선택 해제</button></div><div class="dim" style="margin-top:6px">포션·재료는 묶음 전체가 판매됩니다.</div>';
+    else det+='<div class="dim" style="margin-top:8px">드래그로 여러 개를 한 번에 선택해 팔 수 있습니다.</div>';
+    det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm '+(UI.multiMode?'':'sec')+'" data-a="mmode">다중 선택 '+(UI.multiMode?'켜짐':'(터치용)')+'</button></div>';
     const pf=SES.pf,jn=JOBS[pf.job].name;
     return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
-      +'<div><div class="list" style="max-height:62vh">'+(items.length?items.map(i=>itemRow(i,{sel:sel&&sel.id===i.id})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
+      +'<div><div class="list" style="max-height:62vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
   });
+  bindDragSelect();
 }
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
+/* inventory multi-select: a plain click picks one item for details (or toggles when multi mode is on); dragging over rows selects many */
+UI.handlers.isel=v=>{v=+v;if(UI.multiMode||UI.multi.size){if(UI.multi.has(v))UI.multi.delete(v);else UI.multi.add(v)}else UI.sel=v;UI.rerender()};
+UI.handlers.mmode=()=>{UI.multiMode=!UI.multiMode;UI.rerender()};
+UI.handlers.mclear=()=>{UI.multi.clear();UI.rerender()};
+UI.handlers.msell=async()=>{
+  const list=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed);if(!list.length)return;
+  if(list.some(i=>isGear(i)&&(i.enh>=5||(i.ench||[]).length))&&!(await UI.confirm('강화·인첸트된 장비가 포함되어 있습니다.\n선택한 '+list.length+'개를 정말 판매할까요?')))return;
+  sfx('coin');UI.multi.clear();
+  await guarded(async()=>{for(const i of list)await API.call('sell',i.id,(i.kind==='potion'||i.kind==='mat')?i.qty:1)},list.length+'개를 판매했습니다');
+};
+function bindDragSelect(){
+  const bd=$('wbd');if(!bd||bd._dsel)return;bd._dsel=true;
+  let st=null;
+  const rows=()=>[...bd.querySelectorAll('.list .item[data-a="isel"]')];
+  const at=(x,y)=>{const e=document.elementFromPoint(x,y);return e&&e.closest?e.closest('.item[data-a="isel"]'):null};
+  bd.addEventListener('pointerdown',e=>{
+    if(e.pointerType!=='mouse'||e.button!==0)return;const it=e.target.closest&&e.target.closest('.item[data-a="isel"]');if(!it)return;
+    const r=rows();st={start:r.indexOf(it),on:!UI.multi.has(+it.dataset.v),base:new Set(UI.multi),drag:false};
+  });
+  addEventListener('pointermove',e=>{
+    if(!st)return;const it=at(e.clientX,e.clientY);if(!it)return;const r=rows(),cur=r.indexOf(it);if(cur<0)return;
+    if(cur!==st.start)st.drag=true;if(!st.drag)return;
+    const a=Math.min(st.start,cur),b=Math.max(st.start,cur);UI.multi=new Set(st.base);
+    r.forEach((el,i)=>{const id=+el.dataset.v;if(i>=a&&i<=b){if(st.on)UI.multi.add(id);else UI.multi.delete(id)}el.classList.toggle('sel',UI.multi.has(id)||(UI.sel===id&&!UI.multi.size))});
+    window.getSelection&&window.getSelection().removeAllRanges();
+  });
+  addEventListener('pointerup',()=>{if(!st)return;const d=st.drag;st=null;if(d){UI.dragEnd=Date.now();UI.rerender&&UI.rerender()}});
+  bd.addEventListener('click',e=>{if(Date.now()-(UI.dragEnd||0)<150){e.stopImmediatePropagation();e.preventDefault()}},true);
+  bd.style.userSelect='none';
+}
 UI.handlers.none=()=>{};
 UI.handlers.equip=v=>{sfx('equip');return guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel();netPresence()}})};
 UI.handlers.sellall=v=>{const it=byId(+v);if(!it)return;sfx('coin');guarded(()=>API.call('sell',+v,it.qty),'모두 판매했습니다')};
@@ -283,13 +318,13 @@ function openTrade(tid,other){
       +'<hr><div class="row sp"><span class="dim">조건이 바뀌면 양쪽 확인이 초기화됩니다. 상대 제안을 꼭 확인하세요.</span><span><button class="btn" data-a="tok" '+(my.ok?'disabled':'')+'>확인</button> <button class="btn sec" data-a="tcancel">취소</button></span></div>';
   };
   UI.page('거래 — '+esc(other),render);
-  const poll=async()=>{if(!UI.trade)return;try{const T=await API.call('tradeGet',tid);if(!UI.trade)return;UI.trade.t=T;
+  const poll=async()=>{if(!UI.trade)return;try{const T=await API.call('tradeGet',tid);if(!UI.trade)return;if(Date.now()<(UI.trade.hold||0))return;const sg=JSON.stringify(T);if(T.status==='open'&&sg===UI.trade.sig)return;UI.trade.sig=sg;UI.trade.t=T;
       if(T.status!=='open'){clearInterval(UI.tradeTimer);if(T.status==='done'){await API.resume(SES.name,SES.token);UI.refreshHud()}UI.trade=UI.trade;UI.rerender&&UI.rerender();UI.trade=null;return}
       const el=$('tgold');const keep=el&&document.activeElement===el;if(!keep&&UI.rerender)UI.rerender()}catch(e){clearInterval(UI.tradeTimer);UI.trade=null;UI.toast(errKo(e.message))}};
   UI.tradeTimer=setInterval(poll,1500);poll();
-  const push=async()=>{try{const g=Math.max(0,Math.floor(+($('tgold')?$('tgold').value:UI.trade.myGold)||0));UI.trade.myGold=g;UI.trade.t=await API.call('tradeSet',tid,g,UI.trade.myItems);UI.rerender()}catch(e){UI.toast(errKo(e.message))}};
+  const push=async()=>{try{UI.trade.hold=Date.now()+2500;const g=Math.max(0,Math.floor(+($('tgold')?$('tgold').value:UI.trade.myGold)||0));UI.trade.myGold=g;UI.trade.t=await API.call('tradeSet',tid,g,UI.trade.myItems);UI.trade.sig=JSON.stringify(UI.trade.t);UI.trade.hold=0;UI.rerender()}catch(e){UI.trade&&(UI.trade.hold=0);UI.toast(errKo(e.message))}};
   UI.handlers.tset=push;
-  UI.handlers.ttoggle=v=>{const id=+v,a=UI.trade.myItems,i=a.indexOf(id);if(i>=0)a.splice(i,1);else if(a.length<8)a.push(id);push()};
+  UI.handlers.ttoggle=v=>{const id=+v,a=UI.trade.myItems,i=a.indexOf(id);if(i>=0)a.splice(i,1);else if(a.length<8)a.push(id);else{UI.toast('최대 8개까지 올릴 수 있습니다');return}UI.trade.hold=Date.now()+2500;UI.rerender();push()};
   UI.handlers.tok=async()=>{try{const r=await API.call('tradeOk',tid);if(r.error)UI.toast(errKo(r.error));if(r.trade)UI.trade.t=r.trade;UI.refreshHud();UI.rerender()}catch(e){UI.toast(errKo(e.message))}};
   UI.handlers.tcancel=()=>{UI.close()};
 }
