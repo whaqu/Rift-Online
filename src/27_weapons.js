@@ -1,6 +1,6 @@
 /* ---------------- weapon looks: shape by class x kind (3), material/glow/size by tier (1-8) ---------------- */
-const WACC=[0x9aa0aa,0xc0c8d4,0x8fb8ff,0x6ad0ff,0x6affd0,0xff9a5a,0xffe27a,0xff7ae8];
-const WBLD=[0x8a8f98,0xaab0bc,0xd8dee8,0xc4e4ff,0xc4fff0,0xffdcc8,0xfff2b8,0xffd4f6];
+const WACC=[0x9aa0aa,0xc0c8d4,0x8fb8ff,0x6ad0ff,0x6affd0,0xff9a5a,0xffe27a,0xff7ae8,0x8affef];
+const WBLD=[0x8a8f98,0xaab0bc,0xd8dee8,0xc4e4ff,0xc4fff0,0xffdcc8,0xfff2b8,0xffd4f6,0xd4fffa];
 function wmats(t){
   const c=WACC[t-1],em=t>=4;
   return{t,c,
@@ -16,7 +16,7 @@ function wmats(t){
 const wclear=g=>{while(g.children.length)g.remove(g.children[0])};
 /* orbiting runes / sparks circling the weapon (animated in animHeroFor via o.wfx); none below tier 3 */
 let WCUR=null;
-const WFXN=[0,0,2,3,4,5,6,8];
+const WFXN=[0,0,2,3,4,5,6,8,10];
 function wglow(k,m,x,y,z,s){
   const n=WFXN[m.t-1];if(!n||!WCUR)return null;
   s=s||1.4;const list=[];
@@ -169,27 +169,16 @@ const WLOOK={
   }
 };
 
-function wregion(m,rg){
-  const c=parseInt(RUNES[rg.rune].col.slice(1),16);m.c=c;
-  m.blade=M(c,{metalness:.55,roughness:.3,emissive:c,emissiveIntensity:.18});m.edge=EM(c,.9);m.steel=M(c,{metalness:.6,roughness:.35});m.wood=M(c,{roughness:.6});   // staffs and bows are mostly wood
-}
-function wshards(o,m){
-  const k=o.weapon,list=[];
-  for(let i=0;i<3;i++){const s=OC(.09,EM(m.c,1.6),0,0,0,k);s.scale.set(.6,1.6,.6);list.push(s)}
-  o.wfx.push({list,x:0,y:.7,z:0,r:.34,h:.3,sp:1.3});
-  const gl=wglw(m.c,2.2,.8);gl.position.set(0,.8,0);k.add(gl);
-}
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
-  let b=typeof base==='string'&&/^[a-z]+_[1-8](_([1-9]|1[01]))?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
+  let b=typeof base==='string'&&/^[a-z]+_[1-9](_\d+)?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);
   wclear(o.weapon);if(o.weapon2){wclear(o.weapon2);o.weapon2.visible=false}
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
-  const rg=ty>2?WTMOD[ty]:null;   // region weapon: one of the 3 shapes, recoloured, with shards of that region's colour
-  try{const m=wmats(t);if(rg)wregion(m,rg);fn(o,rg?(rg.zid-1)%3:ty,t,m);if(rg)wshards(o,m)}catch(e){console.error('weapon look',o.cls,b,e)}
+  try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
   o.wbase=b;
 }

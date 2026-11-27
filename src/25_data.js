@@ -126,40 +126,32 @@ const JOBS={
 const JOB_KIDS=id=>Object.keys(JOBS).filter(k=>JOBS[k].parent===id&&!JOBS[k].legacy);
 
 const WNAMES={
-  warrior:['낡은 검','철제 장검','강철 검','룬 검','미스릴 대검','용아검','폭풍의 대검','영겁의 검'],
-  mage:['나무 지팡이','수정 지팡이','마력의 지팡이','룬 스태프','현자의 스태프','용혼 스태프','별의 지팡이','세계수 스태프'],
-  archer:['단궁','사냥용 활','장궁','룬 활','미스릴 활','용골 활','폭풍의 활','바람의 신궁'],
-  rogue:['녹슨 단검','철 단검','쌍날 단검','그림자 단검','암살자의 칼날','용아 단도','폭풍의 단검','영겁의 암영'],
-  cleric:['나무 곤봉','철제 철퇴','성직자의 메이스','룬 철퇴','성자의 홀','용혼 철퇴','별빛의 홀','천상의 홀'],
-  lancer:['낡은 창','철제 장창','강철 장창','룬 창','미스릴 장창','용아창','폭풍의 장창','영겁의 창'],
-  monk:['붕대 장갑','가죽 권갑','강철 권갑','룬 권갑','미스릴 권갑','용린 권갑','폭풍의 권갑','영겁의 권갑'],
-  gunner:['낡은 권총','철제 권총','강철 리볼버','룬 리볼버','미스릴 쌍총','용골 총','폭풍의 총','영겁의 총'],
-  summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템'],
-  darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검']
+  warrior:['낡은 검','철제 장검','강철 검','룬 검','미스릴 대검','용아검','폭풍의 대검','영겁의 검','천상의 성검'],
+  mage:['나무 지팡이','수정 지팡이','마력의 지팡이','룬 스태프','현자의 스태프','용혼 스태프','별의 지팡이','세계수 스태프','천공의 지팡이'],
+  archer:['단궁','사냥용 활','장궁','룬 활','미스릴 활','용골 활','폭풍의 활','바람의 신궁','천상의 활'],
+  rogue:['녹슨 단검','철 단검','쌍날 단검','그림자 단검','암살자의 칼날','용아 단도','폭풍의 단검','영겁의 암영','천상의 비수'],
+  cleric:['나무 곤봉','철제 철퇴','성직자의 메이스','룬 철퇴','성자의 홀','용혼 철퇴','별빛의 홀','천상의 홀','신성한 홀'],
+  lancer:['낡은 창','철제 장창','강철 장창','룬 창','미스릴 장창','용아창','폭풍의 장창','영겁의 창','천상의 창'],
+  monk:['붕대 장갑','가죽 권갑','강철 권갑','룬 권갑','미스릴 권갑','용린 권갑','폭풍의 권갑','영겁의 권갑','천상의 권갑'],
+  gunner:['낡은 권총','철제 권총','강철 리볼버','룬 리볼버','미스릴 쌍총','용골 총','폭풍의 총','영겁의 총','천상의 총'],
+  summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템','천공의 토템'],
+  darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검','타락천사의 대검']
 };
 const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword'};
-const WATK=[10,22,40,70,115,180,280,420];
-const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a'];
-const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a];
+const WATK=[10,22,40,70,115,180,280,420,620];
+const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef'];
+const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a,0x8affef];
 const wTier=b=>+(String(b).split('_')[1]||1);
 const wCls=b=>String(b).split('_')[0];
-const wType=b=>{const p=String(b).split('_')[2];return p&&/^\d+$/.test(p)?+p:0};
+const wType=b=>{const p=String(b).split('_')[2];return p&&/^[12]$/.test(p)?+p:0};
 /* weapon kinds: every class has 3 (balanced / heavy / swift), same tier ladder */
-const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의'];
+const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의','천상의'];
 const WTYPES={warrior:['대검','쌍검'],mage:['마도서','완드'],archer:['석궁','속사궁'],rogue:['쌍낫','표창'],cleric:['전투 철퇴','성배'],lancer:['미늘창','단창'],monk:['건틀릿','발톱'],gunner:['산탄총','쌍권총'],summoner:['정령서','인형'],darknight:['참마도','단도']};
 const WTMOD=[{n:'균형형',d:'균형 잡힌 기본형',atk:1,aps:1,crit:0},{n:'강타형',d:'공격력 +15%, 공격 속도 -12%',atk:1.15,aps:.88,crit:0},{n:'속공형',d:'공격력 -10%, 공격 속도 +15%, 치명타 +4%',atk:.9,aps:1.15,crit:.04}];
-/* region weapons: kind index = 2 + zone id (3..11). Not sold in shops: area drops and that area's dungeon. */
-const RUNE_MATCH=1.3;   // rune effect multiplier when the rune belongs to the weapon's region
-const RWNOUN={warrior:'검',mage:'지팡이',archer:'활',rogue:'단검',cleric:'철퇴',lancer:'창',monk:'권갑',gunner:'총',summoner:'령장',darknight:'마검'};
-[['meadow','초원','새싹','초원의 룬',.97,1.08,0],['forest','망자의 숲','묘지기','묘지의 룬',1.06,.99,0],['ember','화염 황무지','용암','용암의 룬',1.18,.89,0],
- ['crystal','수정 협곡','수정','수정의 룬',1,1,.08],['storm','뇌우 고원','뇌운','폭풍의 룬',.91,1.15,0],['void','공허의 균열','공허','공허의 룬',1.1,.95,0],
- ['snow','설원','서리','설원의 룬',1.12,.94,0],['desert','사막','태양','사막의 룬',1,1.02,.05],['sky','성역','천상','천공의 룬',1.02,1.03,0]
-].forEach(([rune,area,word,rn,atk,aps,crit],i)=>{
-  const pc=v=>(v>=1?'+':'-')+Math.round(Math.abs(v-1)*100)+'%',st=[];
-  if(atk!==1)st.push('공격력 '+pc(atk));if(aps!==1)st.push('공격 속도 '+pc(aps));if(crit)st.push('치명타 +'+Math.round(crit*100)+'%');
-  WTMOD.push({n:area+' 무기',word,rune,zid:i+1,atk,aps,crit,d:st.join(', ')+' · '+rn+'을 넣으면 룬 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%'});
-});
-const runeMatch=(base,rune)=>{const m=WTMOD[wType(base)];return !!(m&&m.rune&&rune&&String(rune).split(':')[0]===m.rune)};
+/* weapon grade = region: grade N weapons come from zone N, and that zone's rune is stronger in them */
+const RUNE_MATCH=1.3;
+const REGION_RUNE=['meadow','forest','ember','crystal','storm','void','snow','desert','sky'];
+const runeMatch=(base,rune)=>!!rune&&ASLOT_W[String(base).split('_')[0]]==null&&REGION_RUNE[wTier(base)-1]===String(rune).split(':')[0];
 /* armor: 4 slots x 3 materials. base id = slot_tier_material (e.g. body_3_plate) */
 const ASLOTS=['helm','body','gloves','boots'],ASLOT_N={helm:'투구',body:'갑옷',gloves:'장갑',boots:'신발'},ASLOT_W={helm:.6,body:1,gloves:.45,boots:.45};
 const ASETS={plate:{n:'판금',def:1.25,hp:2,d:'방어와 체력 특화'},leather:{n:'가죽',def:1,hp:1.5,d:'기동과 치명타'},cloth:{n:'비단',def:.7,hp:1.2,d:'공격력과 공격 속도'}};
@@ -188,9 +180,9 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t>2&&WTMOD[t]?WPFX[k]+' '+WTMOD[t].word+' '+RWNOUN[c]:t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
-const WVALUE=[100,900,3500,12000,38000,110000,320000,900000];
+const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];

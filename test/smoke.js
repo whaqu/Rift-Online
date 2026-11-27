@@ -504,25 +504,24 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     }
     const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});
-    for(const id of ids){g.LocalAPI.dgBegin(me,tk,id);edit(a=>{a.dgRun.ts-=60000});const r=g.LocalAPI.dgEnd(me,tk,id,1);T(r.rewards.every(x=>x.t!=='weapon'||g.wType(x.base)===g.DGDEF[id].zid+2),id+' weapon reward is the region kind');T(r.rewards.every(x=>x.t!=='rune'||x.g<2||x.base===id),id+' area rune');T(r.rewards.length>=2&&r.rewards.every(x=>x.t!=='rune'||g.RUNES[x.base]),id+' reward '+JSON.stringify(r.rewards))}
+    for(const id of ids){g.LocalAPI.dgBegin(me,tk,id);edit(a=>{a.dgRun.ts-=60000});const r=g.LocalAPI.dgEnd(me,tk,id,1);T(r.rewards.every(x=>x.t!=='weapon'||g.wTier(x.base)===g.DGDEF[id].zid),id+' weapon reward is the region grade');T(r.rewards.every(x=>x.t!=='rune'||x.g<2||x.base===id),id+' area rune');T(r.rewards.length>=2&&r.rewards.every(x=>x.t!=='rune'||g.RUNES[x.base]),id+' reward '+JSON.stringify(r.rewards))}
     edit(a=>{a.level=lv});
   }
-  { // region weapons and region runes
-    const ids=['meadow','forest','ember','crystal','storm','void','snow','desert','sky'];
-    T(g.WTMOD.length===12&&g.WTMOD.slice(3).every((m,i)=>m.rune===ids[i]&&g.RUNES[m.rune]),'nine region kinds, each with its own rune');
-    const names=[];for(const c of g.CLASSES)for(let t=3;t<12;t++)names.push(g.wName(c+'_4_'+t));
-    T(new Set(names).size===90&&names.every(n=>n&&!n.includes('undefined')),'region weapon names are unique');
-    T(g.wType('mage_4_11')===11&&g.wType('mage_4')===0&&g.wType('mage_4_2')===2,'kind parsing');
-    for(const id of ids){
-      const t=3+ids.indexOf(id),base='warrior_5_'+t,other=ids[(ids.indexOf(id)+1)%9],plain=g.runeFx(id+':2');
-      const m=g.weaponRuneFx({base,rune:id+':2'}),n=g.weaponRuneFx({base,rune:other+':2'}),o=g.runeFx(other+':2');
-      const sum=q=>Object.values(q.en).reduce((a,b)=>a+b,0)+q.hp+q.rg;
-      T(sum(plain)>0&&Math.abs(sum(m)-sum(plain)*g.RUNE_MATCH)<1e-9&&Math.abs(sum(n)-sum(o))<1e-9,id+' matching rune gets the bonus only');
+  { // weapon grade = region, region rune bonus
+    const ids=g.REGION_RUNE;
+    T(ids.length===9&&ids.every((id,i)=>g.DGDEF[id].zid===i+1&&g.RUNES[id]),'nine regions, nine runes');
+    for(let n=1;n<=9;n++){
+      const id=ids[n-1],sum=q=>Object.values(q.en).reduce((a,b)=>a+b,0)+q.hp+q.rg,base='warrior_'+n,other=ids[n%9];
+      T(Math.abs(sum(g.weaponRuneFx({base,rune:id+':2'}))-sum(g.runeFx(id+':2'))*g.RUNE_MATCH)<1e-9&&Math.abs(sum(g.weaponRuneFx({base,rune:other+':2'}))-sum(g.runeFx(other+':2')))<1e-9,'grade '+n+' bonus only with its own rune');
     }
-    T(Math.abs(g.weaponRuneFx({base:'warrior_5',rune:'meadow:2'}).en.aspd-g.runeFx('meadow:2').en.aspd)<1e-9,'basic weapons get no bonus');
-    T(Object.keys(g.runeFx('all:1').en).length===7&&g.runeDesc('ember',1,g.RUNE_MATCH).includes('32.5'),'all-rune unchanged, bonus shown in text');
-    for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff);for(let t=3;t<12;t++){g.applyWeaponLook(o,c+'_6_'+t);T(o.wbase===c+'_6_'+t&&o.wfx.length>0,'look '+c+' '+t)}}
-    const me=g.SES.name,tk=g.SES.token;let e='';try{g.LocalAPI.buy(me,tk,g.SES.pf.cls+'_3_5',1)}catch(x){e=x.message}T(e==='NOT_SOLD','region weapons are not sold in the shop');
+    for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,c+'_9_2');T(o.wbase===c+'_9_2'&&g.wName(c+'_9')&&!g.wName(c+'_9').includes('undefined'),'grade 9 '+c)}
+    T(g.weaponAtk('mage_9',0)>g.weaponAtk('mage_8',0)&&g.sellValue({kind:'weapon',base:'mage_9',enh:0,ench:[]})===720000,'grade 9 stats and value');
+    T(g.wType('mage_4_11')===0&&g.wName('mage_4_11')===g.wName('mage_4'),'removed kinds fall back to the basic kind');
+    const me=g.SES.name,tk=g.SES.token,K='rw_local_db_v1',edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
+    let lv;edit(a=>{lv=a.level;a.level=99});
+    for(const z of[1,5,9]){let got=[];for(let i=0;i<40&&got.length<3;i++){edit(a=>{a.tokens=80;a.ts=Date.now()});got=got.concat(g.LocalAPI.claim(me,tk,[{z,ml:99,e:true,n:30}]).drops.filter(d=>d.kind==='weapon'))}
+      T(got.length&&got.every(d=>g.wTier(d.base)===z),'zone '+z+' drops grade '+z)}
+    edit(a=>{a.level=lv});
   }
   { // doorway walking, map guide, realtime reconnect
     const D=g.DG,wasOn=D.on,wave=D.wave;D.on=true;D.wave=4;D.shapes=null;

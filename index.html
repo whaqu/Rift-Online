@@ -1316,40 +1316,32 @@ const JOBS={
 const JOB_KIDS=id=>Object.keys(JOBS).filter(k=>JOBS[k].parent===id&&!JOBS[k].legacy);
 
 const WNAMES={
-  warrior:['낡은 검','철제 장검','강철 검','룬 검','미스릴 대검','용아검','폭풍의 대검','영겁의 검'],
-  mage:['나무 지팡이','수정 지팡이','마력의 지팡이','룬 스태프','현자의 스태프','용혼 스태프','별의 지팡이','세계수 스태프'],
-  archer:['단궁','사냥용 활','장궁','룬 활','미스릴 활','용골 활','폭풍의 활','바람의 신궁'],
-  rogue:['녹슨 단검','철 단검','쌍날 단검','그림자 단검','암살자의 칼날','용아 단도','폭풍의 단검','영겁의 암영'],
-  cleric:['나무 곤봉','철제 철퇴','성직자의 메이스','룬 철퇴','성자의 홀','용혼 철퇴','별빛의 홀','천상의 홀'],
-  lancer:['낡은 창','철제 장창','강철 장창','룬 창','미스릴 장창','용아창','폭풍의 장창','영겁의 창'],
-  monk:['붕대 장갑','가죽 권갑','강철 권갑','룬 권갑','미스릴 권갑','용린 권갑','폭풍의 권갑','영겁의 권갑'],
-  gunner:['낡은 권총','철제 권총','강철 리볼버','룬 리볼버','미스릴 쌍총','용골 총','폭풍의 총','영겁의 총'],
-  summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템'],
-  darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검']
+  warrior:['낡은 검','철제 장검','강철 검','룬 검','미스릴 대검','용아검','폭풍의 대검','영겁의 검','천상의 성검'],
+  mage:['나무 지팡이','수정 지팡이','마력의 지팡이','룬 스태프','현자의 스태프','용혼 스태프','별의 지팡이','세계수 스태프','천공의 지팡이'],
+  archer:['단궁','사냥용 활','장궁','룬 활','미스릴 활','용골 활','폭풍의 활','바람의 신궁','천상의 활'],
+  rogue:['녹슨 단검','철 단검','쌍날 단검','그림자 단검','암살자의 칼날','용아 단도','폭풍의 단검','영겁의 암영','천상의 비수'],
+  cleric:['나무 곤봉','철제 철퇴','성직자의 메이스','룬 철퇴','성자의 홀','용혼 철퇴','별빛의 홀','천상의 홀','신성한 홀'],
+  lancer:['낡은 창','철제 장창','강철 장창','룬 창','미스릴 장창','용아창','폭풍의 장창','영겁의 창','천상의 창'],
+  monk:['붕대 장갑','가죽 권갑','강철 권갑','룬 권갑','미스릴 권갑','용린 권갑','폭풍의 권갑','영겁의 권갑','천상의 권갑'],
+  gunner:['낡은 권총','철제 권총','강철 리볼버','룬 리볼버','미스릴 쌍총','용골 총','폭풍의 총','영겁의 총','천상의 총'],
+  summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템','천공의 토템'],
+  darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검','타락천사의 대검']
 };
 const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword'};
-const WATK=[10,22,40,70,115,180,280,420];
-const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a'];
-const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a];
+const WATK=[10,22,40,70,115,180,280,420,620];
+const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef'];
+const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a,0x8affef];
 const wTier=b=>+(String(b).split('_')[1]||1);
 const wCls=b=>String(b).split('_')[0];
-const wType=b=>{const p=String(b).split('_')[2];return p&&/^\d+$/.test(p)?+p:0};
+const wType=b=>{const p=String(b).split('_')[2];return p&&/^[12]$/.test(p)?+p:0};
 /* weapon kinds: every class has 3 (balanced / heavy / swift), same tier ladder */
-const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의'];
+const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의','천상의'];
 const WTYPES={warrior:['대검','쌍검'],mage:['마도서','완드'],archer:['석궁','속사궁'],rogue:['쌍낫','표창'],cleric:['전투 철퇴','성배'],lancer:['미늘창','단창'],monk:['건틀릿','발톱'],gunner:['산탄총','쌍권총'],summoner:['정령서','인형'],darknight:['참마도','단도']};
 const WTMOD=[{n:'균형형',d:'균형 잡힌 기본형',atk:1,aps:1,crit:0},{n:'강타형',d:'공격력 +15%, 공격 속도 -12%',atk:1.15,aps:.88,crit:0},{n:'속공형',d:'공격력 -10%, 공격 속도 +15%, 치명타 +4%',atk:.9,aps:1.15,crit:.04}];
-/* region weapons: kind index = 2 + zone id (3..11). Not sold in shops: area drops and that area's dungeon. */
-const RUNE_MATCH=1.3;   // rune effect multiplier when the rune belongs to the weapon's region
-const RWNOUN={warrior:'검',mage:'지팡이',archer:'활',rogue:'단검',cleric:'철퇴',lancer:'창',monk:'권갑',gunner:'총',summoner:'령장',darknight:'마검'};
-[['meadow','초원','새싹','초원의 룬',.97,1.08,0],['forest','망자의 숲','묘지기','묘지의 룬',1.06,.99,0],['ember','화염 황무지','용암','용암의 룬',1.18,.89,0],
- ['crystal','수정 협곡','수정','수정의 룬',1,1,.08],['storm','뇌우 고원','뇌운','폭풍의 룬',.91,1.15,0],['void','공허의 균열','공허','공허의 룬',1.1,.95,0],
- ['snow','설원','서리','설원의 룬',1.12,.94,0],['desert','사막','태양','사막의 룬',1,1.02,.05],['sky','성역','천상','천공의 룬',1.02,1.03,0]
-].forEach(([rune,area,word,rn,atk,aps,crit],i)=>{
-  const pc=v=>(v>=1?'+':'-')+Math.round(Math.abs(v-1)*100)+'%',st=[];
-  if(atk!==1)st.push('공격력 '+pc(atk));if(aps!==1)st.push('공격 속도 '+pc(aps));if(crit)st.push('치명타 +'+Math.round(crit*100)+'%');
-  WTMOD.push({n:area+' 무기',word,rune,zid:i+1,atk,aps,crit,d:st.join(', ')+' · '+rn+'을 넣으면 룬 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%'});
-});
-const runeMatch=(base,rune)=>{const m=WTMOD[wType(base)];return !!(m&&m.rune&&rune&&String(rune).split(':')[0]===m.rune)};
+/* weapon grade = region: grade N weapons come from zone N, and that zone's rune is stronger in them */
+const RUNE_MATCH=1.3;
+const REGION_RUNE=['meadow','forest','ember','crystal','storm','void','snow','desert','sky'];
+const runeMatch=(base,rune)=>!!rune&&ASLOT_W[String(base).split('_')[0]]==null&&REGION_RUNE[wTier(base)-1]===String(rune).split(':')[0];
 /* armor: 4 slots x 3 materials. base id = slot_tier_material (e.g. body_3_plate) */
 const ASLOTS=['helm','body','gloves','boots'],ASLOT_N={helm:'투구',body:'갑옷',gloves:'장갑',boots:'신발'},ASLOT_W={helm:.6,body:1,gloves:.45,boots:.45};
 const ASETS={plate:{n:'판금',def:1.25,hp:2,d:'방어와 체력 특화'},leather:{n:'가죽',def:1,hp:1.5,d:'기동과 치명타'},cloth:{n:'비단',def:.7,hp:1.2,d:'공격력과 공격 속도'}};
@@ -1378,9 +1370,9 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t>2&&WTMOD[t]?WPFX[k]+' '+WTMOD[t].word+' '+RWNOUN[c]:t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
-const WVALUE=[100,900,3500,12000,38000,110000,320000,900000];
+const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
@@ -1585,11 +1577,11 @@ async function rpc(fn,args){
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
 const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
-/* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, weapon tier, zone id, side runes, potion] (area rune = dungeon id) */
+/* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, zone id (= weapon grade), side runes, potion] (area rune = dungeon id) */
 const DGSRV={
-  meadow:[8,4000,3,1,['holy','ice'],'hp1'],forest:[14,10000,3,2,['dark','meadow'],'hp1'],ember:[22,18000,4,3,['fire','thunder'],'hp2'],
-  crystal:[30,30000,5,4,['ice','dark'],'hp2'],storm:[48,90000,7,5,['thunder','fire'],'hp3'],void:[62,150000,7,6,['dark','crystal'],'hp3'],
-  snow:[72,200000,8,7,['ice','crystal'],'hp3'],desert:[80,250000,8,8,['holy','fire'],'hp3'],sky:[90,330000,8,9,['holy','storm'],'hp3']
+  meadow:[8,4000,1,['holy','ice'],'hp1'],forest:[14,10000,2,['dark','meadow'],'hp1'],ember:[22,18000,3,['fire','thunder'],'hp2'],
+  crystal:[30,30000,4,['ice','dark'],'hp2'],storm:[48,90000,5,['thunder','fire'],'hp3'],void:[62,150000,6,['dark','crystal'],'hp3'],
+  snow:[72,200000,7,['ice','crystal'],'hp3'],desert:[80,250000,8,['holy','fire'],'hp3'],sky:[90,330000,9,['holy','storm'],'hp3']
 };
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
@@ -1656,7 +1648,7 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=rnd01()<.25?z+2:Math.floor(rnd01()*3),b=cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
           else if(rr<wc+ac){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
@@ -1717,10 +1709,10 @@ const LocalAPI=(()=>{
     },
     dgEnd(n,t,dg,rank){
       rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<45000)E('TOO_FAST');a.dgRun=null;
-      const rk=clamp(rank|0||5,1,5),[,base,tier,zid,els,pot]=DGSRV[dg],zr=dg;
+      const rk=clamp(rank|0||5,1,5),[,base,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
-        if(rnd01()<.5){const pb=a.cls+'_'+tier+'_'+(zid+2);give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        if(rnd01()<.5){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
         else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
@@ -1814,7 +1806,7 @@ const LocalAPI=(()=>{
     },
     gmWeapon(n,t,base,enh,ench){
       rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const k=ench||[];
-      if(!new RegExp('^('+CLASSES.join('|')+')_[1-8](_([1-9]|1[01]))?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
+      if(!new RegExp('^('+CLASSES.join('|')+')_[1-9](_[12])?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
       const mine=wCls(base)===a.cls;if(mine)db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});
       const it=give(n,'weapon',base,1);it.enh=enh;it.ench=k.map(x=>({k:x,l:3}));it.eq=mine;wr();return pf(a);
     },
@@ -1871,8 +1863,8 @@ const API={
 };
 
 /* ---------------- weapon looks: shape by class x kind (3), material/glow/size by tier (1-8) ---------------- */
-const WACC=[0x9aa0aa,0xc0c8d4,0x8fb8ff,0x6ad0ff,0x6affd0,0xff9a5a,0xffe27a,0xff7ae8];
-const WBLD=[0x8a8f98,0xaab0bc,0xd8dee8,0xc4e4ff,0xc4fff0,0xffdcc8,0xfff2b8,0xffd4f6];
+const WACC=[0x9aa0aa,0xc0c8d4,0x8fb8ff,0x6ad0ff,0x6affd0,0xff9a5a,0xffe27a,0xff7ae8,0x8affef];
+const WBLD=[0x8a8f98,0xaab0bc,0xd8dee8,0xc4e4ff,0xc4fff0,0xffdcc8,0xfff2b8,0xffd4f6,0xd4fffa];
 function wmats(t){
   const c=WACC[t-1],em=t>=4;
   return{t,c,
@@ -1888,7 +1880,7 @@ function wmats(t){
 const wclear=g=>{while(g.children.length)g.remove(g.children[0])};
 /* orbiting runes / sparks circling the weapon (animated in animHeroFor via o.wfx); none below tier 3 */
 let WCUR=null;
-const WFXN=[0,0,2,3,4,5,6,8];
+const WFXN=[0,0,2,3,4,5,6,8,10];
 function wglow(k,m,x,y,z,s){
   const n=WFXN[m.t-1];if(!n||!WCUR)return null;
   s=s||1.4;const list=[];
@@ -2041,27 +2033,16 @@ const WLOOK={
   }
 };
 
-function wregion(m,rg){
-  const c=parseInt(RUNES[rg.rune].col.slice(1),16);m.c=c;
-  m.blade=M(c,{metalness:.55,roughness:.3,emissive:c,emissiveIntensity:.18});m.edge=EM(c,.9);m.steel=M(c,{metalness:.6,roughness:.35});m.wood=M(c,{roughness:.6});   // staffs and bows are mostly wood
-}
-function wshards(o,m){
-  const k=o.weapon,list=[];
-  for(let i=0;i<3;i++){const s=OC(.09,EM(m.c,1.6),0,0,0,k);s.scale.set(.6,1.6,.6);list.push(s)}
-  o.wfx.push({list,x:0,y:.7,z:0,r:.34,h:.3,sp:1.3});
-  const gl=wglw(m.c,2.2,.8);gl.position.set(0,.8,0);k.add(gl);
-}
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
-  let b=typeof base==='string'&&/^[a-z]+_[1-8](_([1-9]|1[01]))?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
+  let b=typeof base==='string'&&/^[a-z]+_[1-9](_\d+)?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);
   wclear(o.weapon);if(o.weapon2){wclear(o.weapon2);o.weapon2.visible=false}
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
-  const rg=ty>2?WTMOD[ty]:null;   // region weapon: one of the 3 shapes, recoloured, with shards of that region's colour
-  try{const m=wmats(t);if(rg)wregion(m,rg);fn(o,rg?(rg.zid-1)%3:ty,t,m);if(rg)wshards(o,m)}catch(e){console.error('weapon look',o.cls,b,e)}
+  try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
   o.wbase=b;
 }
@@ -5261,7 +5242,7 @@ function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="colo
 function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+(runeMatch(it.base,it.rune)?' ★짝 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</span>':''}
 function itemRow(it,o){
   o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
-  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
+  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wTier(it.base)+'등급('+ZONES[wTier(it.base)].name+') · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
   else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
   else if(it.kind==='rune'){sub=runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d}
@@ -5308,12 +5289,12 @@ function openInventory(){
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
         const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
-        det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'</div><div class="row wrap">'
+        det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
           +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
-          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역의 지역 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 화염·냉기·번개·암흑·성광·초원·수정·폭풍 룬(Ⅱ 이상)을 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
+          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 화염·냉기·번개·암흑·성광·초원·수정·폭풍 룬(Ⅱ 이상)을 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
           +(RUNE_KEYS.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
@@ -5889,7 +5870,7 @@ function openGM(){
     }else{
       h+='<div class="card row sp" style="margin-top:8px;gap:8px;position:sticky;top:0;z-index:1;background:#2a3048"><div><b style="color:'+TIER_COL[tier-1]+'">'+esc(wName(base()))+' +'+enh+'</b><div class="dim">공격력 '+fmtN(weaponAtk(base(),enh))+' · '+CLS[cls].name+(cls===SES.pf.cls?' · 받으면 바로 장착':' · 가방에 보관')+'</div></div><button class="btn" data-a="gmget">받기</button></div>';
       h+=line('종류',WTMOD.map((m,i)=>btn('gmwt',i,m.n,i===wt)).join(''));
-      h+=line('등급',[1,2,3,4,5,6,7,8].map(i=>btn('gmtier',i,wName(cls+'_'+i+(wt?'_'+wt:'')),i===tier)).join(''));
+      h+=line('등급',[1,2,3,4,5,6,7,8,9].map(i=>btn('gmtier',i,wName(cls+'_'+i+(wt?'_'+wt:'')),i===tier)).join(''));
       h+=line('강화 +'+enh,[0,5,10,15,20].map(i=>btn('gmenh',i,'+'+i,i===enh)).join('')+btn('gmenhd',-1,'−1')+btn('gmenhd',1,'+1'));
       h+=line('인첸트 (최대 3개, 3단계)',Object.keys(ENCH).map(k=>btn('gmench',k,ENCH[k].name,ench.includes(k))).join(''));
     }
@@ -6371,7 +6352,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

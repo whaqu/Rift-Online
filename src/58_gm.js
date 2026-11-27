@@ -39,7 +39,7 @@ function openGM(){
     }else{
       h+='<div class="card row sp" style="margin-top:8px;gap:8px;position:sticky;top:0;z-index:1;background:#2a3048"><div><b style="color:'+TIER_COL[tier-1]+'">'+esc(wName(base()))+' +'+enh+'</b><div class="dim">공격력 '+fmtN(weaponAtk(base(),enh))+' · '+CLS[cls].name+(cls===SES.pf.cls?' · 받으면 바로 장착':' · 가방에 보관')+'</div></div><button class="btn" data-a="gmget">받기</button></div>';
       h+=line('종류',WTMOD.map((m,i)=>btn('gmwt',i,m.n,i===wt)).join(''));
-      h+=line('등급',[1,2,3,4,5,6,7,8].map(i=>btn('gmtier',i,wName(cls+'_'+i+(wt?'_'+wt:'')),i===tier)).join(''));
+      h+=line('등급',[1,2,3,4,5,6,7,8,9].map(i=>btn('gmtier',i,wName(cls+'_'+i+(wt?'_'+wt:'')),i===tier)).join(''));
       h+=line('강화 +'+enh,[0,5,10,15,20].map(i=>btn('gmenh',i,'+'+i,i===enh)).join('')+btn('gmenhd',-1,'−1')+btn('gmenhd',1,'+1'));
       h+=line('인첸트 (최대 3개, 3단계)',Object.keys(ENCH).map(k=>btn('gmench',k,ENCH[k].name,ench.includes(k))).join(''));
     }
