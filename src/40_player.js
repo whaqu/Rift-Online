@@ -89,7 +89,7 @@ function movePlayer(dt){
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   if(P.leap){   // fly along an arc, no steering
-    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;
+    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
   if(P.dashT>0){

@@ -69,7 +69,7 @@ function dgBuildArena(){
   const gm=std(0x2a2a30),wm=std(0x3a3a44),pm=std(0x4a4a56),rm=new THREE.MeshBasicMaterial({color:0x9aff7a,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide});
   const A={g,gm,wm,pm,rm,th:{},gates:[],arrows:null};
   const flat=(geo,mat,x,z)=>{const m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.set(x,0,z);m.receiveShadow=true;g.add(m);return m};
-  const box=(w,h,d,x,z,mat,y)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat||wm);m.position.set(x,(y!=null?y:h/2),z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m};
+  const segs=[];const box=(w,h,d,x,z)=>{if(w<d)segs.push([x,z,d,0]);else segs.push([x,z,w,Math.PI/2])};
   const {rw,cw,rl,gap}=DGL,WH=8;
   for(let i=0;i<4;i++){
     const zt=dgZT(i),zb=dgZB(i),zm=(zt+zb)/2;
@@ -94,9 +94,40 @@ function dgBuildArena(){
   const hz=DG_HALL_Z,hr=DGL.hallR;
   const hall=new THREE.Mesh(new THREE.CircleGeometry(hr,40),gm);hall.rotation.x=-Math.PI/2;hall.position.set(0,0,hz);hall.receiveShadow=true;g.add(hall);
   for(let i=0;i<20;i++){const a=i/20*TAU;if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a))-Math.PI/2)<.5)continue;
-    const w=box(2*Math.PI*(hr+1.5)/20+.8,WH+2,3,Math.cos(a)*(hr+1.5),hz+Math.sin(a)*(hr+1.5));w.rotation.y=-a+Math.PI/2}
+    segs.push([Math.cos(a)*(hr+1.5),hz+Math.sin(a)*(hr+1.5),2*Math.PI*(hr+1.5)/20+.8,-a])}
   for(const rr of[.62,.3]){const r=new THREE.Mesh(new THREE.RingGeometry(hr*rr,hr*rr+.6,64),rm);r.rotation.x=-Math.PI/2;r.position.set(0,.06,hz);g.add(r)}
   const dais=new THREE.Mesh(new THREE.CylinderGeometry(5,5.6,.35,24),pm);dais.position.set(0,.17,hz);g.add(dais);
+  // ---- cave rock walls (instanced, irregular), flagstones, rubble, ruined pillars ----
+  const R0=mulberry(4242),q=(a,b)=>a+R0()*(b-a),dm=new THREE.Object3D(),col=new THREE.Color();
+  const inst=(geo,mat,items,shade)=>{if(!THREE.InstancedMesh||!items.length)return null;const im=new THREE.InstancedMesh(geo,mat,items.length);
+    items.forEach((it,i)=>{dm.position.set(it[0],it[1],it[2]);dm.rotation.set(it[3],it[4],it[5]);dm.scale.set(it[6],it[7],it[8]);dm.updateMatrix();im.setMatrixAt(i,dm.matrix);
+      if(im.setColorAt&&col.setRGB){const v=shade?q(shade[0],shade[1]):1;col.setRGB(v,v,v*1.04);im.setColorAt(i,col)}});
+    im.castShadow=false;im.receiveShadow=true;im.frustumCulled=false;g.add(im);return im};
+  const rk=[];
+  for(const[sx,sz,len,th]of segs){const dx=Math.sin(th),dz=Math.cos(th),n=Math.ceil(len/1.9);
+    for(let k=0;k<n;k++){const t=((k+.5)/n-.5)*len,sp=R0()<.28;
+      for(let L=0;L<2;L++){const h=sp?q(8,13):q(3.5,7.5),w=q(1.5,2.5);
+        rk.push([sx+dx*t+dz*q(-.9,.9)*(L?1.4:.5),h*.5-.7,sz+dz*t-dx*q(-.9,.9)*(L?1.4:.5),q(-.25,.25),q(0,6.3),q(-.25,.25),w,h*.5,q(1.4,2.3)])}}}
+  inst(new THREE.IcosahedronGeometry(1,1),wm,rk,[.45,1.15]);
+  const tm=std(0x3c3c46);A.tm=tm;const ft=[];
+  const tiles=(x0,x1,z0,z1)=>{for(let x=x0;x<x1;x+=2.55)for(let z=z0;z<z1;z+=2.55){if(R0()<.12)continue;ft.push([x+q(-.15,.15),q(-.04,.1),z+q(-.15,.15),0,q(-.12,.12),0,q(1.05,1.22),q(.5,1.3),q(1.05,1.22)])}};
+  for(let i=0;i<4;i++){tiles(-rw+1.5,rw-1.5,dgZB(i)+1.5,dgZT(i)-1.5);tiles(-cw+1,cw-1,i<3?dgZT(i+1):dgZB(3)-gap,dgZB(i)+1)}
+  tiles(-hr+3,hr-3,hz-hr+3,hz+hr-3);
+  const ftm=ft.filter(it=>it[0]*it[0]+(it[2]-hz)*(it[2]-hz)<1e9);
+  inst(new THREE.BoxGeometry(2,.22,2),tm,ftm,[.55,1.2]);
+  const rb=[];for(let i=0;i<4;i++)for(let k=0;k<26;k++)rb.push([q(-rw+2,rw-2),q(.1,.4),dgZT(i)-q(2,rl-2),q(0,3),q(0,3),0,q(.25,.8),q(.2,.6),q(.25,.8)]);
+  for(let k=0;k<50;k++){const a=q(0,TAU),r=q(3,hr-3);rb.push([Math.cos(a)*r,q(.1,.4),hz+Math.sin(a)*r,q(0,3),q(0,3),0,q(.25,.9),q(.2,.6),q(.25,.9)])}
+  inst(new THREE.DodecahedronGeometry(1,0),wm,rb,[.5,1.1]);
+  // ruined pillars + fallen drums
+  const pil=(x,z)=>{const h=q(2,7),c=new THREE.Mesh(new THREE.CylinderGeometry(.8,.95,h,8),pm);c.position.set(x,h/2,z);c.castShadow=true;g.add(c);
+    const cap=new THREE.Mesh(new THREE.DodecahedronGeometry(1.0,0),pm);cap.position.set(x,h,z);cap.scale.set(1,.5,1);g.add(cap);addObst(DG.cx+x,DG.cz+z,1.2);
+    const dr=new THREE.Mesh(new THREE.CylinderGeometry(.8,.8,1.2,8),pm);dr.position.set(x+q(1.2,2.4),.6,z+q(-1,1));dr.rotation.z=q(.6,1.5);g.add(dr)};
+  for(let i=0;i<4;i++)for(const sx of[-1,1]){pil(sx*(rw-4),dgZT(i)-q(12,18));pil(sx*(rw-4),dgZT(i)-q(30,38))}
+  for(let i=0;i<6;i++){const a=i/6*TAU+.5;if(Math.sin(a)>.7)continue;pil(Math.cos(a)*(hr-6),hz+Math.sin(a)*(hr-6))}
+  // drifting dust motes
+  {const n=240,pos=new Float32Array(n*3);for(let i=0;i<n;i++){pos[i*3]=q(-rw,rw);pos[i*3+1]=q(.5,7);pos[i*3+2]=q(dgZB(3)-gap-30,6)}
+   const ge=new THREE.BufferGeometry();ge.setAttribute('position',new THREE.BufferAttribute(pos,3));
+   const pt=new THREE.Points(ge,new THREE.PointsMaterial({color:0xcfd8ff,size:.16,transparent:true,opacity:.55,depthWrite:false}));pt.frustumCulled=false;g.add(pt);A.dust=pt}
   // torches along the walls
   const torch=(x,z)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.35,.28,1.3,6),pm);b.position.set(x,.65,z);g.add(b);const f=glow(0xffa23a,3.4,.8);f.position.set(x,1.8,z);g.add(f)};
   for(let i=0;i<4;i++){const zt=dgZT(i);for(const k of[10,36])for(const sx of[-1,1])torch(sx*(rw-1.3),zt-k)}
@@ -112,18 +143,35 @@ function dgBuildArena(){
       const c=new THREE.Mesh(new THREE.SphereGeometry(.8*s,8,5,0,TAU,0,Math.PI/2),cap[(x*7|0)%3<0?0:Math.abs(x*7|0)%3]);c.position.set(x,1.3*s,z);t.add(c)};
     for(let i=0;i<4;i++){edge(i,9,shroom);edge(i,4,(x,z)=>{const m=new THREE.Mesh(new THREE.DodecahedronGeometry(rr(.8,1.8),0),moss);m.position.set(x,.5,z);t.add(m)})}
     for(let i=0;i<16;i++){const[x,z]=hallPt();shroom(x,z)}
-    for(let i=0;i<5;i++){const[x,z]=hallPt(),gl=glow(0x6aff9a,7,.4);gl.position.set(x,1.5,z);t.add(gl)}}
+    for(let i=0;i<5;i++){const[x,z]=hallPt(),gl=glow(0x6aff9a,7,.4);gl.position.set(x,1.5,z);t.add(gl)}
+    // hanging roots / vines along the walls
+    const vm=std(0x2f5a2a);for(let i=0;i<4;i++)for(let k=0;k<12;k++){const sx=k%2?-1:1,h=rr(3,7),v=new THREE.Mesh(new THREE.CylinderGeometry(.08,.16,h,5),vm);v.position.set(sx*(rw-1.6),WH-h/2,dgZT(i)-rr(2,rl-2));v.rotation.z=sx*rr(.05,.25);t.add(v)}
+    // ghostly will-o-wisps
+    for(let i=0;i<10;i++){const[x,z]=hallPt(),gl=glow(0x9affd0,3,.7);gl.position.set(x,rr(1.5,3.5),z);t.add(gl)}}
   { // crystal cavern
     const t=mk('crystal'),cm=[0x6ee7ff,0xb07aff,0x7a9aff].map(c=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:1.1,roughness:.3,flatShading:true}));
     const cr=(x,z)=>{const h=rr(2.5,7);const c=new THREE.Mesh(new THREE.ConeGeometry(rr(.5,1.1),h,5),cm[(Math.abs(x*3|0))%3]);c.position.set(x,h/2,z);c.rotation.z=rr(-.25,.25);c.rotation.x=rr(-.25,.25);t.add(c)};
     for(let i=0;i<4;i++){edge(i,12,cr);const[x,z]=[0,dgZT(i)-rl/2],gl=glow([0x6ee7ff,0xb07aff][i%2],9,.35);gl.position.set(x,1.6,z);t.add(gl)}
     for(let i=0;i<20;i++){const[x,z]=hallPt();cr(x,z)}
+    // amethyst geodes embedded in the cave walls
+    const am=new THREE.MeshStandardMaterial({color:0xa86bff,emissive:0x8a3cff,emissiveIntensity:1.3,roughness:.25,flatShading:true});
+    for(let i=0;i<4;i++)for(let k=0;k<9;k++){const sx=k%2?-1:1,zc=dgZT(i)-rr(3,rl-3),y=rr(1.2,5.5);
+      for(let j=0;j<4;j++){const h=rr(1,2.6),c=new THREE.Mesh(new THREE.ConeGeometry(rr(.25,.5),h,5),am);c.position.set(sx*(rw-1.2)-sx*h*.3,y+rr(-.5,.5),zc+rr(-.6,.6));c.rotation.z=sx*(Math.PI/2+rr(-.5,.5));c.rotation.x=rr(-.4,.4);t.add(c)}
+      if(k%3===0){const gl=glow(0xb07aff,4.5,.6);gl.position.set(sx*(rw-2.4),y,zc);t.add(gl)}}
+    for(let i=0;i<10;i++){const a=i/10*TAU,x=Math.cos(a)*(hr-1.5),z=hz+Math.sin(a)*(hr-1.5);if(Math.sin(a)>.8)continue;
+      for(let j=0;j<5;j++){const h=rr(2,5),c=new THREE.Mesh(new THREE.ConeGeometry(rr(.4,.8),h,5),am);c.position.set(x-Math.cos(a)*h*.35+rr(-.6,.6),h*.45,z-Math.sin(a)*h*.35+rr(-.6,.6));c.rotation.set(rr(-.4,.4)+Math.sin(a)*.5,0,rr(-.4,.4)-Math.cos(a)*.5);t.add(c)}
+      const gl=glow(0xb07aff,7,.5);gl.position.set(x*.92,2.5,hz+(z-hz)*.92);t.add(gl)}
     for(let i=0;i<4;i++){const[x,z]=hallPt(),gl=glow(0x6ee7ff,8,.4);gl.position.set(x,1.6,z);t.add(gl)}}
   { // storm: ruined cave, lightning spires, floating rubble
     const t=mk('storm'),sm=std(0x4a5262),tip=new THREE.MeshBasicMaterial({color:0xffe27a});
     const sp=(x,z)=>{const h=rr(5,9);const c=new THREE.Mesh(new THREE.ConeGeometry(.9,h,5),sm);c.position.set(x,h/2,z);t.add(c);const o=new THREE.Mesh(new THREE.SphereGeometry(.4,6,5),tip);o.position.set(x,h+.2,z);t.add(o);const gl=glow(0xffe27a,4,.6);gl.position.set(x,h+.2,z);t.add(gl)};
     for(let i=0;i<4;i++){edge(i,3,sp);edge(i,6,(x,z)=>{const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rr(.7,1.6),0),sm);r.position.set(x,rr(.5,3),z);r.rotation.set(rr(0,3),rr(0,3),0);t.add(r)})}
-    for(let i=0;i<6;i++){const[x,z]=hallPt();sp(x,z)}}
+    for(let i=0;i<6;i++){const[x,z]=hallPt();sp(x,z)}
+    // lightning-scorched ground arcs + floating rubble + storm glows
+    const sc=new THREE.MeshBasicMaterial({color:0xffe27a,transparent:true,opacity:.55,depthWrite:false});
+    for(let i=0;i<4;i++)for(let k=0;k<5;k++){const x=rr(-rw+4,rw-4),z=dgZT(i)-rr(4,rl-4),m=new THREE.Mesh(new THREE.PlaneGeometry(.18,rr(3,7)),sc);m.rotation.x=-Math.PI/2;m.rotation.z=rr(0,3.1);m.position.set(x,.14,z);t.add(m)}
+    A.fl=[];for(let i=0;i<34;i++){const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rr(.5,1.3),0),sm),zz=rr(dgZB(3)-gap-20,4);r.position.set(rr(-rw+3,rw-3),rr(3,7),zz);r.userData.b=r.position.y;r.userData.p=rr(0,6);t.add(r);A.fl.push(r)}
+    for(let i=0;i<4;i++){const gl=glow(0xffe27a,10,.28);gl.position.set(0,5,dgZT(i)-rl/2);t.add(gl)}}
   // advance arrows (chevrons that point down the path)
   const ar=new THREE.Group();ar.visible=false;g.add(ar);A.arrows=ar;A.arrowMats=[];
   for(let k=0;k<4;k++){const m=new THREE.MeshBasicMaterial({color:0xfff2a0,transparent:true,opacity:.6,depthWrite:false,side:THREE.DoubleSide});A.arrowMats.push(m);
@@ -186,7 +234,7 @@ function dgEnter(id){
   DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
-  A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);A.rm.color.setHex(def.ring);
+  A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
   for(const k in A.th)A.th[k].visible=(k===id);for(const gt of A.gates){gt.bar.material.color.setHex(def.ring);gt.g.visible=true}A.arrows.visible=false;
   A.g.visible=true;worldG.visible=false;
   if(THREE.PointLight&&!(typeof balOn==='function'&&balOn())){if(!DG.lamp){DG.lamp=new THREE.PointLight(0xffb878,1.5,36,1.5)}DG.lamp.position.set(P.x,6,P.z);scene.add(DG.lamp)}
@@ -435,6 +483,8 @@ function dgScene(dt){
   const adv=DG.ph==='advance';if(A.arrows.visible!==adv)A.arrows.visible=adv;
   if(adv){const gz=DG.wave>=4?dgGate(3)-12:dgGate(DG.wave-1)-8;A.arrows.position.set(0,0,gz);A.arrowMats.forEach((m,k)=>{m.opacity=.25+.5*Math.max(0,Math.sin(G.t*5-k*.9))})}
   if(DG.lamp)DG.lamp.position.set(P.x,6.5,P.z);
+  if(A.dust)A.dust.position.y=Math.sin(G.t*.3)*.6;
+  if(A.fl&&DG.id==='storm')for(const r of A.fl){r.position.y=r.userData.b+Math.sin(G.t*.8+r.userData.p)*.5;r.rotation.y+=dt*.3}
 }
 function dgUpdate(dt){
   if(DGP.length&&!DG.on){

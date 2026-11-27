@@ -142,7 +142,7 @@ function shove(m,dx,dz,dist){
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
 function boom(x,z,r,col,shake){shockRing(x,z,r+.8,col,.45);flashDisc(x,z,r,col,.35);burst(x,1,z,24,col,10,.55,8);sfx('boom');cam.shake=Math.max(cam.shake,shake||.4)}
-function blinkTo(x,z){const d=Math.hypot(x,z);if(d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
+function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
 function leapTo(x,z,dur,h,done){P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h,done};P.iframes=Math.max(P.iframes,dur+.2);sfx('dash')}
 const clearShots=(x,z,r)=>{for(const b of EB)if(d2(b.x,b.z,x,z)<r*r)b.life=0};
 function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.set(x,22,z);entG.add(g);act(dur,t=>{const k=t/dur;g.position.y=22*(1-k*k)+1},done,g)}
