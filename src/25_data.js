@@ -199,7 +199,7 @@ const MATS={
 };
 const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
 const gatSpeed=lv=>1+.1*(lv-1),gatDouble=lv=>.015*(lv-1);
-const itemPrice=it=>isGear(it)?sellValue(it):it.kind==='mat'?(MATS[it.base]?MATS[it.base].price:0):Math.floor(POTIONS[it.base].price*.25);
+const itemPrice=it=>it.kind==='rune'?runePrice(it.base,it.enh):isGear(it)?sellValue(it):it.kind==='mat'?(MATS[it.base]?MATS[it.base].price:0):Math.floor(POTIONS[it.base].price*.25);
 const POTION_ORDER=['hp1','hp2','hp3','spd','atk','def'];
 const ENCH={
   burn:{name:'화염',d:'공격 시 화상 (초당 공격력의 {v}%)',per:25,col:'#ff7a2a'},
@@ -211,6 +211,38 @@ const ENCH={
   pierce:{name:'관통',d:'관통 +{v} · 근접 범위 +{v2}%',per:1,col:'#9fc8ff'},
   armor:{name:'수호',d:'받는 피해 -{v}%',per:4,col:'#b0b8d8'}
 };
+/* runes: attach 1 to a weapon (socket). grade 1..3 (3 same -> next grade). 8 kinds + 만물의 룬(all) */
+const RUNES={
+  fire:{name:'화염의 룬',col:'#ff7a2a',d:'화상 · 폭발'},ice:{name:'냉기의 룬',col:'#7fd8ff',d:'수호 · 가속'},thunder:{name:'번개의 룬',col:'#ffe27a',d:'연쇄 번개 · 가속'},
+  dark:{name:'암흑의 룬',col:'#b07aff',d:'흡혈 · 치명'},holy:{name:'성광의 룬',col:'#fff1a8',d:'체력 · 재생'},
+  meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
+  all:{name:'만물의 룬',col:'#ffd24a',d:'모든 룬의 힘 ×2 · 황금 오라'}
+};
+const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
+const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];
+const RUNE_POTION={fire:['atk',3],ice:['def',3],thunder:['spd',3],dark:['hp2',4],holy:['hp3',3],meadow:['hp1',8],crystal:['atk',2],storm:['spd',2]};
+const runePrice=(b,g)=>b==='all'?40000:400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
+function runeBase(k,g){
+  g=Math.max(1,g|0);const o={en:{},hp:0,rg:0};const a=(e,v)=>{if(v>0)o.en[e]=(o.en[e]||0)+v};
+  switch(k){
+    case'fire':a('burn',g);a('explode',g-1);break;case'ice':a('armor',g);a('aspd',g-1);break;case'thunder':a('chain',g);a('aspd',g-1);break;
+    case'dark':a('vamp',g);a('crit',g-1);break;case'holy':o.hp=.04*g;o.rg=.004*g;break;case'meadow':a('aspd',g);o.rg=.003*g;break;
+    case'crystal':a('crit',g);a('armor',g-1);break;case'storm':a('explode',g);a('chain',g-1);break;
+  }
+  return o;
+}
+/* weapon.rune = 'kind:grade' -> {en,hp,rg,aura} (en keys = ENCH keys) */
+function runeFx(s){
+  if(!s)return null;const p=String(s).split(':'),k=p[0],g=Math.max(1,Math.min(3,+p[1]||1));
+  if(k==='all'){const o={en:{},hp:0,rg:0,aura:true};for(const r of RUNE_KEYS){const q=runeBase(r,2);for(const e in q.en)o.en[e]=(o.en[e]||0)+q.en[e]*2;o.hp+=q.hp*2;o.rg+=q.rg*2}return o}
+  if(!RUNES[k])return null;const o=runeBase(k,g);o.aura=false;return o;
+}
+function runeDesc(k,g){
+  const o=runeFx(k+':'+g);if(!o)return '';const t=[];
+  for(const e in o.en){const d=ENCH[e];if(d)t.push(d.name+' +'+(o.en[e]*d.per)+(e==='pierce'?'':'%'))}
+  if(o.hp)t.push('체력 +'+Math.round(o.hp*100)+'%');if(o.rg)t.push('재생 +'+(o.rg*100).toFixed(1)+'%/s');
+  return t.join(' · ');
+}
 const ZONES=[
   {id:0,name:'마을',r0:0,r1:19,lo:0,hi:0},
   {id:1,name:'초원',r0:19,r1:72,lo:1,hi:10,types:['slime','slime','bat','boar'],ground:0x56a044,alt:0x4a9340},
@@ -231,7 +263,18 @@ const isNight=()=>{const p=dayPhase();return p>=.55&&p<.95};
 function nightK(p){p=p==null?dayPhase():p;const sm=x=>x*x*(3-2*x);if(p<.5)return 0;if(p<.6)return sm((p-.5)/.1);if(p<.9)return 1;if(p<1)return 1-sm((p-.9)/.1);return 0}
 /* elite hunt: first 2.5 min of every 10 min */
 function huntInfo(){const t=(Date.now()/1000)%600;return t<150?{on:true,left:150-t}:{on:false,next:600-t}}
-function zoneAt(x,z){const d=Math.hypot(x,z);for(let i=ZONES.length-1;i>=0;i--)if(d>=ZONES[i].r0)return ZONES[i];return ZONES[0]}
+/* dungeons: instanced arena far outside the world (x≈1000) */
+const DGDEF={
+  meadow:{name:'초원 던전',need:8,zid:1,ml:10,col:0x56a044,ring:0x9aff7a,mobs:['slime','bat','boar'],waves:[6,8,10,12],bn:'멧돼지 왕',hpM:26,dmgM:1.3,spd:4.2,sc:2.2,r:1.9,pa:2.4,pr:32,bits:4,
+    pat:['slam','rush','nova','summon','rush'],adds:['slime','bat']},
+  crystal:{name:'수정 던전',need:30,zid:4,ml:34,col:0x585a86,ring:0x7a9aff,mobs:['golem','spider','archer','bomber'],waves:[6,8,10,12],bn:'수정 거인왕',hpM:30,dmgM:1.3,spd:3.2,sc:1.5,r:2.2,pa:.8,pr:204,bits:8,
+    pat:['slam','quake','nova','summon','barrage'],adds:['spider','spider']},
+  storm:{name:'폭풍 던전',need:48,zid:5,ml:54,col:0x5a6678,ring:0xffe27a,mobs:['stormhawk','golem','bomber','archer'],waves:[6,8,10,12],bn:'폭풍매 군주',hpM:36,dmgM:1.35,spd:4.4,sc:2.6,r:1.8,pa:3.9,pr:268,bits:16,
+    pat:['bolts','nova','barrage','slam','summon'],adds:['stormhawk','stormhawk']}
+};
+const DGK=Object.keys(DGDEF);
+const DG={on:false,id:null,cx:1000,cz:0,R:34,zone:null,ph:'idle',t:0,wave:0,wn:0,pt:0,dmg:{},deaths:0,maxDeaths:3,leader:null,boss:null,res:null,st:null,lastSt:0,arena:null,mkBk:'meadow'};
+function zoneAt(x,z){if(DG.on&&x>600)return DG.zone;const d=Math.hypot(x,z);for(let i=ZONES.length-1;i>=0;i--)if(d>=ZONES[i].r0)return ZONES[i];return ZONES[0]}
 function mobLevel(x,z){const zn=zoneAt(x,z);if(!zn.id)return 0;const k=clamp((Math.hypot(x,z)-zn.r0)/(zn.r1-zn.r0),0,1);return Math.max(zn.lo,Math.min(zn.hi,Math.round(zn.lo+k*(zn.hi-zn.lo)+rnd(-1,1))))}
 const mobHp=ml=>Math.round(30+ml*ml*1.6);
 const mobDmg=ml=>6+ml*2.2;
@@ -271,7 +314,8 @@ const ICONS={
   spear:'<path d="M3 20.5L16.5 7l-1.500-1.500L17 2l5 5-3.500 1.500L17 7 3.500 22 3 20.500z"/>',
   fist:'<path d="M6 9a3 3 0 013-3h7a3 3 0 013 3v6a5 5 0 01-5 5h-3a5 5 0 01-5-5V9zm3 0v3h8V9H9zm0 5v1h8v-1H9z"/>',
   gun:'<path d="M2 7h16l4 3v3h-8l-1.500 7H8.500l1-7H2V7z"/>',
-  volley:'<path d="M2 11h14v2H2zM16 8l6 4-6 4zM3 5l12 3-.5 2L2.5 7zm0 14l12-3-.5-2L2.5 17z"/>'
+  volley:'<path d="M2 11h14v2H2zM16 8l6 4-6 4zM3 5l12 3-.5 2L2.5 7zm0 14l12-3-.5-2L2.5 17z"/>',
+  gem:'<path d="M7 3h10l5 6-10 13L2 9l5-6zm1.200 2L5 9h14l-3.200-4H8.200zM5.500 11l6.500 8.500L18.500 11h-13z"/>'
 };
 const SKICON={nova:'burst',buff:'shield',ground:'flame',rain:'rain',volley:'volley',dash:'dash',chain:'bolt'};
 const hex6=n=>'#'+('000000'+(n>>>0).toString(16)).slice(-6);
@@ -279,16 +323,18 @@ function skIcon(sk,sz){return ic(sk.icon||SKICON[sk.type]||'star',hex6(sk.col||0
 function ico(svg,col){return '<span class="ico" style="--tc:'+col+'">'+svg+'</span>'}
 function ic(n,col,sz){return '<svg class="ic" viewBox="0 0 24 24" width="'+(sz||18)+'" height="'+(sz||18)+'" fill="'+(col||'currentColor')+'">'+(ICONS[n]||'')+'</svg>'}
 function itemIcon(it){
+  if(it.kind==='rune'){const r=RUNES[it.base],c=r?r.col:'#fff';return ico(ic('gem',c,26),c)}
   if(it.kind==='mat'){const m=MATS[it.base],c=m?m.col:'#fff';return ico(ic(m?m.icon:'leaf',c,26),c)}
   if(it.kind==='potion'){const p=POTIONS[it.base],c=p?p.col:'#fff';return ico(ic('potion',c,26),c)}
   const c=TIER_COL[wTier(it.base)-1];if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
+  if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(it.base==='all'?'':' '+(RUNE_G[it.enh]||''))}
   if(it.kind==='mat'){const m=MATS[it.base];return m?m.name:it.base}
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
   return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
+const ERR_KO={NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};

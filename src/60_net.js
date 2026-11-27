@@ -55,7 +55,7 @@ function netJoin(i){
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
       .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))
-      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload))
+      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload))
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
         if(n>SHARD_MAX&&i<6){try{NET.sb.removeChannel(ch)}catch(e){}fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
@@ -170,7 +170,7 @@ function onSnap(d){
   for(const it of d.l){
     const id=it[0],type=MTYPES[it[1]];if(!type)continue;seen.add(id);
     let m=MOBS.find(q=>q.id===id&&q.ghost);
-    if(!m){m=makeMobObj(id,type,+it[2],+it[3],+it[6]||1,!!(it[7]&1),true)}
+    if(!m){const bk=type==='dgboss'?DGK.find(k=>it[7]&DGDEF[k].bits):null;if(bk)DG.mkBk=bk;m=makeMobObj(id,type,+it[2],+it[3],+it[6]||1,!!(it[7]&1),true);if(bk)dgBossSetup(m,bk);if(DG.on)m.dg=true}
     m.tx=+it[2];m.tz=+it[3];m.face=+it[4]||0;m.hp=m.maxHp*(+it[5]/100);m.warn=!!(it[7]&2);
   }
   for(const m of MOBS){if(m.ghost&&!m.dead&&!seen.has(m.id)){removeMob(m,true)}}
@@ -179,7 +179,7 @@ function netSnapshot(){
   if(!NET.on||!NET.party||NET.party.members.length<2||!isAuth())return;
   const A=allPos(),l=[];
   for(const m of MOBS){if(m.dead||m.ghost||m.spawning)continue;let near=false;for(const q of A)if(d2(m.x,m.z,q.x,q.z)<75*75){near=true;break}if(!near)continue;
-    l.push([m.id,MTYPES.indexOf(m.type),+m.x.toFixed(1),+m.z.toFixed(1),+m.face.toFixed(2),Math.max(1,Math.round(m.hp/m.maxHp*100)),m.ml,(m.elite?1:0)|(m.warn?2:0)]);if(l.length>=44)break}
+    l.push([m.id,MTYPES.indexOf(m.type),+m.x.toFixed(1),+m.z.toFixed(1),+m.face.toFixed(2),Math.max(1,Math.round(m.hp/m.maxHp*100)),m.ml,(m.elite?1:0)|(m.warn?2:0)|(m.bk?DGDEF[m.bk].bits:0)]);if(l.length>=44)break}
   netSend('es',{n:SES.name,l});
 }
 function onHit(d){

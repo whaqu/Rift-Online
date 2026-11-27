@@ -8,11 +8,12 @@ function derive(){
   const w=pf.items.find(i=>i.kind==='weapon'&&i.eq);
   const ab=armorBonus(pf.items.filter(i=>i.kind==='armor'&&i.eq));
   const wa=w?weaponAtk(w.base,w.enh):0,wt=w?WTMOD[wType(w.base)]:WTMOD[0];const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
+  const rf=w&&w.rune?runeFx(w.rune):null;if(rf){for(const e in rf.en)en[e]=(en[e]||0)+rf.en[e];if(en.aspd>10)en.aspd=10}
   const burnLv=(m.burn||0)+(en.burn||0);
   const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor),pk=perkOf(pf);
   S={
     cls:pf.cls,job:pf.job,level:L,
-    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct)*(1+PERK.h.per*pk.h)),
+    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct+(rf?rf.hp:0))*(1+PERK.h.per*pk.h)),
     atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk)*(1+PERK.a.per*pk.a),wa,cdr:Math.min(.4,PERK.c.per*pk.c),
     aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
     spd:c.spd*(m.spd||1)*(1+ab.spd),
@@ -21,7 +22,7 @@ function derive(){
     vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03,burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
-    regen:m.regen||0,berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
+    regen:(m.regen||0)+(rf?rf.rg:0),runeAura:!!(rf&&rf.aura),berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
   };
   return S;
 }
@@ -289,6 +290,7 @@ function playerDown(){
   P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
 }
 function respawn(){
+  if(DG.on){dgRespawn();return}
   P.dead=false;P.x=SPAWN.x+rnd(-2,2);P.z=SPAWN.z;P.vx=P.vz=0;P.hp=S.maxHp;P.iframes=1.5;UI.deadOn(false);
   clearMobsNearTown();cam.x=P.x;cam.z=P.z;
 }
@@ -312,6 +314,7 @@ function tickRecall(dt){
   const n=Math.ceil(Math.max(0,P.recall));if(n!==P.recallN&&n>0){P.recallN=n;UI.toast('마을로 귀환 중… '+n+' (움직이면 취소)',1100)}
   if(P.recall<=0){
     P.recall=0;ringBurst(P.x,.2,P.z,18,0x8fe8ff,9,.5);pillar(P.x,P.z,0x8fe8ff,14,.5);
+    if(DG.on){dgLeave('귀환했습니다 (보상 없음)');return}
     P.x=SPAWN.x+rnd(-2,2);P.z=SPAWN.z;P.vx=P.vz=0;P.iframes=Math.max(P.iframes,1);
     clearMobsNearTown();cam.x=P.x;cam.z=P.z;
     ringBurst(P.x,.2,P.z,18,0x8fe8ff,9,.5);pillar(P.x,P.z,0x8fe8ff,14,.5);sfx('level');UI.toast('마을로 돌아왔습니다');

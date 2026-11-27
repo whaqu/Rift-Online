@@ -12,7 +12,8 @@ function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/
 /* gatherable nodes: weeds (grass tufts) and trees; parts = [[instancedMesh,index],..] hidden while 'cut' */
 function regNode(k,x,z,parts,ob,s){const n={k,x,z,parts,ob,or:ob?ob.r:0,mats:null,cut:0,s:s||1};WORLD.nodes.push(n);const g=Math.floor(x/8)+','+Math.floor(z/8);(WORLD.ngrid[g]||(WORLD.ngrid[g]=[])).push(n);return n}
 function pushOut(e,r){
-  const d=Math.hypot(e.x,e.z),lim=WORLD_R-1.2;if(d>lim){e.x*=lim/d;e.z*=lim/d}
+  if(DG.on&&e.x>600){const ax=e.x-DG.cx,az=e.z-DG.cz,ad=Math.hypot(ax,az),al=DG.R-1.4;if(ad>al){e.x=DG.cx+ax*al/ad;e.z=DG.cz+az*al/ad}}
+  else{const d=Math.hypot(e.x,e.z),lim=WORLD_R-1.2;if(d>lim){e.x*=lim/d;e.z*=lim/d}}
   const cx=Math.floor(e.x/WORLD.cell),cz=Math.floor(e.z/WORLD.cell);
   for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
     const c=WORLD.grid[(cx+i)+','+(cz+j)];if(!c)continue;
@@ -516,7 +517,7 @@ function buildWorld(){
   }catch(e){console.error('deco2',e)}
   /* far mountains */
   {const N=130,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
-  balFinish();
+  balFinish();dgBuildPortals();
 }
 
 const ATMO=[
@@ -537,7 +538,7 @@ function updateAtmo(dt,zi){
   const a=ATMO[zi],k=1-Math.exp(-dt*1.5);
   _ct.set(a.bg);_ac.bg.lerp(_ct,k);_ct.set(a.sky);_ac.sky.lerp(_ct,k);_ct.set(a.gr);_ac.gr.lerp(_ct,k);_ct.set(a.sc);_ac.sc.lerp(_ct,k);_ct.set(a.rc);_ac.rc.lerp(_ct,k);
   _ac.hi+=(a.hi-_ac.hi)*k;_ac.sun+=(a.sun-_ac.sun)*k;_ac.ri+=(a.ri-_ac.ri)*k;_ac.fd+=(a.fd-_ac.fd)*k;
-  const nk=nightK();   // 0 = day .. 1 = deep night, follows the shared 16 min clock
+  const nk=DG.on?0:nightK();   // 0 = day .. 1 = deep night, follows the shared 16 min clock
   _nb.copy(_ac.bg).lerp(_ct.set(0x0b1233),nk*.8);_ns.copy(_ac.sky).lerp(_ct.set(0x34478c),nk*.8);_ng.copy(_ac.gr).lerp(_ct.set(0x0e1530),nk*.7);
   _nsc.copy(_ac.sc).lerp(_ct.set(0x93a8ff),nk*.85);_nrc.copy(_ac.rc).lerp(_ct.set(0xb4c4ff),nk*.5);
   if(scene.background&&scene.background.copy)scene.background.copy(_nb);

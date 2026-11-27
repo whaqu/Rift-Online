@@ -191,6 +191,76 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   g.P.iframes=0;g.startRecall();g.startRecall();T(!(g.P.recall>0),'pressing C again cancels recall');
   g.startRecall();g.keys['d']=true;step(3);g.keys['d']=false;T(!(g.P.recall>0)&&Math.hypot(g.P.x,g.P.z)>30,'moving cancels recall');
   g.P.x=60;g.P.z=0;g.P.iframes=1e9;g.startRecall();step(100);T(Math.hypot(g.P.x,g.P.z)>30&&g.P.recall>0,'recall still channelling after ~1.6s');step(160);T(Math.hypot(g.P.x,g.P.z)<19&&!(g.P.recall>0),'recall brings the player to town after 3s');
+  // ---- runes ----
+  {
+    const K='rw_local_db_v1',dbR=()=>JSON.parse(localStorage.getItem(K)),dbW=d=>localStorage.setItem(K,JSON.stringify(d));
+    const addRune=async(base,enh,qty)=>{const d=dbR();d.items.push({id:d.nid++,owner:g.SES.name,kind:'rune',base,enh,ench:[],qty,eq:false,listed:false,gone:false});dbW(d);await g.API.resume(g.SES.name,g.SES.token)};
+    const runes=()=>g.SES.pf.items.filter(i=>i.kind==='rune');
+    const wpn=()=>g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);
+    await addRune('fire',1,3);
+    await g.API.resume(g.SES.name,g.SES.token);
+    if(!g.SES.pf.items.some(i=>i.kind==='weapon'&&!i.listed&&i.base.split('_')[0]===g.SES.pf.cls)){const d=dbR();d.items.push({id:d.nid++,owner:g.SES.name,kind:'weapon',base:g.SES.pf.cls+'_1',enh:0,ench:[],qty:1,eq:false,listed:false,gone:false});dbW(d)}
+    await g.API.resume(g.SES.name,g.SES.token);
+    await g.API.call('equip',g.SES.pf.items.find(i=>i.kind==='weapon'&&!i.listed&&i.base.split('_')[0]===g.SES.pf.cls).id);
+    await g.API.resume(g.SES.name,g.SES.token);let r=await g.API.call('runeFuse','up','fire',1);
+    T(r.items.some(i=>i.kind==='rune'&&i.base==='fire'&&i.enh===2&&i.qty===1),'3 rune I fuse into 1 rune II');
+    let ee='';try{await g.API.call('runeFuse','up','fire',1)}catch(e){ee=e.message}T(ee==='NO_RUNE','fuse without runes is refused');
+    const b0=(g.derive(),g.S.burnLv);
+    const fr=runes().find(i=>i.base==='fire'&&i.enh===2);
+    await g.API.call('runeAttach',wpn().id,fr.id);g.derive();
+    T(wpn().rune==='fire:2'&&g.S.burnLv===b0+2,'fire rune II adds burn 2 ('+b0+'->'+g.S.burnLv+')');
+    await addRune('holy',3,1);const hp0=g.S.maxHp;await g.API.call('runeAttach',wpn().id,runes().find(i=>i.base==='holy').id);g.derive();
+    T(wpn().rune==='holy:3'&&g.S.maxHp>hp0&&g.S.burnLv===b0,'rune replacement works, holy raises max hp');
+    const pot0=(g.SES.pf.items.find(i=>i.base==='atk')||{qty:0}).qty;await addRune('fire',1,2);
+    r=await g.API.call('runeBrew',runes().find(i=>i.base==='fire'&&i.enh===1).id);
+    T(r.potion==='atk'&&r.qty===3&&g.SES.pf.items.find(i=>i.base==='atk').qty===pot0+3,'rune brews potions');
+    const gold0=g.SES.pf.gold;await g.API.call('sell',runes().find(i=>i.base==='fire'&&i.enh===1).id,1);T(g.SES.pf.gold===gold0+400,'rune sells for gold');
+    for(const k of['fire','ice','thunder','dark','holy','meadow','crystal','storm'])await addRune(k,2,1);
+    r=await g.API.call('runeFuse','all');
+    const all=runes().find(i=>i.base==='all');T(all&&all.qty===1,'all 8 runes fuse into the Rune of All');
+    await g.API.call('runeAttach',wpn().id,all.id);g.derive();
+    T(g.S.runeAura&&g.S.burnLv>b0+1&&g.S.chainP>0&&g.S.vamp>0,'Rune of All gives every effect + aura');
+    const fx=g.runeFx('all');T(fx.en.burn>=4&&fx.aura,'Rune of All effect is double the combined 8 runes');
+    ee='';try{await g.API.call('runeFuse','all')}catch(e){ee=e.message}T(ee==='NO_RUNE','cannot fuse All twice without runes');
+  }
+  // ---- dungeon ----
+  {
+    const K='rw_local_db_v1';const lv=g.SES.pf.level;
+    g.P.iframes=1e9;g.P.x=60;g.P.z=0;
+    T(g.DGP.length===3,'three dungeon portals exist');
+    const p0=g.DGP[0];g.P.x=p0.x+1;g.P.z=p0.z+1;step(2);
+    T(g.nearNpc()&&g.nearNpc().kind==='portal','portal is interactable');
+    g.P.x=60;g.P.z=0;
+    await g.dgStart('meadow');
+    T(g.DG.on&&g.DG.id==='meadow'&&g.P.x>900,'entered the meadow dungeon arena');
+    T(g.zoneAt(g.P.x,g.P.z).name==='초원 던전','zone label override');
+    g.P.x=g.DG.cx+500;g.P.z=g.DG.cz;step(2);T(Math.hypot(g.P.x-g.DG.cx,g.P.z-g.DG.cz)<=g.DG.R,'arena clamps the player');
+    step(300);
+    T(g.DG.ph==='wave'&&g.MOBS.filter(m=>m.dg&&!m.dead).length>=5,'wave 1 spawned '+g.DG.ph+' '+g.MOBS.length);
+    T(g.MOBS.every(m=>!m.dg||Math.hypot(m.x-g.DG.cx,m.z-g.DG.cz)<=g.DG.R),'wave mobs inside arena');
+    let guard=0;
+    while(g.DG.ph!=='boss'&&guard++<40){for(const m of g.MOBS.slice())if(m.dg&&!m.dead&&m.type!=='dgboss')g.applyMobDmg(m,1e9,null,g.SES.name);step(200)}
+    T(g.DG.ph==='boss','reached boss phase after 3 waves ('+g.DG.ph+')');
+    const boss=g.MOBS.find(m=>m.type==='dgboss');T(boss&&boss.bn==='멧돼지 왕'&&boss.maxHp>1000,'boss spawned '+(boss&&boss.maxHp));
+    const pats=new Set();for(let i=0;i<2500&&!boss.dead;i++){g.frame(.016);if(boss.pat)pats.add(boss.pat)}
+    T(pats.size>=3,'boss cycles patterns '+[...pats]);
+    T(Math.hypot(boss.x-g.DG.cx,boss.z-g.DG.cz)<=g.DG.R+1,'boss stays in arena');
+    // death handling
+    g.P.iframes=0;g.hurtPlayer(1e9,0,0);T(g.P.dead,'dies in dungeon');step(300);
+    T(!g.P.dead&&g.DG.on&&g.DG.deaths===1&&g.P.x>900,'respawns inside the arena (deaths '+g.DG.deaths+')');g.P.iframes=1e9;
+    // make the run old enough for the server rule, then kill the boss
+    {const d=JSON.parse(localStorage.getItem(K));d.acc[g.SES.name].dgRun.ts-=60000;localStorage.setItem(K,JSON.stringify(d))}
+    g.DG.begin-=60000;const gold0=g.SES.pf.gold;
+    g.applyMobDmg(boss,1e12,null,g.SES.name);step(5);
+    T(g.DG.ph==='clear','boss kill clears the dungeon');
+    for(let i=0;i<50&&!g.DG.res;i++)await sleep(20);
+    T(g.DG.res&&g.DG.res.rank===1&&g.DG.res.rw&&g.DG.res.rw.length>=2,'rank 1 reward received '+JSON.stringify(g.DG.res&&g.DG.res.rw));
+    T(g.SES.pf.gold>gold0,'dungeon gold paid');
+    g.UI.close();g.dgLeave('x');step(3);
+    T(!g.DG.on&&Math.hypot(g.P.x,g.P.z)<100&&g.MOBS.length===0,'left dungeon back to the world');
+    let e3='';try{await g.API.call('dgEnd','meadow',1)}catch(e){e3=e.message}T(e3==='NO_RUN','a finished run cannot be claimed twice');
+    g.P.iframes=1e9;
+  }
   // ---- party / ghost mobs ----
   g.NET.on=true;g.NET.ch={send(){}};
   g.NET.peers['동료']={name:'동료',x:5,z:5,tx:5,tz:5,got:true,hp:100,lv:5,cls:'mage',job:'mage',anim:0};

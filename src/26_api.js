@@ -46,10 +46,11 @@ const LocalAPI=(()=>{
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
       admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
-      items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed}))};
+      items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
   function give(n,kind,base,q){
+    if(kind==='rune'){const it=db.items.find(i=>i.owner===n&&i.kind==='rune'&&i.base===base&&i.enh===(arguments[4]||1)&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}const r={id:db.nid++,owner:n,kind,base,enh:arguments[4]||1,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(r);return r}
     if(kind==='potion'||kind==='mat'){const it=db.items.find(i=>i.owner===n&&i.kind===kind&&i.base===base&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}}
     const it={id:db.nid++,owner:n,kind,base,enh:0,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(it);return it;
   }
@@ -121,8 +122,43 @@ const LocalAPI=(()=>{
     },
     sell(n,t,id,q){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&!i.gone);if(!it||it.listed||it.eq)E('BAD_ITEM');
-      let v;if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else if(it.kind==='mat'){const qq=clamp(q|0||1,1,it.qty);v=(MATS[it.base]?MATS[it.base].price:0)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
+      let v;if(it.kind==='rune'){const qq=clamp(q|0||1,1,it.qty);v=runePrice(it.base,it.enh)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else if(it.kind==='mat'){const qq=clamp(q|0||1,1,it.qty);v=(MATS[it.base]?MATS[it.base].price:0)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
       a.gold+=v;wr();return pf(a);
+    },
+    runeAttach(n,t,wid,rid){
+      rd();const a=auth(n,t);const w=db.items.find(i=>i.id===wid&&i.owner===n&&i.kind==='weapon'&&!i.gone&&!i.listed),r=db.items.find(i=>i.id===rid&&i.owner===n&&i.kind==='rune'&&!i.gone&&!i.listed&&i.qty>0);
+      if(!w||!r)E('BAD_ITEM');w.rune=r.base+':'+r.enh;r.qty--;if(r.qty<=0)r.gone=true;wr();return pf(a);
+    },
+    runeFuse(n,t,mode,base,grade){
+      rd();const a=auth(n,t);
+      const have=(b,g)=>db.items.filter(i=>i.owner===n&&i.kind==='rune'&&i.base===b&&i.enh===g&&!i.gone&&!i.listed).reduce((s,i)=>s+i.qty,0);
+      const take=(b,g,c)=>{for(const i of db.items){if(c<=0)break;if(i.owner===n&&i.kind==='rune'&&i.base===b&&i.enh===g&&!i.gone&&!i.listed){const x=Math.min(i.qty,c);i.qty-=x;c-=x;if(i.qty<=0)i.gone=true}}};
+      if(mode==='up'){
+        if(base==='all'||!RUNES[base]||(grade!==1&&grade!==2))E('BAD_ARGS');if(have(base,grade)<3)E('NO_RUNE');take(base,grade,3);give(n,'rune',base,1,grade+1);
+      }else if(mode==='all'){
+        const gs=RUNE_KEYS.map(b=>have(b,2)?2:have(b,3)?3:0);if(gs.some(g=>!g))E('NO_RUNE');RUNE_KEYS.forEach((b,i)=>take(b,gs[i],1));give(n,'rune','all',1,1);
+      }else E('BAD_ARGS');
+      wr();return pf(a);
+    },
+    runeBrew(n,t,id){
+      rd();const a=auth(n,t);const r=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='rune'&&!i.gone&&!i.listed&&i.qty>0);if(!r||!RUNE_POTION[r.base])E('BAD_ITEM');
+      const sp=RUNE_POTION[r.base],q=sp[1]*r.enh;r.qty--;if(r.qty<=0)r.gone=true;give(n,'potion',sp[0],q);wr();return{potion:sp[0],qty:q,profile:pf(a)};
+    },
+    dgBegin(n,t,dg){
+      rd();const a=auth(n,t);const need=({meadow:8,crystal:30,storm:48})[dg];if(!need)E('BAD_ARGS');if(a.level<need)E('LOW_LEVEL');a.dgRun={dg,ts:Date.now()};wr();return{run:1};
+    },
+    dgEnd(n,t,dg,rank){
+      rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<45000)E('TOO_FAST');a.dgRun=null;
+      const rk=clamp(rank|0||5,1,5),base=({meadow:4000,crystal:30000,storm:90000})[dg],tier=({meadow:3,crystal:5,storm:7})[dg],els=({meadow:['holy','ice'],crystal:['ice','dark'],storm:['thunder','fire']})[dg];
+      const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
+      if(rk===1){
+        if(rnd01()<.5){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',dg,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:dg,g,n:1},{t:'rune',base:er,g:1,n:2})}
+      }else{
+        const pot=dg==='meadow'?'hp1':dg==='crystal'?'hp2':'hp3';give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
+        if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?dg:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
+      }
+      wr();return{rewards:rw,rank:rk,profile:pf(a)};
     },
     gather(n,t,weed,wood){
       rd();const a=auth(n,t);const lv0=gatLvOf(a.gat_xp||0),ch=gatDouble(lv0);
@@ -221,12 +257,13 @@ const LocalAPI=(()=>{
 
 /* ---------- unified client wrapper ---------- */
 const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
-  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory'};
+  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({})
+  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
+  runeAttach:a=>({p_weapon:a[0],p_rune:a[1]}),runeFuse:a=>({p_mode:a[0],p_base:a[1]||'',p_grade:a[2]||0}),runeBrew:a=>({p_item:a[0]}),dgBegin:a=>({p_dg:a[0]}),dgEnd:a=>({p_dg:a[0],p_rank:a[1]})
 };
 const API={
   async probe(){

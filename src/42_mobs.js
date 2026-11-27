@@ -19,7 +19,8 @@ const MDEF={
   scorpion:{n:'모래 전갈',hpM:1.2,spd:4.2,r:1,dmgM:1.3,mk:makeScorpion,col:0xe8c060,mat:'chitin',snd:'hiss'},
   mummy:{n:'미라',hpM:1.9,spd:2.4,r:.85,dmgM:1.4,mk:makeMummy,scale:1.1,col:0xd8c9a0,mat:'cloth',snd:'moan'},
   sentinel:{n:'성역 수호병',hpM:2.2,spd:3,r:.95,dmgM:1.4,mk:makeSentinel,scale:1.12,col:0xffe27a,mat:'metal',snd:'clank'},
-  seraph:{n:'타락 세라핌',hpM:1,spd:3.2,r:.8,dmgM:1.2,mk:makeSeraph,fly:.9,scale:1.1,col:0xffe27a,mat:'holy',snd:'chime',cast:{kind:'rain',lo:8,hi:14,col:0xffe27a,cd:[3,4],wind:.9}}
+  seraph:{n:'타락 세라핌',hpM:1,spd:3.2,r:.8,dmgM:1.2,mk:makeSeraph,fly:.9,scale:1.1,col:0xffe27a,mat:'holy',snd:'chime',cast:{kind:'rain',lo:8,hi:14,col:0xffe27a,cd:[3,4],wind:.9}},
+  dgboss:{n:'던전 보스',hpM:1,spd:4,r:1.8,dmgM:1.3,mk:()=>dgBossModel(),contact:true,col:0xffd24a,mat:'flesh',snd:'growl'}
 };
 const DYING=[];
 const MTYPES=Object.keys(MDEF);
@@ -91,6 +92,7 @@ function updateSpawns(dt,A){
 /* ---------- damage application (authority) ---------- */
 function applyMobDmg(m,d,kk,by){
   if(m.dead||m.spawning)return;
+  if(m.dg){const w=by||SES.name;DG.dmg[w]=(DG.dmg[w]||0)+Math.max(0,Math.min(d,m.hp))}
   m.hp-=d;m.flash=.09;m.aggro=by||null;
   if(kk&&(kk.kx||kk.kz)){const l=Math.hypot(kk.kx,kk.kz)||1;m.lx=kk.kx/l;m.lz=kk.kz/l}
   if(kk&&kk.kb){const l=Math.hypot(kk.kx,kk.kz)||1,res=m.elite?.3:1;m.kx+=kk.kx/l*kk.kb*res*1.6;m.kz+=kk.kz/l*kk.kb*res*1.6}
@@ -125,14 +127,15 @@ function updateMobAuth(m,dt,T){
   let sp=1;
   if(m.freeze>0){m.freeze-=dt;sp=0;if(Math.random()<dt*12)emit(m.x+rnd(-.6,.6),rnd(.4,2),m.z+rnd(-.6,.6),0,.6,0,.5,0xbff2ff,0)}
   if(sp>0&&!m.spawning){
-    const nt=nearestT(m,T),aggro=m.elite?22:15;
+    const nt=nearestT(m,T),aggro=m.dg?80:m.elite?22:15;
     if(nt&&nt.d<aggro){m.tgt=nt.t;aiMob(m,dt,nt,sp)}
     else{ // wander
       m.wt-=dt;if(m.wt<=0){m.wt=rnd(1.5,3.5);const a=rnd(0,TAU);m.wx=Math.cos(a);m.wz=Math.sin(a);if(Math.random()<.4){m.wx=0;m.wz=0}}
       if(m.wx||m.wz){stepM(m,m.wx,m.wz,m.spd*.35,dt);faceM(m,m.wx,m.wz,dt,6);m.moving=true}
     }
   }
-  if(!m.fly)pushOut(m,m.r*.7);
+  if(!m.fly||m.dg)pushOut(m,m.r*.7);
+  if(m.dg)return;
   const d=Math.hypot(m.x,m.z);if(d<20.5){const k=20.5/(d||1);m.x*=k;m.z*=k}
   if(d>WORLD_R-2){m.x*=(WORLD_R-2)/d;m.z*=(WORLD_R-2)/d}
 }
@@ -193,6 +196,7 @@ function aiMob(m,dt,nt,sp){
         if(mvv)stepM(m,dx*mvv,dz*mvv,m.spd,dt);else stepM(m,-dz*m.strafe,dx*m.strafe,m.spd*.5,dt);m.moving=true;
         if(m.cd<=0&&d<c.hi+5){m.state='wind';m.st=c.wind;emitEvent({t:'v',x:m.x,z:m.z,n:m.def.snd})}}
       break}
+    case 'dgboss':dgBossAI(m,dt,dx,dz,d);break;
     case 'spider':{
       faceM(m,dx,dz,dt,12);
       if(m.state==='wind'){m.st-=dt;m.warn=true;if(m.st<=0){m.warn=false;const an=Math.atan2(t.x-m.x,t.z-m.z);emitEvent({t:'b',x:m.x+Math.sin(an),z:m.z+Math.cos(an),a:an,s:13,d:m.dmg*.9,c:0x9aff6a,l:3});m.state='chase';m.cd=rnd(1.8,2.6)}}
@@ -265,7 +269,7 @@ function animMob(m,dt){
   const o=m.m,t=m.age,mv=m.moving?1:0,g=o.g;
   g.position.x=m.x;g.position.z=m.z;g.rotation.y=m.face;
   let gs=m.scale;if(m.spawning)gs=m.scale*(1-m.sp/.35*.8);const pp=m.pop||0;if(pp>0)m.pop=Math.max(0,pp-dt*7);g.scale.set(gs*(1+pp*.14),gs*(1-pp*.12),gs*(1+pp*.14));
-  switch(m.type){
+  switch(m.at||m.type){
     case 'slime':{const k=m.hop>0?1:0;o.b.scale.set(1+Math.sin(t*6+m.ph)*.06+k*-.15,1+(k?.28:Math.sin(t*6+m.ph)*.08),1+Math.sin(t*6+m.ph)*.06+k*-.15);g.position.y=k?Math.sin(clamp(1-m.hop/.38,0,1)*Math.PI)*1.1:0;break}
     case 'skel':case 'archer':{const sw=Math.sin(t*10)*.7*(mv?1:.15);o.legL.rotation.x=sw;o.legR.rotation.x=-sw;
       if(m.type==='skel'){o.armR.rotation.x=m.state==='wind'?-2.4:m.state==='rec'?.4:-.4+sw*.5;o.armL.rotation.x=-sw*.5}else{o.armL.rotation.x=-1.5;o.armR.rotation.x=m.state==='wind'?-1.8:-.6}
@@ -305,7 +309,7 @@ function updateMobs(dt){
   const auth=isAuth();
   if(auth){
     const A=allPos(),T=targets();
-    updateSpawns(dt,A);
+    if(DG.on)dgTick(dt,A);else updateSpawns(dt,A);
     for(const m of MOBS){if(m.dead||m.ghost)continue;updateMobAuth(m,dt,T)}
     // soft separation
     for(let i=0;i<MOBS.length;i++){const a=MOBS[i];if(a.dead||a.fly||a.ghost)continue;
@@ -332,7 +336,7 @@ function updateMobLabels(){
     const m=near[i][1],s=toScreen(m.x,(m.fly||0)+m.r*2.6+1.4,m.z);
     if(!s.vis){L.el.style.display='none';continue}
     L.el.style.display='block';const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';if(L.tf!==tf){L.tf=tf;L.el.style.transform=tf}
-    const txt='Lv.'+m.ml+' '+(m.elite?'정예 ':'')+m.def.n,diff=m.ml-SES.pf.level;
+    const txt='Lv.'+m.ml+' '+(m.elite?'정예 ':'')+(m.bn||m.def.n),diff=m.ml-SES.pf.level;
     if(L.last!==txt){L.last=txt;L.n.textContent=txt}
     const cls='ml'+(m.elite?' el':'')+(diff>=5?' hi':diff<=-6?' lo':'');if(L.cls!==cls){L.cls=cls;L.el.className=cls}
     const w=Math.max(0,m.hp/m.maxHp*100).toFixed(0)+'%';const bar=L.el.lastElementChild.firstElementChild;if(L.w!==w){L.w=w;bar.style.width=w}

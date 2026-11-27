@@ -79,7 +79,7 @@ function frame(dt){
     tickPlayer(dt);tickGather(dt);
     if(!modal)tryAttackInput();
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);
-    netUpdate(dt);
+    netUpdate(dt);dgUpdate(dt);
     const z=zoneAt(P.x,P.z);updateAtmo(dt,z.id);
     if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town';ambZone(z.id)}
     KBt+=dt;if(KBn&&KBt>4)flushKills();
@@ -122,5 +122,5 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={DG,DGDEF,DGP,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
