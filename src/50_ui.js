@@ -472,6 +472,8 @@ function drawMini(){
   const px=x=>ox+x*sc,pz=z=>oz+z*sc;
   g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(m.golden){g.fillStyle='#ffd24a';g.fillRect(px(m.x)-4,pz(m.z)-4,8,8);g.fillStyle='#d9534f';continue}if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,pz(m.z)-2,4,4)}}
   g.fillStyle='#6bd4ff';for(const k in NET.peers){const p=NET.peers[k];if(p.got){g.beginPath();g.arc(px(p.x),pz(p.z),4,0,TAU);g.fill()}}
+  const gt=guideTarget();if(gt){let dx=gt.x-P.x,dz=gt.z-P.z;const k=Math.min(1,90/(Math.hypot(dx,dz)||1));dx=cx+dx*k*sc;dz=cx+dz*k*sc;
+    g.strokeStyle='#ffd24a';g.lineWidth=3;g.beginPath();g.moveTo(cx,cx);g.lineTo(dx,dz);g.stroke();g.fillStyle='#ffd24a';g.beginPath();g.arc(dx,dz,8,0,TAU);g.fill()}
   g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),pz(P.z),5,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
   g.restore();
 }

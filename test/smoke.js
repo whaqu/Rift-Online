@@ -490,6 +490,21 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.SES.pf.level=lv;g.save.auto=au;
   }
   // developer tools guard (last: once tripped the game stays stopped)
+  { // doorway walking, map guide, realtime reconnect
+    const D=g.DG,wasOn=D.on,wave=D.wave;D.on=true;D.wave=4;D.shapes=null;
+    const o={x:D.cx,z:D.cz+6-10};let stuck=false;
+    while(o.z>D.cz-4*68){const z0=o.z;o.z-=.08;g.dgClampXZ(o);if(o.z>z0-.04){stuck=z0-D.cz;break}}
+    T(stuck===false,'walks through every doorway without dash '+stuck);D.on=wasOn;D.wave=wave;
+    const pt=g.DGP.find(p=>p.dg==='meadow');g.P.x=0;g.P.z=0;g.P.dead=false;D.on=false;
+    g.guideToggle('meadow');T(g.GUIDE.id==='meadow','guide starts');g.guideToggle('meadow');T(g.GUIDE.id===null,'second pick cancels');
+    g.guideToggle('meadow');g.P.x=pt.x+3;g.P.z=pt.z;g.guideUpdate(.3);T(g.GUIDE.id===null,'arrival ends guide');
+    const chs=[];const mk=()=>{const c={h:{},on(a,b,f){c.h[a+':'+b.event]=f;return c},subscribe(f){c.st=f;setTimeout(()=>f('SUBSCRIBED'),1);setTimeout(()=>c.h['presence:sync'](),2);return c},track(){},send(){},presenceState:()=>({})};chs.push(c);return c};
+    window.supabase=window.supabase||{};g.NET.sb={channel:mk,removeChannel(){}};g.NET.shard=0;g.NET.party=null;
+    await g.netConnect();T(g.NET.on&&g.NET.ch===chs[0],'connects');
+    chs[0].st('CHANNEL_ERROR');T(!g.NET.on&&g.NET.retryT,'loss schedules a retry');
+    await sleep(1300);T(g.NET.on&&g.NET.ch===chs[1],'reconnects automatically');
+    g.NET.on=false;g.NET.ch=null;
+  }
   {
     await g.API.login('테스트','newpass123');g.enterGame();step(3);g.UI.close&&g.UI.close();
     g.guardProbe();T(!g.GUARD.tripped,'no trip without developer tools');

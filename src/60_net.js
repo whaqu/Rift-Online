@@ -1,7 +1,7 @@
 /* ---------------- online: shard channel (Realtime broadcast + presence) ----------------
    방 코드 없음 — 접속하면 자동으로 인원이 덜 찬 필드 채널에 배정됩니다.
    파티가 되면 파티장 PC가 몬스터를 계산하고(다른 파티원은 동기화된 몬스터를 봄), 보상은 각자 서버에서 받습니다. */
-const NET={on:false,sb:null,ch:null,shard:0,peers:{},party:null,invite:null,lastPos:0,lastSnap:0,lastX:1e9,lastZ:1e9,lastF:0,lastFx:0,lastAuth:true,tried:false,hb:{},hbT:0,partyGone:{}};
+const NET={on:false,sb:null,ch:null,shard:0,peers:{},party:null,invite:null,lastPos:0,lastSnap:0,lastX:1e9,lastZ:1e9,lastF:0,lastFx:0,lastAuth:true,tried:false,retry:0,retryT:null,joining:false,rejoin:null,resync:null,hb:{},hbT:0,partyGone:{}};
 const SHARD_MAX=12;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script'));document.head.appendChild(s)})}
 function netSend(event,payload){if(!NET.on||!NET.ch)return;try{NET.ch.send({type:'broadcast',event,payload})}catch(e){}}
@@ -36,31 +36,66 @@ async function netInit(){
   if(NET.tried||GUARD.tripped)return;NET.tried=true;
   if(SES.mode!=='online'){UI.setNet(false,'오프라인');return}
   UI.setNet(false,'접속 중…');
+  await netConnect();
+}
+async function netConnect(){
+  if(NET.joining||NET.on||GUARD.tripped)return;NET.joining=true;
+  clearTimeout(NET.retryT);NET.retryT=null;
   try{
     if(!window.supabase)await loadScript('https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js');
     if(GUARD.tripped)return;
-    NET.sb=window.supabase.createClient(RW_CFG.url,RW_CFG.key,{realtime:{params:{eventsPerSecond:30}}});
-    for(let i=1;i<=6;i++){
-      const ok=await netJoin(i);if(ok)break;
-    }
+    if(!NET.sb)NET.sb=window.supabase.createClient(RW_CFG.url,RW_CFG.key,{realtime:{params:{eventsPerSecond:30}}});
+    // try the previous channel first so a party finds each other again
+    const order=[1,2,3,4,5,6];if(NET.shard)order.sort((a,b)=>(b===NET.shard)-(a===NET.shard));
+    for(const i of order){const ok=await netJoin(i);if(ok)break}
     if(!NET.on)throw new Error('join');
-    UI.setNet(true,'온라인');
-  }catch(e){NET.on=false;UI.setNet(false,'오프라인 (연결 실패)')}
+    const again=NET.retry>0;NET.retry=0;UI.setNet(true,'온라인');syncPeers();UI.renderPeers();
+    if(again){UI.toast('서버에 다시 연결되었습니다');netPartyResync()}
+  }catch(e){NET.on=false;netRetry()}
+  finally{NET.joining=false}
 }
+/* reconnect with back-off: 1, 2, 4, 8, then every 15 s */
+function netRetry(){
+  if(GUARD.tripped||NET.on||NET.retryT)return;
+  const wait=Math.min(15,Math.pow(2,NET.retry))*1000;NET.retry++;
+  UI.setNet(false,'연결 끊김 · 재접속 중…');
+  NET.retryT=setTimeout(()=>{NET.retryT=null;netConnect()},wait);
+}
+function netLost(ch){
+  if(GUARD.tripped||ch!==NET.ch)return;
+  NET.on=false;NET.ch=null;NET.rejoin=NET.party?NET.party.id:null;
+  try{NET.sb.removeChannel(ch)}catch(e){}
+  for(const k in NET.peers)dropPeer(k);
+  UI.renderPeers();netRetry();
+}
+/* after a reconnect the party may have changed while we were away: announce (leader) or ask (member), drop it if nobody answers */
+function netPartyResync(){
+  const id=NET.rejoin;NET.rejoin=null;if(!id||!NET.party||NET.party.id!==id)return;
+  NET.partyGone={};NET.resync=id;let n=0;
+  const step=()=>{
+    if(NET.resync!==id||!NET.on||!NET.party||NET.party.id!==id)return;
+    if(NET.party.leader===SES.name){if(!n)broadcastParty();checkParty();if(++n<6)setTimeout(step,1500);return}
+    if(n++<4){netSend('pq',{n:SES.name,id});setTimeout(step,1500)}else{NET.resync=null;setParty(null);UI.toast('파티 연결이 해제되었습니다')}
+  };
+  step();
+}
+function onPQuery(d){if(d&&NET.party&&NET.party.id===d.id&&NET.party.leader===SES.name)broadcastParty()}
+function netWake(){if(SES.mode==='online'&&NET.tried&&!NET.on&&!NET.joining){NET.retry=Math.max(1,NET.retry);netConnect()}}
+if(window.addEventListener){window.addEventListener('online',netWake);window.addEventListener('focus',netWake)}
 function netJoin(i){
   return new Promise(res=>{
     let done=false;const name='rw-field-'+i;
     const ch=NET.sb.channel(name,{config:{broadcast:{self:false},presence:{key:SES.name}}});
-    const fin=v=>{if(done)return;done=true;res(v&&!GUARD.tripped)};
+    const fin=v=>{if(done)return;done=true;if(!v&&NET.ch!==ch)try{NET.sb.removeChannel(ch)}catch(e){}res(v&&!GUARD.tripped)};
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
-      .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload))
+      .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload)).on('broadcast',{event:'pq'},m=>onPQuery(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))
       .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload)).on('broadcast',{event:'cb'},m=>onCb(m.payload)).on('broadcast',{event:'ch'},m=>onCh(m.payload))
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
-        if(n>SHARD_MAX&&i<6){try{NET.sb.removeChannel(ch)}catch(e){}fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
+        if(n>SHARD_MAX&&i<6){fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
         if(st==='SUBSCRIBED'){try{ch.track(myInfo())}catch(e){}setTimeout(()=>{if(!done){NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}},1800)}
-        else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){if(!done)fin(false);else{NET.on=false;UI.setNet(false,'연결 끊김');UI.renderPeers()}}
+        else if(st==='CHANNEL_ERROR'||st==='TIMED_OUT'||st==='CLOSED'){if(!done)fin(false);else netLost(ch)}
       });
     setTimeout(()=>fin(false),7000);
   });
@@ -129,6 +164,7 @@ function onPAccept(d){
 function broadcastParty(){if(NET.party)netSend('ps',{id:NET.party.id,leader:NET.party.leader,members:NET.party.members})}
 function onPState(d){
   if(!d||!Array.isArray(d.members))return;
+  if(NET.resync===d.id&&d.leader!==SES.name)NET.resync=null;
   if(d.members.includes(SES.name))setParty({id:d.id,leader:d.leader,members:d.members.slice(0,4)});
   else if(NET.party&&NET.party.id===d.id)setParty(null);
 }

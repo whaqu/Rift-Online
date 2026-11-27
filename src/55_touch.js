@@ -7,7 +7,7 @@ function initTouch(){
   const joy=$('joy'),knob=$('knob');let jid=null,cx=0,cy=0;
   const R=58;
   const setStick=(x,y)=>{
-    let dx=x-cx,dy=y-cy;const l=Math.hypot(dx,dy);if(l>R){dx=dx/l*R;dy=dy/l*R}
+    let dx=x-cx,dy=y-cy,l=Math.hypot(dx,dy);if(l>R){dx=dx/l*R;dy=dy/l*R;l=R}   // l must follow the clamp, or speed drops outside the ring
     knob.style.transform='translate('+dx+'px,'+dy+'px)';
     const m=Math.hypot(dx,dy)/R;if(m<.12){mv.x=mv.z=0;return}
     const nx=dx/(l||1),nz=dy/(l||1);mv.x=nx*Math.min(1,m*1.15);mv.z=nz*Math.min(1,m*1.15);mv.on=true;

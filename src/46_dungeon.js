@@ -48,7 +48,7 @@ const DG_HALL_Z=dgZB(3)-DGL.gap-26;   // hall centre
 function dgBuildShapes(){
   const s=[],ins=1.3;
   for(let i=0;i<4;i++){s.push({x0:-DGL.rw+ins,x1:DGL.rw-ins,z0:dgZB(i)+ins,z1:dgZT(i)-ins});
-    s.push({x0:-DGL.cw+ins,x1:DGL.cw-ins,z0:(i<3?dgZT(i+1):dgZB(3)-DGL.gap)-1,z1:dgZB(i)+1})}
+    s.push({x0:-DGL.cw+ins,x1:DGL.cw-ins,z0:(i<3?dgZT(i+1):dgZB(3)-DGL.gap)-ins-1,z1:dgZB(i)+ins+1})}   // overlap both rooms: no dead strip at the doorways
   s.push({c:1,x:0,z:DG_HALL_Z,r:DGL.hallR-ins});
   return s;
 }
@@ -239,6 +239,7 @@ function dgBossAI(m,dt,dx,dz,d){
 /* ---------- entering / leaving ---------- */
 function dgEnter(id){
   const def=DGDEF[id],A=dgBuildArena();
+  if(GUIDE.id)guideStop();
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
   DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
@@ -414,7 +415,7 @@ async function onDgEv(d){
 /* ---------- HUD + per-frame ---------- */
 const DG_CSS=`
 #dgh,#dgboss,#dgrank,#dgban{position:fixed;pointer-events:none;z-index:19;color:#fff;font-family:inherit;display:none}
-#dgh{top:70px;left:50%;transform:translateX(-50%);min-width:300px;padding:8px 18px 9px;text-align:center;border-radius:14px;background:linear-gradient(180deg,rgba(18,20,36,.88),rgba(10,12,24,.82));border:1px solid var(--dc,#9aff7a);box-shadow:0 0 18px -4px var(--dc,#9aff7a),inset 0 0 14px rgba(255,255,255,.05)}
+#dgh{top:44px;left:50%;transform:translateX(-50%);min-width:300px;padding:8px 18px 9px;text-align:center;border-radius:14px;background:linear-gradient(180deg,rgba(18,20,36,.88),rgba(10,12,24,.82));border:1px solid var(--dc,#9aff7a);box-shadow:0 0 18px -4px var(--dc,#9aff7a),inset 0 0 14px rgba(255,255,255,.05)}
 #dgh:before,#dgh:after{content:'';position:absolute;top:50%;width:26px;height:2px;background:linear-gradient(90deg,transparent,var(--dc,#9aff7a))}
 #dgh:before{left:-30px}#dgh:after{right:-30px;transform:scaleX(-1)}
 #dgh .t{font-size:15px;font-weight:800;letter-spacing:.5px;color:var(--dc,#9aff7a);text-shadow:0 0 8px var(--dc,#9aff7a)}
@@ -429,7 +430,7 @@ const DG_CSS=`
 #dgh .row b{color:#ffe27a}
 #dgh .row .low{color:#ff6a5a;animation:dgpulse .6s infinite}
 #dgh .hr{letter-spacing:2px;color:#ff5a6a}
-#dgboss{top:176px;left:50%;transform:translateX(-50%);width:min(560px,88vw);text-align:center}
+#dgboss{top:144px;left:50%;transform:translateX(-50%);width:min(560px,88vw);text-align:center}
 #dgboss .nm{display:inline-block;padding:2px 22px 3px;font-size:17px;font-weight:900;letter-spacing:1px;text-shadow:0 0 10px #000,0 0 12px var(--dc,#ff7a3a);background:linear-gradient(90deg,transparent,rgba(0,0,0,.65),transparent)}
 #dgboss .nm small{font-size:11px;opacity:.8;margin-right:8px;color:#ffd24a}
 #dgboss .bar{position:relative;height:20px;margin-top:3px;border-radius:4px;background:rgba(8,8,16,.85);border:2px solid #cbb27a;box-shadow:0 0 16px rgba(255,120,60,.45),inset 0 0 8px #000;overflow:hidden;transform:skewX(-12deg)}
@@ -440,7 +441,7 @@ const DG_CSS=`
 #dgboss .tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-shadow:0 1px 2px #000;transform:skewX(12deg)}
 #dgboss .st{font-size:11px;margin-top:2px;color:#ff9a7a;letter-spacing:2px;opacity:0;transition:opacity .3s}
 #dgboss.enr .st{opacity:1;animation:dgpulse .8s infinite}
-#dgrank{top:200px;left:12px;width:190px;padding:7px 9px;border-radius:10px;background:rgba(12,14,26,.78);border:1px solid rgba(255,255,255,.16);font-size:12px}
+#dgrank{top:172px;left:12px;width:190px;padding:7px 9px;border-radius:10px;background:rgba(12,14,26,.78);border:1px solid rgba(255,255,255,.16);font-size:12px}
 #dgrank .h{font-weight:800;color:#ffd24a;margin-bottom:4px;letter-spacing:1px;font-size:11px}
 #dgrank .r{position:relative;margin:2px 0;padding:1px 4px;border-radius:3px;overflow:hidden;display:flex;justify-content:space-between}
 #dgrank .r i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--dc,#9aff7a),transparent);opacity:.4}
@@ -461,7 +462,7 @@ const DG_CSS=`
 #dgres .sr{position:relative;display:flex;justify-content:space-between;padding:4px 8px;margin:3px 0;border-radius:6px;overflow:hidden;background:rgba(255,255,255,.04)}
 #dgres .sr i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,rgba(255,210,74,.45),transparent)}
 #dgres .sr span{position:relative}#dgres .sr.me{outline:1px solid #ffd24a}
-@media(max-width:700px){#dgh{top:60px;min-width:240px;padding:6px 10px}#dgrank{display:none!important}#dgboss{top:156px}#dgban .m{font-size:24px}#dgban .a{padding:6px 24px}}
+@media(max-width:700px){#dgh{top:48px;min-width:240px;padding:6px 10px}#dgrank{display:none!important}#dgboss{top:140px}#dgban .m{font-size:24px}#dgban .a{padding:6px 24px}}
 `;
 function dgHud(on){
   if(!DGH.el){
@@ -496,6 +497,7 @@ function dgScene(dt){
   if(A.fl&&DG.id==='storm')for(const r of A.fl){r.position.y=r.userData.b+Math.sin(G.t*.8+r.userData.p)*.5;r.rotation.y+=dt*.3}
 }
 function dgUpdate(dt){
+  guideUpdate(dt);
   if(DGP.length&&!DG.on){
     for(const p of DGP){
       const near=d2(p.x,p.z,P.x,P.z)<70*70;
@@ -547,8 +549,44 @@ function dgUpdate(dt){
   else rl.innerHTML='<div class="dim">—</div>';
 }
 
+/* ---------- dungeon guide: pick on the town map -> arrow on the ground + chip with distance; ends on re-pick, X, or arrival ---------- */
+const GUIDE={id:null,el:null,arrow:null,t:0};
+const guideTarget=()=>GUIDE.id?DGP.find(p=>p.dg===GUIDE.id):null;
+function guideStop(msg){
+  GUIDE.id=null;if(GUIDE.el)GUIDE.el.style.display='none';if(GUIDE.arrow)GUIDE.arrow.visible=false;
+  if(msg)UI.toast(msg,2200);
+}
+function guideToggle(id){
+  if(!DGDEF[id])return;
+  if(GUIDE.id===id){guideStop('길 안내를 취소했습니다');return}
+  if(!GUIDE.el){
+    const st=document.createElement('style');
+    st.textContent='#guide{position:fixed;left:50%;top:112px;transform:translateX(-50%);z-index:21;display:none;align-items:center;gap:10px;padding:5px 6px 5px 14px;border-radius:18px;background:rgba(12,14,26,.88);border:1px solid #ffd24a;color:#fff;font-size:13px;font-weight:700;white-space:nowrap}#guide button{width:24px;height:24px;border-radius:50%;border:0;background:rgba(255,255,255,.16);color:#fff;font-size:13px;cursor:pointer;padding:0}';
+    document.head.appendChild(st);
+    const e=document.createElement('div');e.id='guide';e.innerHTML='<span></span><button title="안내 취소">✕</button>';document.body.appendChild(e);
+    e.querySelector('button').onclick=()=>guideStop('길 안내를 취소했습니다');GUIDE.el=e;
+  }
+  if(!GUIDE.arrow){
+    const g=new THREE.Group(),m=new THREE.MeshBasicMaterial({color:0xffd24a,transparent:true,opacity:.85,depthWrite:false,depthTest:false});
+    for(let k=0;k<3;k++){const c=new THREE.Mesh(new THREE.ConeGeometry(.55,.9,3),m);c.rotation.x=Math.PI/2;c.position.set(0,0,2.4+k*1.1);c.scale.set(1,1,.2);g.add(c)}
+    scene.add(g);GUIDE.arrow=g;
+  }
+  GUIDE.id=id;GUIDE.t=1;GUIDE.el.style.display='flex';
+  UI.toast(DGDEF[id].name+' 길 안내를 시작합니다',2200);guideUpdate(0);
+}
+function guideUpdate(dt){
+  if(!GUIDE.id||!P)return;
+  const p=guideTarget();if(!p||DG.on){guideStop();return}
+  const d=Math.hypot(p.x-P.x,p.z-P.z);
+  if(d<9){guideStop(DGDEF[GUIDE.id].name+' 입구에 도착했습니다');return}
+  const a=GUIDE.arrow;a.visible=!P.dead;a.position.set(P.x,.25,P.z);a.rotation.y=Math.atan2(p.x-P.x,p.z-P.z);
+  GUIDE.t+=dt;if(GUIDE.t<.2)return;GUIDE.t=0;
+  GUIDE.el.querySelector('span').textContent='▶ '+DGDEF[GUIDE.id].name+' 안내 중 · '+Math.round(d)+'m';
+}
+
 /* ---------- town map ---------- */
 function openMap(){
+  UI.handlers.guide=id=>{guideToggle(id);if(UI.rerender)UI.rerender();drawBigMap()};
   UI.page('지도',()=>'<div style="text-align:center"><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:560px;border-radius:10px;border:1px solid #444"></canvas></div><div id="mapl" style="margin-top:8px;font-size:13px;line-height:1.7"></div>');
   drawBigMap();
 }
@@ -570,8 +608,15 @@ function drawBigMap(){
     g.fillStyle='#10131b';g.beginPath();g.arc(x,y,4.5,0,TAU);g.fill();
     lab(def.name,x,y-18,'#ffe9a0');
     const dist=Math.round(Math.hypot(p.x-P.x,p.z-P.z)),ang=Math.atan2(p.z,p.x),dirs=['동','남동','남','남서','서','북서','북','북동'],dn=dirs[(Math.round(ang/(Math.PI/4))+8)%8];
-    rows.push('<div><b style="color:#ffe9a0">'+def.name+'</b> — '+ZONES[def.zid].name+' '+dn+'쪽 · 필요 Lv.'+def.need+' · 마을에서 약 '+Math.round(Math.hypot(p.x,p.z))+'m (현재 '+dist+'m)</div>')}
+    const on=GUIDE.id===p.dg;
+    if(on){g.strokeStyle='#ffd24a';g.lineWidth=3;g.setLineDash&&g.setLineDash([10,7]);g.beginPath();g.moveTo(px(P.x),pz(P.z));g.lineTo(x,y);g.stroke();g.setLineDash&&g.setLineDash([]);g.beginPath();g.arc(x,y,18,0,TAU);g.stroke()}
+    rows.push('<div data-a="guide" data-v="'+p.dg+'" style="cursor:pointer;margin:4px 0;padding:5px 8px;border-radius:8px;border:1px solid '+(on?'#ffd24a':'#3a3f52')+'"><b style="color:#ffe9a0">'+def.name+'</b> '+(on?'<b style="color:#6bffb0">[안내 중 · 다시 누르면 취소]</b>':'<span style="opacity:.7">[눌러서 안내]</span>')+' — '+ZONES[def.zid].name+' '+dn+'쪽 · 필요 Lv.'+def.need+' · 마을에서 약 '+Math.round(Math.hypot(p.x,p.z))+'m (현재 '+dist+'m)</div>')}
   g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),pz(P.z),7,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();lab('나',px(P.x),pz(P.z)-12,'#ffd24a');
   g.font='bold 14px sans-serif';lab('북',cx,16,'#ccc');lab('남',cx,W-6,'#ccc');lab('서',14,cx+5,'#ccc');lab('동',W-14,cx+5,'#ccc');
-  const l=$('mapl');if(l)l.innerHTML=rows.join('')+'<div style="opacity:.7;margin-top:4px">동굴 입구(빛나는 바위 동굴)에서 E로 입장 · 중심은 마을, 바깥으로 갈수록 위험합니다</div>';
+  c.onclick=ev=>{
+    const r=c.getBoundingClientRect(),mx=(ev.clientX-r.left)*W/r.width,my=(ev.clientY-r.top)*W/r.height;
+    let best=null,bd=34;for(const p of DGP){if(p.kind!=='portal')continue;const d=Math.hypot(px(p.x)-mx,pz(p.z)-my);if(d<bd){bd=d;best=p}}
+    if(best)UI.act('guide',best.dg);
+  };
+  const l=$('mapl');if(l)l.innerHTML=rows.join('')+'<div style="opacity:.7;margin-top:4px">던전 표시나 목록을 누르면 길 안내 · 동굴 입구에서 E로 입장 · 중심은 마을, 바깥으로 갈수록 위험합니다</div>';
 }
