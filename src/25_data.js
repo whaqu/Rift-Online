@@ -265,14 +265,26 @@ function nightK(p){p=p==null?dayPhase():p;const sm=x=>x*x*(3-2*x);if(p<.5)return
 function huntInfo(){const t=(Date.now()/1000)%600;return t<150?{on:true,left:150-t}:{on:false,next:600-t}}
 /* dungeons: instanced arena far outside the world (x≈1000) */
 const DGDEF={
-  meadow:{name:'초원 던전',need:8,zid:1,ml:10,col:0x56a044,ring:0x9aff7a,fl:0x23301f,wl:0x2f3a2a,atmo:{bg:0x070d0a,sky:0x16241c,gr:0x0c140f,hi:.5,sun:.3,sc:0x9ab8a0,rc:0x6aff9a,ri:.35,fd:.017},mobs:['slime','bat','boar'],waves:[6,8,10,12],bn:'멧돼지 왕',hpM:26,dmgM:1.3,spd:4.2,sc:2.2,r:1.9,pa:2.4,pr:32,bits:4,
+  meadow:{name:'초원 던전',need:8,zid:1,ml:10,col:0x56a044,ring:0x9aff7a,fl:0x23301f,wl:0x2f3a2a,atmo:{bg:0x070d0a,sky:0x16241c,gr:0x0c140f,hi:.5,sun:.3,sc:0x9ab8a0,rc:0x6aff9a,ri:.35,fd:.017},mobs:['slime','bat','boar'],waves:[6,8,10,12],bn:'멧돼지 왕',hpM:26,dmgM:1.3,spd:4.2,sc:2.2,r:1.9,pa:2.4,pr:32,bits:4,at:'boar',model:()=>makeQuad({kind:'boar',body:0x8a3a2a,dk:0x4a2018,eye:0xffd24a,tusk:1,snout:0xc79a82}),
     pat:['slam','rush','nova','summon','rush'],adds:['slime','bat']},
-  crystal:{name:'수정 던전',need:30,zid:4,ml:34,col:0x585a86,ring:0x7a9aff,fl:0x1c1c34,wl:0x2a2a4a,atmo:{bg:0x070716,sky:0x181838,gr:0x0c0c20,hi:.55,sun:.28,sc:0x8aa0ff,rc:0xb07aff,ri:.45,fd:.018},mobs:['golem','spider','archer','bomber'],waves:[6,8,10,12],bn:'수정 거인왕',hpM:30,dmgM:1.3,spd:3.2,sc:1.5,r:2.2,pa:.8,pr:204,bits:8,
+  crystal:{name:'수정 던전',need:30,zid:4,ml:34,col:0x585a86,ring:0x7a9aff,fl:0x1c1c34,wl:0x2a2a4a,atmo:{bg:0x070716,sky:0x181838,gr:0x0c0c20,hi:.55,sun:.28,sc:0x8aa0ff,rc:0xb07aff,ri:.45,fd:.018},mobs:['golem','spider','archer','bomber'],waves:[6,8,10,12],bn:'수정 거인왕',hpM:30,dmgM:1.3,spd:3.2,sc:1.05,r:2.2,pa:.8,pr:204,bits:8,at:'golem',model:()=>makeGolem(),
     pat:['slam','quake','nova','summon','barrage'],adds:['spider','spider']},
-  storm:{name:'폭풍 던전',need:48,zid:5,ml:54,col:0x5a6678,ring:0xffe27a,fl:0x1e232c,wl:0x30384a,atmo:{bg:0x080b12,sky:0x18202e,gr:0x0c1118,hi:.5,sun:.28,sc:0xa0b8e0,rc:0xffe27a,ri:.5,fd:.017},mobs:['stormhawk','golem','bomber','archer'],waves:[6,8,10,12],bn:'폭풍매 군주',hpM:36,dmgM:1.35,spd:4.4,sc:2.6,r:1.8,pa:3.9,pr:268,bits:16,
-    pat:['bolts','nova','barrage','slam','summon'],adds:['stormhawk','stormhawk']}
+  storm:{name:'폭풍 던전',need:48,zid:5,ml:54,col:0x5a6678,ring:0xffe27a,fl:0x1e232c,wl:0x30384a,atmo:{bg:0x080b12,sky:0x18202e,gr:0x0c1118,hi:.5,sun:.28,sc:0xa0b8e0,rc:0xffe27a,ri:.5,fd:.017},mobs:['stormhawk','golem','bomber','archer'],waves:[6,8,10,12],bn:'폭풍매 군주',hpM:36,dmgM:1.35,spd:4.4,sc:2.6,r:1.8,pa:3.9,pr:268,bits:16,at:'stormhawk',model:()=>makeStormhawk(),fly:2.4,keep:10,
+    pat:['bolts','nova','barrage','slam','summon'],adds:['stormhawk','stormhawk']},
+  forest:{name:'망자의 묘지 던전',need:14,zid:2,ml:17,col:0x4a4f58,ring:0x7fe0d0,rock:0x4a4e56,fl:0x1e2226,wl:0x2a3036,atmo:{bg:0x060a0c,sky:0x141e22,gr:0x0a1012,hi:.52,sun:.28,sc:0x90b0c0,rc:0x7fe0d0,ri:.38,fd:.018},mobs:['skel','archer','wraith','skel'],waves:[6,8,10,12],bn:'해골 대왕',hpM:28,dmgM:1.3,spd:3.8,sc:2.7,r:1.8,pa:5.5,pr:100,bits:32,at:'skel',model:()=>makeSkeleton(false),
+    pat:['slam','summon','nova','rush','barrage'],adds:['skel','skel']},
+  ember:{name:'용암 던전',need:22,zid:3,ml:26,col:0x5e4a44,ring:0xff6a2a,rock:0x4a2e28,fl:0x2a1a16,wl:0x38241e,atmo:{bg:0x100604,sky:0x2a1410,gr:0x180a06,hi:.5,sun:.28,sc:0xd89a80,rc:0xff6a2a,ri:.5,fd:.017},mobs:['hound','bomber','archer','skel'],waves:[6,8,10,12],bn:'지옥견 우두머리',hpM:30,dmgM:1.3,spd:4.6,sc:2.4,r:2,pa:3.3,pr:156,bits:64,at:'hound',model:()=>makeQuad({kind:'hound',body:0x5a2420,dk:0x2a0e0c,eye:0xffd24a,ears:1,flame:0xff6a2a,snout:0x6a3a34,len:1.6}),
+    pat:['rush','slam','barrage','nova','summon'],adds:['hound','hound']},
+  void:{name:'공허 던전',need:62,zid:6,ml:68,col:0x3a2a52,ring:0xc86bff,rock:0x2e2044,fl:0x161024,wl:0x221838,atmo:{bg:0x07030f,sky:0x1a0e30,gr:0x0c0618,hi:.55,sun:.26,sc:0xa890e0,rc:0xc86bff,ri:.5,fd:.017},mobs:['phantom','wraith','golem','archer'],waves:[6,8,10,12],bn:'공허의 군주',hpM:38,dmgM:1.35,spd:4.6,sc:2.6,r:1.7,pa:.3,pr:340,bits:128,at:'phantom',model:()=>makePhantom(),
+    pat:['nova','quake','bolts','rush','summon'],adds:['phantom','wraith']},
+  snow:{name:'얼음 동굴 던전',need:72,zid:7,ml:77,col:0xb8cce4,ring:0xbfeaff,rock:0x9ab4cc,fl:0x40546a,wl:0x4e6880,atmo:{bg:0x0a121c,sky:0x203248,gr:0x101a28,hi:.52,sun:.26,sc:0xa8c8e8,rc:0x9fe0ff,ri:.4,fd:.017},mobs:['frostwolf','yeti','icewitch','frostwolf'],waves:[6,8,10,12],bn:'설원의 폭군',hpM:40,dmgM:1.35,spd:3.6,sc:2,r:2.2,pa:2,pr:404,bits:256,at:'yeti',model:()=>makeYeti(),
+    pat:['slam','quake','nova','barrage','summon'],adds:['frostwolf','frostwolf']},
+  desert:{name:'왕릉 던전',need:80,zid:8,ml:85,col:0xb8955a,ring:0xffb85a,rock:0xa8854e,fl:0x3a2c1a,wl:0x54402a,atmo:{bg:0x100b05,sky:0x2e2212,gr:0x181008,hi:.52,sun:.3,sc:0xe0c090,rc:0xffb85a,ri:.42,fd:.016},mobs:['scorpion','mummy','jackal','mummy'],waves:[6,8,10,12],bn:'전갈 여왕',hpM:42,dmgM:1.4,spd:4,sc:2.5,r:2.2,pa:5.9,pr:470,bits:512,at:'scorpion',model:()=>makeScorpion(),
+    pat:['rush','barrage','quake','summon','slam'],adds:['scorpion','jackal']},
+  sky:{name:'천공 신전 던전',need:90,zid:9,ml:95,col:0xc4c0d8,ring:0xfff0b0,rock:0xc8c2da,fl:0x34324a,wl:0x4a4666,atmo:{bg:0x0c0a18,sky:0x2a2648,gr:0x141226,hi:.55,sun:.3,sc:0xe0d8ff,rc:0xffe8a0,ri:.45,fd:.015},mobs:['sentinel','seraph','stormhawk','sentinel'],waves:[6,8,10,12],bn:'타락 대천사',hpM:45,dmgM:1.4,spd:4.2,sc:2.1,r:1.8,pa:.9,pr:538,bits:1024,at:'seraph',model:()=>makeSeraph(),fly:.7,keep:8,
+    pat:['bolts','nova','quake','barrage','summon'],adds:['seraph','sentinel']}
 };
-const DGK=Object.keys(DGDEF);
+const DGK=Object.keys(DGDEF).sort((a,b)=>DGDEF[a].need-DGDEF[b].need);
 const DG={on:false,id:null,cx:1000,cz:0,R:34,atmo:null,shapes:null,lamp:null,zone:null,ph:'idle',t:0,wave:0,wn:0,pt:0,dmg:{},deaths:0,maxDeaths:3,leader:null,boss:null,res:null,st:null,lastSt:0,arena:null,mkBk:'meadow'};
 function zoneAt(x,z){if(DG.on&&x>600)return DG.zone;const d=Math.hypot(x,z);for(let i=ZONES.length-1;i>=0;i--)if(d>=ZONES[i].r0)return ZONES[i];return ZONES[0]}
 function mobLevel(x,z){const zn=zoneAt(x,z);if(!zn.id)return 0;const k=clamp((Math.hypot(x,z)-zn.r0)/(zn.r1-zn.r0),0,1);return Math.max(zn.lo,Math.min(zn.hi,Math.round(zn.lo+k*(zn.hi-zn.lo)+rnd(-1,1))))}

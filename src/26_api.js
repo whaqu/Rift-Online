@@ -23,6 +23,12 @@ async function rpc(fn,args){
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
 const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
+/* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, weapon tier, area rune, side runes, potion] */
+const DGSRV={
+  meadow:[8,4000,3,'meadow',['holy','ice'],'hp1'],forest:[14,10000,3,'dark',['dark','meadow'],'hp1'],ember:[22,18000,4,'fire',['fire','thunder'],'hp2'],
+  crystal:[30,30000,5,'crystal',['ice','dark'],'hp2'],storm:[48,90000,7,'storm',['thunder','fire'],'hp3'],void:[62,150000,7,'dark',['dark','crystal'],'hp3'],
+  snow:[72,200000,8,'ice',['ice','crystal'],'hp3'],desert:[80,250000,8,'holy',['holy','fire'],'hp3'],sky:[90,330000,8,'holy',['holy','storm'],'hp3']
+};
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
   let db={acc:{},items:[],auc:[],nid:1,aid:1};
@@ -145,18 +151,18 @@ const LocalAPI=(()=>{
       const sp=RUNE_POTION[r.base],q=sp[1]*r.enh;r.qty--;if(r.qty<=0)r.gone=true;give(n,'potion',sp[0],q);wr();return{potion:sp[0],qty:q,profile:pf(a)};
     },
     dgBegin(n,t,dg){
-      rd();const a=auth(n,t);const need=({meadow:8,crystal:30,storm:48})[dg];if(!need)E('BAD_ARGS');if(a.level<need)E('LOW_LEVEL');a.dgRun={dg,ts:Date.now()};wr();return{run:1};
+      rd();const a=auth(n,t);const need=(DGSRV[dg]||[])[0];if(!need)E('BAD_ARGS');if(a.level<need)E('LOW_LEVEL');a.dgRun={dg,ts:Date.now()};wr();return{run:1};
     },
     dgEnd(n,t,dg,rank){
       rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<45000)E('TOO_FAST');a.dgRun=null;
-      const rk=clamp(rank|0||5,1,5),base=({meadow:4000,crystal:30000,storm:90000})[dg],tier=({meadow:3,crystal:5,storm:7})[dg],els=({meadow:['holy','ice'],crystal:['ice','dark'],storm:['thunder','fire']})[dg];
+      const rk=clamp(rank|0||5,1,5),[,base,tier,zr,els,pot]=DGSRV[dg];
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
         if(rnd01()<.5){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
-        else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',dg,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:dg,g,n:1},{t:'rune',base:er,g:1,n:2})}
+        else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
-        const pot=dg==='meadow'?'hp1':dg==='crystal'?'hp2':'hp3';give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
-        if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?dg:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
+        give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
+        if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?zr:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
       }
       wr();return{rewards:rw,rank:rk,profile:pf(a)};
     },

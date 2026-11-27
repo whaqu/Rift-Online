@@ -17,7 +17,7 @@ function dgBuildPortals(){
     DGP.length=0;
     for(const id of DGK){
       const def=DGDEF[id],pos=dgPortalPos(def),g=grp(pos.x,0,pos.z,worldG);g.rotation.y=Math.atan2(-pos.x,-pos.z);
-      const rock=M(def.col===0x56a044?0x6e6a5a:def.col===0x585a86?0x4e4a6e:0x56606e),dark=M(0x1a1a22);
+      const rock=M(def.rock||(id==='meadow'?0x6e6a5a:id==='crystal'?0x4e4a6e:0x56606e)),dark=M(0x1a1a22);
       // cave mouth: a horseshoe of boulders around a dark opening, glowing rim + inner glow
       BX(8,.3,4,M(0x5a5648),0,.1,.6,g);
       const rocks=[[-3.6,0,1.9,3.4],[-3,0,-.2,3.8],[-1.7,0,-1.2,4.6],[0,0,-1.8,5.2],[1.7,0,-1.2,4.6],[3,0,-.2,3.8],[3.6,0,1.9,3.4],[-2.2,3.6,-1,2.4],[0,4.6,-1.4,2.8],[2.2,3.6,-1,2.4]];
@@ -188,15 +188,10 @@ function dgBuildArena(){
   DG.arena=A;return A;
 }
 /* ---------- boss ---------- */
-function dgBossModel(){
-  const bk=DG.mkBk;
-  if(bk==='crystal')return makeGolem();
-  if(bk==='storm')return makeStormhawk();
-  return makeQuad({kind:'boar',body:0x8a3a2a,dk:0x4a2018,eye:0xffd24a,tusk:1,snout:0xc79a82});
-}
+function dgBossModel(){return DGDEF[DG.mkBk].model()}
 function dgBossSetup(m,bk){
-  const d=DGDEF[bk];m.bk=bk;m.bn=d.bn;m.at=bk==='meadow'?'boar':bk==='crystal'?'golem':'stormhawk';
-  m.scale=d.sc*(bk==='crystal'?.7:1);m.r=d.r;m.spd=d.spd;m.fly=bk==='storm'?2.4:0;m.dg=true;m.zid=d.zid;
+  const d=DGDEF[bk];m.bk=bk;m.bn=d.bn;m.at=d.at;
+  m.scale=d.sc;m.r=d.r;m.spd=d.spd;m.fly=d.fly||0;m.dg=true;m.zid=d.zid;
   if(!m.ghost){m.dmg=mobDmg(m.ml)*d.dmgM;m.state='chase';m.cd=2;m.pi=0}
 }
 const DG_TEL={slam:.9,rush:.8,nova:.7,summon:.9,quake:.9,barrage:.7,bolts:.8};
@@ -208,8 +203,8 @@ function dgBossAI(m,dt,dx,dz,d){
   if(m.pi===undefined){m.pi=0;m.state='chase';m.cd=2}
   if(m.state==='chase'){
     faceM(m,dx,dz,dt,6);
-    const keep=bk==='storm'?10:3.4;
-    if(d>keep+1.5){stepM(m,dx,dz,m.spd,dt);m.moving=true}else if(bk==='storm'&&d<keep-2){stepM(m,-dx,-dz,m.spd*.8,dt);m.moving=true}
+    const kp=def&&def.keep,keep=kp||3.4;
+    if(d>keep+1.5){stepM(m,dx,dz,m.spd,dt);m.moving=true}else if(kp&&d<keep-2){stepM(m,-dx,-dz,m.spd*.8,dt);m.moving=true}
     if(m.cd<=0){
       const pat=def.pat[m.pi++%def.pat.length],tel=DG_TEL[pat];m.pat=pat;m.state='wind';m.warn=true;m.st=tel;m.cdx=dx;m.cdz=dz;
       emitEvent({t:'v',x:m.x,z:m.z,n:'growl'});
@@ -245,7 +240,7 @@ function dgEnter(id){
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
   A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
-  for(const k in A.th)A.th[k].visible=(k===id);for(const gt of A.gates){gt.bar.material.color.setHex(def.ring);gt.g.visible=true}A.arrows.visible=false;
+  dgTheme(A,id);for(const k in A.th)A.th[k].visible=(k===id);for(const gt of A.gates){gt.bar.material.color.setHex(def.ring);gt.g.visible=true}A.arrows.visible=false;
   A.g.visible=true;worldG.visible=false;
   if(THREE.PointLight&&!(typeof balOn==='function'&&balOn())){if(!DG.lamp){DG.lamp=new THREE.PointLight(0xffb878,1.5,36,1.5)}DG.lamp.position.set(P.x,6,P.z);scene.add(DG.lamp)}
   resetMobs();
@@ -493,6 +488,7 @@ function dgScene(dt){
   const adv=DG.ph==='advance';if(A.arrows.visible!==adv)A.arrows.visible=adv;
   if(adv){const gz=DG.wave>=4?dgGate(3)-12:dgGate(DG.wave-1)-8;A.arrows.position.set(0,0,gz);A.arrowMats.forEach((m,k)=>{m.opacity=.25+.5*Math.max(0,Math.sin(G.t*5-k*.9))})}
   if(DG.lamp)DG.lamp.position.set(P.x,6.5,P.z);
+  const fx=A.anim&&A.anim[DG.id];if(fx)for(const f of fx)f(dt,G.t);
   if(A.dust)A.dust.position.y=Math.sin(G.t*.3)*.6;
   if(A.fl&&DG.id==='storm')for(const r of A.fl){r.position.y=r.userData.b+Math.sin(G.t*.8+r.userData.p)*.5;r.rotation.y+=dt*.3}
 }

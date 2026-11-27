@@ -224,7 +224,7 @@ function onHit(d){
 }
 function onKillCredit(d){
   if(!d||!Array.isArray(d.to)||!d.to.includes(SES.name))return;
-  registerKill({zid:clamp(d.z|0,1,4),ml:clamp(d.ml|0,1,42),elite:!!d.e,x:+d.x||P.x,z:+d.zz||P.z,r:1});
+  registerKill({zid:clamp(d.z|0,1,9),ml:clamp(d.ml|0,1,99),elite:!!d.e,x:+d.x||P.x,z:+d.zz||P.z,r:1});
 }
 function onEnemyEv(d){if(!d||!d.ev||isAuth())return;const e=d.ev;if(!isFinite(+e.x)||!isFinite(+e.z))return;runEnemyEvent(e)}
 

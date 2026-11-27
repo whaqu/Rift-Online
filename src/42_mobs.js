@@ -269,10 +269,11 @@ function animMob(m,dt){
   const o=m.m,t=m.age,mv=m.moving?1:0,g=o.g;
   g.position.x=m.x;g.position.z=m.z;g.rotation.y=m.face;
   let gs=m.scale;if(m.spawning)gs=m.scale*(1-m.sp/.35*.8);const pp=m.pop||0;if(pp>0)m.pop=Math.max(0,pp-dt*7);g.scale.set(gs*(1+pp*.14),gs*(1-pp*.12),gs*(1+pp*.14));
-  switch(m.at||m.type){
+  const kind=m.at||m.type;
+  switch(kind){
     case 'slime':{const k=m.hop>0?1:0;o.b.scale.set(1+Math.sin(t*6+m.ph)*.06+k*-.15,1+(k?.28:Math.sin(t*6+m.ph)*.08),1+Math.sin(t*6+m.ph)*.06+k*-.15);g.position.y=k?Math.sin(clamp(1-m.hop/.38,0,1)*Math.PI)*1.1:0;break}
     case 'skel':case 'archer':{const sw=Math.sin(t*10)*.7*(mv?1:.15);o.legL.rotation.x=sw;o.legR.rotation.x=-sw;
-      if(m.type==='skel'){o.armR.rotation.x=m.state==='wind'?-2.4:m.state==='rec'?.4:-.4+sw*.5;o.armL.rotation.x=-sw*.5}else{o.armL.rotation.x=-1.5;o.armR.rotation.x=m.state==='wind'?-1.8:-.6}
+      if(kind==='skel'){o.armR.rotation.x=m.state==='wind'?-2.4:m.state==='rec'?.4:-.4+sw*.5;o.armL.rotation.x=-sw*.5}else{o.armL.rotation.x=-1.5;o.armR.rotation.x=m.state==='wind'?-1.8:-.6}
       o.b.position.y=Math.abs(sw)*.1;break}
     case 'bat':{const f=Math.sin(t*22+m.ph)*.8;o.wl.rotation.z=f;o.wr.rotation.z=-f;g.position.y=m.fly+Math.sin(t*4+m.ph)*.25;break}
     case 'bomber':{const sw=Math.sin(t*16)*.8;o.legL.rotation.x=sw;o.legR.rotation.x=-sw;o.b.position.y=Math.abs(sw)*.12;o.spark.scale.setScalar(.6+Math.random()*.5);
@@ -287,14 +288,14 @@ function animMob(m,dt){
     case 'stormhawk':{const f=Math.sin(t*(m.warn?26:12)+m.ph)*.7;o.wl.rotation.z=f;o.wr.rotation.z=-f;g.position.y=m.fly+Math.sin(t*3+m.ph)*.3;o.b.rotation.x=mv?.2:0;break}
     case 'scorpion':{for(const l of o.legs)l.g.rotation.y=Math.sin(t*14+l.i*1.3+(l.s>0?0:Math.PI))*.4*(mv?1:.15);o.tail.rotation.x=m.warn?.9+Math.sin(t*30)*.04:Math.sin(t*2)*.12;o.pin[0].rotation.y=o.pin[1].rotation.y=Math.sin(t*3)*.08;break}
     case 'phantom':case 'yeti':case 'mummy':case 'sentinel':case 'icewitch':case 'seraph':{
-      const sw=Math.sin(t*(m.type==='mummy'?6:9))*.6*(mv?1:.12);
+      const sw=Math.sin(t*(kind==='mummy'?6:9))*.6*(mv?1:.12);
       o.legL.rotation.x=sw;o.legR.rotation.x=-sw;
-      if(m.type==='mummy')o.armL.rotation.x=o.armR.rotation.x=-1.3+(m.warn?-.9:0)+Math.sin(t*2)*.1;
-      else if(m.type==='yeti')o.armL.rotation.x=o.armR.rotation.x=m.warn?-2.8:-sw*.9;
-      else if(m.type==='icewitch'||m.type==='seraph'){o.armR.rotation.x=m.warn?-2.4:-.6;o.armL.rotation.x=m.warn?-2.4:-.3}
+      if(kind==='mummy')o.armL.rotation.x=o.armR.rotation.x=-1.3+(m.warn?-.9:0)+Math.sin(t*2)*.1;
+      else if(kind==='yeti')o.armL.rotation.x=o.armR.rotation.x=m.warn?-2.8:-sw*.9;
+      else if(kind==='icewitch'||kind==='seraph'){o.armR.rotation.x=m.warn?-2.4:-.6;o.armL.rotation.x=m.warn?-2.4:-.3}
       else{o.armR.rotation.x=m.warn?-2.5:-.4+sw*.5;o.armL.rotation.x=m.warn?-.9:-sw*.5}
-      if(m.type==='seraph'){g.position.y=m.fly+Math.sin(t*2+m.ph)*.3;o.wings.forEach((w,i)=>{w.rotation.z=(i?1:-1)*(.2+Math.sin(t*5)*.25)});if(o.halo)o.halo.rotation.z=t*2}
-      if(m.type==='phantom')g.visible=m.state!=='vanish';
+      if(kind==='seraph'){g.position.y=m.fly+Math.sin(t*2+m.ph)*.3;o.wings.forEach((w,i)=>{w.rotation.z=(i?1:-1)*(.2+Math.sin(t*5)*.25)});if(o.halo)o.halo.rotation.z=t*2}
+      if(kind==='phantom')g.visible=m.state!=='vanish';
       o.b.position.y=Math.abs(sw)*.08;break}
     case 'golem':{const sw=Math.sin(t*5)*.45*(mv?1:.1);o.legL.rotation.x=sw;o.legR.rotation.x=-sw;
       if(m.warn){const k=1-clamp(m.st/1,0,1);o.armL.rotation.x=o.armR.rotation.x=lerp(-.3,-2.9,k)}

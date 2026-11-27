@@ -227,7 +227,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   {
     const K='rw_local_db_v1';const lv=g.SES.pf.level;
     g.P.iframes=1e9;g.P.x=60;g.P.z=0;
-    T(g.DGP.filter(p=>p.kind==='portal').length===3&&g.DGP.some(p=>p.kind==='map'),'three dungeon portals + town map sign exist');
+    T(g.DGP.filter(p=>p.kind==='portal').length===9&&g.DGP.some(p=>p.kind==='map'),'nine dungeon portals + town map sign exist');
     {let ok=true;try{g.openMap()}catch(e){ok=false}T(ok,'town map opens')}
     const p0=g.DGP[0];g.P.x=p0.x+1;g.P.z=p0.z+1;step(2);
     T(g.nearNpc()&&g.nearNpc().kind==='portal','portal is interactable');
@@ -490,6 +490,23 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.SES.pf.level=lv;g.save.auto=au;
   }
   // developer tools guard (last: once tripped the game stays stopped)
+  { // every region has its own dungeon: entry, scenery, waves, boss, offline rewards
+    const ids=['meadow','forest','ember','crystal','storm','void','snow','desert','sky'],D=g.DG;
+    T(ids.every(id=>g.DGP.some(p=>p.dg===id))&&new Set(ids.map(id=>g.DGDEF[id].zid)).size===9,'one portal per region');
+    T(new Set(ids.map(id=>g.DGDEF[id].bits)).size===9&&ids.every(id=>g.DGDEF[id].bits>2),'boss snapshot bits are unique');
+    T(g.DGP.filter(p=>p.dg).every(p=>g.zoneAt(p.x,p.z).id===g.DGDEF[p.dg].zid),'portals sit in their own region');
+    for(const id of ids){
+      const def=g.DGDEF[id];g.UI.close();g.dgEnter(id);g.P.iframes=1e9;g.P.dead=false;step(260);
+      T(D.on&&g.MOBS.some(m=>m.dg&&def.mobs.includes(m.type)),id+' wave spawns');
+      D.wave=4;D.ph='advance';g.P.x=D.cx;g.P.z=D.cz-300;g.P.iframes=1e9;step(150);
+      const b=g.MOBS.find(m=>m.type==='dgboss');T(b&&b.bn===def.bn&&b.bk===id,id+' boss spawns');
+      g.dgLeave('x');step(2);
+    }
+    const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
+    let lv;edit(a=>{lv=a.level;a.level=99});
+    for(const id of ids){g.LocalAPI.dgBegin(me,tk,id);edit(a=>{a.dgRun.ts-=60000});const r=g.LocalAPI.dgEnd(me,tk,id,1);T(r.rewards.length>=2&&r.rewards.every(x=>x.t!=='rune'||g.RUNES[x.base]),id+' reward '+JSON.stringify(r.rewards))}
+    edit(a=>{a.level=lv});
+  }
   { // doorway walking, map guide, realtime reconnect
     const D=g.DG,wasOn=D.on,wave=D.wave;D.on=true;D.wave=4;D.shapes=null;
     const o={x:D.cx,z:D.cz+6-10};let stuck=false;
