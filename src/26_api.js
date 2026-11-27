@@ -23,11 +23,11 @@ async function rpc(fn,args){
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
 const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
-/* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, weapon tier, area rune, side runes, potion] */
+/* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, weapon tier, zone id, side runes, potion] (area rune = dungeon id) */
 const DGSRV={
-  meadow:[8,4000,3,'meadow',['holy','ice'],'hp1'],forest:[14,10000,3,'dark',['dark','meadow'],'hp1'],ember:[22,18000,4,'fire',['fire','thunder'],'hp2'],
-  crystal:[30,30000,5,'crystal',['ice','dark'],'hp2'],storm:[48,90000,7,'storm',['thunder','fire'],'hp3'],void:[62,150000,7,'dark',['dark','crystal'],'hp3'],
-  snow:[72,200000,8,'ice',['ice','crystal'],'hp3'],desert:[80,250000,8,'holy',['holy','fire'],'hp3'],sky:[90,330000,8,'holy',['holy','storm'],'hp3']
+  meadow:[8,4000,3,1,['holy','ice'],'hp1'],forest:[14,10000,3,2,['dark','meadow'],'hp1'],ember:[22,18000,4,3,['fire','thunder'],'hp2'],
+  crystal:[30,30000,5,4,['ice','dark'],'hp2'],storm:[48,90000,7,5,['thunder','fire'],'hp3'],void:[62,150000,7,6,['dark','crystal'],'hp3'],
+  snow:[72,200000,8,7,['ice','crystal'],'hp3'],desert:[80,250000,8,8,['holy','fire'],'hp3'],sky:[90,330000,8,9,['holy','storm'],'hp3']
 };
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
@@ -94,7 +94,7 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=rnd01()<.25?z+2:Math.floor(rnd01()*3),b=cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
           else if(rr<wc+ac){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
@@ -155,10 +155,10 @@ const LocalAPI=(()=>{
     },
     dgEnd(n,t,dg,rank){
       rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<45000)E('TOO_FAST');a.dgRun=null;
-      const rk=clamp(rank|0||5,1,5),[,base,tier,zr,els,pot]=DGSRV[dg];
+      const rk=clamp(rank|0||5,1,5),[,base,tier,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
-        if(rnd01()<.5){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+tier+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        if(rnd01()<.5){const pb=a.cls+'_'+tier+'_'+(zid+2);give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
         else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
@@ -252,7 +252,7 @@ const LocalAPI=(()=>{
     },
     gmWeapon(n,t,base,enh,ench){
       rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const k=ench||[];
-      if(!new RegExp('^('+CLASSES.join('|')+')_[1-8](_[12])?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
+      if(!new RegExp('^('+CLASSES.join('|')+')_[1-8](_([1-9]|1[01]))?$').test(base)||!(enh>=0&&enh<=20)||k.length>3||new Set(k).size!==k.length||!k.every(x=>ENCH[x]))E('BAD_ARGS');
       const mine=wCls(base)===a.cls;if(mine)db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});
       const it=give(n,'weapon',base,1);it.enh=enh;it.ench=k.map(x=>({k:x,l:3}));it.eq=mine;wr();return pf(a);
     },

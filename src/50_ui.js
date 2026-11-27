@@ -47,7 +47,7 @@ UI.handlers={};
 const fmtG=n=>fmtN(n)+' G';
 function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base,it.enh)):it.kind==='armor'?'방어 '+fmtN(armorDef(it.base,it.enh))+' · 체력 +'+fmtN(armorHp(it.base,it.enh)):''}
 function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</span>').join('')}
-function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+'</span>':''}
+function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+(runeMatch(it.base,it.rune)?' ★짝 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</span>':''}
 function itemRow(it,o){
   o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
   if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
@@ -93,15 +93,16 @@ function openInventory(){
         det+='<div class="row wrap" style="margin-top:8px">'+(sel.eq?(sel.kind==='armor'?'<button class="btn sm sec" data-a="equip" data-v="'+sel.id+'">해제</button>':''):'<button class="btn sm" data-a="equip" data-v="'+sel.id+'">장착</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">상점 판매 ('+fmtG(sellValue(sel))+')</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button>')+'</div>';
         if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 장비는 판매할 수 없습니다.</div>';
         if(sel.kind==='weapon'&&wType(sel.base))det+='<div class="dim" style="margin-top:6px">'+WTMOD[wType(sel.base)].d+'</div>';
+        if(sel.kind==='weapon'&&sel.rune){const p=sel.rune.split(':'),m=runeMatch(sel.base,sel.rune);det+='<div class="dim" style="margin-top:4px">룬 효과: '+esc(runeDesc(p[0],+p[1],m?RUNE_MATCH:0))+(m?' (짝 보너스 적용)':'')+'</div>'}
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
         const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
         det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'</div><div class="row wrap">'
-          +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착</button>':'')
+          +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
-          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 8종 룬(Ⅱ 이상)을 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
+          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역의 지역 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 화염·냉기·번개·암흑·성광·초원·수정·폭풍 룬(Ⅱ 이상)을 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
           +(RUNE_KEYS.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';

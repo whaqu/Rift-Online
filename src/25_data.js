@@ -143,11 +143,23 @@ const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff
 const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a];
 const wTier=b=>+(String(b).split('_')[1]||1);
 const wCls=b=>String(b).split('_')[0];
-const wType=b=>{const p=String(b).split('_')[2];return p&&/^\d$/.test(p)?+p:0};
+const wType=b=>{const p=String(b).split('_')[2];return p&&/^\d+$/.test(p)?+p:0};
 /* weapon kinds: every class has 3 (balanced / heavy / swift), same tier ladder */
 const WPFX=['낡은','철제','강철','룬','미스릴','용아','폭풍의','영겁의'];
 const WTYPES={warrior:['대검','쌍검'],mage:['마도서','완드'],archer:['석궁','속사궁'],rogue:['쌍낫','표창'],cleric:['전투 철퇴','성배'],lancer:['미늘창','단창'],monk:['건틀릿','발톱'],gunner:['산탄총','쌍권총'],summoner:['정령서','인형'],darknight:['참마도','단도']};
 const WTMOD=[{n:'균형형',d:'균형 잡힌 기본형',atk:1,aps:1,crit:0},{n:'강타형',d:'공격력 +15%, 공격 속도 -12%',atk:1.15,aps:.88,crit:0},{n:'속공형',d:'공격력 -10%, 공격 속도 +15%, 치명타 +4%',atk:.9,aps:1.15,crit:.04}];
+/* region weapons: kind index = 2 + zone id (3..11). Not sold in shops: area drops and that area's dungeon. */
+const RUNE_MATCH=1.3;   // rune effect multiplier when the rune belongs to the weapon's region
+const RWNOUN={warrior:'검',mage:'지팡이',archer:'활',rogue:'단검',cleric:'철퇴',lancer:'창',monk:'권갑',gunner:'총',summoner:'령장',darknight:'마검'};
+[['meadow','초원','새싹','초원의 룬',.97,1.08,0],['forest','망자의 숲','묘지기','묘지의 룬',1.06,.99,0],['ember','화염 황무지','용암','용암의 룬',1.18,.89,0],
+ ['crystal','수정 협곡','수정','수정의 룬',1,1,.08],['storm','뇌우 고원','뇌운','폭풍의 룬',.91,1.15,0],['void','공허의 균열','공허','공허의 룬',1.1,.95,0],
+ ['snow','설원','서리','설원의 룬',1.12,.94,0],['desert','사막','태양','사막의 룬',1,1.02,.05],['sky','성역','천상','천공의 룬',1.02,1.03,0]
+].forEach(([rune,area,word,rn,atk,aps,crit],i)=>{
+  const pc=v=>(v>=1?'+':'-')+Math.round(Math.abs(v-1)*100)+'%',st=[];
+  if(atk!==1)st.push('공격력 '+pc(atk));if(aps!==1)st.push('공격 속도 '+pc(aps));if(crit)st.push('치명타 +'+Math.round(crit*100)+'%');
+  WTMOD.push({n:area+' 무기',word,rune,zid:i+1,atk,aps,crit,d:st.join(', ')+' · '+rn+'을 넣으면 룬 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%'});
+});
+const runeMatch=(base,rune)=>{const m=WTMOD[wType(base)];return !!(m&&m.rune&&rune&&String(rune).split(':')[0]===m.rune)};
 /* armor: 4 slots x 3 materials. base id = slot_tier_material (e.g. body_3_plate) */
 const ASLOTS=['helm','body','gloves','boots'],ASLOT_N={helm:'투구',body:'갑옷',gloves:'장갑',boots:'신발'},ASLOT_W={helm:.6,body:1,gloves:.45,boots:.45};
 const ASETS={plate:{n:'판금',def:1.25,hp:2,d:'방어와 체력 특화'},leather:{n:'가죽',def:1,hp:1.5,d:'기동과 치명타'},cloth:{n:'비단',def:.7,hp:1.2,d:'공격력과 공격 속도'}};
@@ -176,7 +188,7 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t>2&&WTMOD[t]?WPFX[k]+' '+WTMOD[t].word+' '+RWNOUN[c]:t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
 const WVALUE=[100,900,3500,12000,38000,110000,320000,900000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
@@ -216,11 +228,13 @@ const RUNES={
   fire:{name:'화염의 룬',col:'#ff7a2a',d:'화상 · 폭발'},ice:{name:'냉기의 룬',col:'#7fd8ff',d:'수호 · 가속'},thunder:{name:'번개의 룬',col:'#ffe27a',d:'연쇄 번개 · 가속'},
   dark:{name:'암흑의 룬',col:'#b07aff',d:'흡혈 · 치명'},holy:{name:'성광의 룬',col:'#fff1a8',d:'체력 · 재생'},
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'모든 룬의 힘 ×2 · 황금 오라'}
+  forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
+  snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
+  all:{name:'만물의 룬',col:'#ffd24a',d:'기본 8종 룬의 힘 ×2 · 황금 오라'}
 };
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];
-const RUNE_POTION={fire:['atk',3],ice:['def',3],thunder:['spd',3],dark:['hp2',4],holy:['hp3',3],meadow:['hp1',8],crystal:['atk',2],storm:['spd',2]};
+const RUNE_POTION={fire:['atk',3],ice:['def',3],thunder:['spd',3],dark:['hp2',4],holy:['hp3',3],meadow:['hp1',8],crystal:['atk',2],storm:['spd',2],forest:['hp1',8],ember:['atk',3],void:['hp3',3],snow:['def',3],desert:['spd',3],sky:['hp3',4]};
 const runePrice=(b,g)=>b==='all'?40000:400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
 function runeBase(k,g){
   g=Math.max(1,g|0);const o={en:{},hp:0,rg:0};const a=(e,v)=>{if(v>0)o.en[e]=(o.en[e]||0)+v};
@@ -228,6 +242,8 @@ function runeBase(k,g){
     case'fire':a('burn',g);a('explode',g-1);break;case'ice':a('armor',g);a('aspd',g-1);break;case'thunder':a('chain',g);a('aspd',g-1);break;
     case'dark':a('vamp',g);a('crit',g-1);break;case'holy':o.hp=.04*g;o.rg=.004*g;break;case'meadow':a('aspd',g);o.rg=.003*g;break;
     case'crystal':a('crit',g);a('armor',g-1);break;case'storm':a('explode',g);a('chain',g-1);break;
+    case'forest':a('armor',g);a('vamp',g-1);break;case'ember':a('burn',g);a('crit',g-1);break;case'void':a('crit',g);a('vamp',g-1);break;
+    case'snow':a('armor',g);o.hp=.02*g;break;case'desert':a('burn',g);a('aspd',g-1);break;case'sky':a('chain',g);o.hp=.02*g;o.rg=.002*g;break;
   }
   return o;
 }
@@ -237,10 +253,13 @@ function runeFx(s){
   if(k==='all'){const o={en:{},hp:0,rg:0,aura:true};for(const r of RUNE_KEYS){const q=runeBase(r,2);for(const e in q.en)o.en[e]=(o.en[e]||0)+q.en[e]*2;o.hp+=q.hp*2;o.rg+=q.rg*2}return o}
   if(!RUNES[k])return null;const o=runeBase(k,g);o.aura=false;return o;
 }
-function runeDesc(k,g){
-  const o=runeFx(k+':'+g);if(!o)return '';const t=[];
-  for(const e in o.en){const d=ENCH[e];if(d)t.push(d.name+' +'+(o.en[e]*d.per)+(e==='pierce'?'':'%'))}
-  if(o.hp)t.push('체력 +'+Math.round(o.hp*100)+'%');if(o.rg)t.push('재생 +'+(o.rg*100).toFixed(1)+'%/s');
+const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
+/* rune effect of an equipped weapon, including the same-region bonus */
+function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null;return o&&runeMatch(w.base,w.rune)?scaleFx(o,RUNE_MATCH):o}
+function runeDesc(k,g,mult){
+  const o=runeFx(k+':'+g);if(!o)return '';const t=[];if(mult)scaleFx(o,mult);
+  for(const e in o.en){const d=ENCH[e];if(d)t.push(d.name+' +'+(+(o.en[e]*d.per).toFixed(1))+(e==='pierce'?'':'%'))}
+  if(o.hp)t.push('체력 +'+(+(o.hp*100).toFixed(1))+'%');if(o.rg)t.push('재생 +'+(o.rg*100).toFixed(1)+'%/s');
   return t.join(' · ');
 }
 const ZONES=[

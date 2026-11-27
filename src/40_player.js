@@ -8,7 +8,7 @@ function derive(){
   const w=pf.items.find(i=>i.kind==='weapon'&&i.eq);
   const ab=armorBonus(pf.items.filter(i=>i.kind==='armor'&&i.eq));
   const wa=w?weaponAtk(w.base,w.enh):0,wt=w?WTMOD[wType(w.base)]:WTMOD[0];const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
-  const rf=w&&w.rune?runeFx(w.rune):null;if(rf){for(const e in rf.en)en[e]=(en[e]||0)+rf.en[e];if(en.aspd>10)en.aspd=10}
+  const rf=weaponRuneFx(w);if(rf){for(const e in rf.en)en[e]=(en[e]||0)+rf.en[e];if(en.aspd>10)en.aspd=10}
   const burnLv=(m.burn||0)+(en.burn||0);
   const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor),pk=perkOf(pf);
   S={

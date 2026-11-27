@@ -169,16 +169,27 @@ const WLOOK={
   }
 };
 
+function wregion(m,rg){
+  const c=parseInt(RUNES[rg.rune].col.slice(1),16);m.c=c;
+  m.blade=M(c,{metalness:.55,roughness:.3,emissive:c,emissiveIntensity:.18});m.edge=EM(c,.9);m.steel=M(c,{metalness:.6,roughness:.35});m.wood=M(c,{roughness:.6});   // staffs and bows are mostly wood
+}
+function wshards(o,m){
+  const k=o.weapon,list=[];
+  for(let i=0;i<3;i++){const s=OC(.09,EM(m.c,1.6),0,0,0,k);s.scale.set(.6,1.6,.6);list.push(s)}
+  o.wfx.push({list,x:0,y:.7,z:0,r:.34,h:.3,sp:1.3});
+  const gl=wglw(m.c,2.2,.8);gl.position.set(0,.8,0);k.add(gl);
+}
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
-  let b=typeof base==='string'&&/^[a-z]+_[1-8](_[12])?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
+  let b=typeof base==='string'&&/^[a-z]+_[1-8](_([1-9]|1[01]))?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);
   wclear(o.weapon);if(o.weapon2){wclear(o.weapon2);o.weapon2.visible=false}
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
-  try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
+  const rg=ty>2?WTMOD[ty]:null;   // region weapon: one of the 3 shapes, recoloured, with shards of that region's colour
+  try{const m=wmats(t);if(rg)wregion(m,rg);fn(o,rg?(rg.zid-1)%3:ty,t,m);if(rg)wshards(o,m)}catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
   o.wbase=b;
 }
