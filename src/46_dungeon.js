@@ -30,6 +30,14 @@ function dgBuildPortals(){
       const gl=glow(def.ring,5,.35);gl.position.set(0,1.9,.8);g.add(gl);
       DGP.push({kind:'portal',dg:id,name:def.name+' 입장',x:pos.x,z:pos.z,g,ring,disc,label:makeLabel(def.name,'st')});
     }
+    // town map signboard
+    {const g=grp(0,0,-10,worldG);g.rotation.y=0;const wood=M(0x6b4a2b);
+      for(const sx of[-1.6,1.6])CY(.14,.16,3.2,wood,sx,1.6,0,g,6);
+      BX(4.2,2.4,.18,M(0x3a2f22),0,2.6,0,g);BX(3.8,2.0,.1,M(0xd8c79a),0,2.6,.12,g);
+      const pin=EM(0xe5483a,1.2);for(const[x,y]of[[-1,2.9],[.4,2.3],[1.2,3.1]])SP(.12,pin,x,y,.2,g,6,5);
+      BX(.8,.1,.1,M(0x7a5a3a),-1,2.4,.2,g);BX(1.2,.08,.08,M(0x7a5a3a),.2,2.9,.2,g);
+      const gl=glow(0xffd88a,2.2,.5);gl.position.set(0,3.6,.6);g.add(gl);addObst(0,-10,1.6);
+      DGP.push({kind:'map',name:'마을 지도',x:0,z:-7.6,g,disc:{material:{opacity:0}},label:makeLabel('마을 지도','st')})}
   }catch(e){console.error('portals',e)}
 }
 
@@ -537,4 +545,33 @@ function dgUpdate(dt){
   if(dm.length){const tot=dm.reduce((a,x)=>a+x[1],0)||1,top=dm[0][1]||1;
     rl.innerHTML=dm.map((x,i)=>'<div class="r'+(x[0]===SES.name?' me':'')+'"><i style="width:'+Math.round(x[1]/top*100)+'%"></i><span>'+(i+1)+'. '+esc(x[0])+'</span><span>'+Math.round(x[1]/tot*100)+'%</span></div>').join('')}
   else rl.innerHTML='<div class="dim">—</div>';
+}
+
+/* ---------- town map ---------- */
+function openMap(){
+  UI.page('지도',()=>'<div style="text-align:center"><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:560px;border-radius:10px;border:1px solid #444"></canvas></div><div id="mapl" style="margin-top:8px;font-size:13px;line-height:1.7"></div>');
+  drawBigMap();
+}
+function drawBigMap(){
+  const c=$('bigmap'),g=c&&c.getContext&&c.getContext('2d');if(!g)return;
+  const W=c.width,cx=W/2,sc=(W/2-14)/WORLD_R,px=x=>cx+x*sc,pz=z=>cx+z*sc;
+  const cols=['#8c8678','#5fa84a','#4a4f58','#7a4a38','#4a4a8a','#5a6678','#3a2a52','#cfe0ee','#c8a468','#d8d4e8'];
+  g.fillStyle='#0c0f16';g.fillRect(0,0,W,W);
+  for(let i=ZONES.length-1;i>=0;i--){g.fillStyle=cols[i];g.beginPath();g.arc(cx,cx,ZONES[i].r1*sc,0,TAU);g.fill()}
+  g.strokeStyle='rgba(0,0,0,.35)';g.lineWidth=1.5;for(const z of ZONES){g.beginPath();g.arc(cx,cx,z.r1*sc,0,TAU);g.stroke()}
+  g.strokeStyle='rgba(255,255,255,.07)';g.lineWidth=1;for(let i=-5;i<=5;i++){g.beginPath();g.moveTo(px(i*100),pz(-WORLD_R));g.lineTo(px(i*100),pz(WORLD_R));g.moveTo(px(-WORLD_R),pz(i*100));g.lineTo(px(WORLD_R),pz(i*100));g.stroke()}
+  g.textAlign='center';g.font='bold 13px sans-serif';
+  const lab=(t,x,y,col)=>{g.lineWidth=3.5;g.strokeStyle='rgba(0,0,0,.8)';g.strokeText(t,x,y);g.fillStyle=col||'#fff';g.fillText(t,x,y)};
+  for(const z of ZONES){if(!z.id)continue;const r=(z.r0+z.r1)/2;lab(z.name,cx,cx-r*sc+4);g.font='11px sans-serif';lab('Lv.'+z.lo+'~'+z.hi,cx,cx-r*sc+17,'#ddd');g.font='bold 13px sans-serif'}
+  lab('마을',cx,cx+5,'#fff');
+  const rows=[];
+  for(const p of DGP){if(p.kind!=='portal')continue;const def=DGDEF[p.dg],x=px(p.x),y=pz(p.z);
+    g.fillStyle='rgba(0,0,0,.6)';g.beginPath();g.arc(x,y,13,0,TAU);g.fill();g.fillStyle='#'+('000000'+def.ring.toString(16)).slice(-6);g.beginPath();g.arc(x,y,9,0,TAU);g.fill();
+    g.fillStyle='#10131b';g.beginPath();g.arc(x,y,4.5,0,TAU);g.fill();
+    lab(def.name,x,y-18,'#ffe9a0');
+    const dist=Math.round(Math.hypot(p.x-P.x,p.z-P.z)),ang=Math.atan2(p.z,p.x),dirs=['동','남동','남','남서','서','북서','북','북동'],dn=dirs[(Math.round(ang/(Math.PI/4))+8)%8];
+    rows.push('<div><b style="color:#ffe9a0">'+def.name+'</b> — '+ZONES[def.zid].name+' '+dn+'쪽 · 필요 Lv.'+def.need+' · 마을에서 약 '+Math.round(Math.hypot(p.x,p.z))+'m (현재 '+dist+'m)</div>')}
+  g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),pz(P.z),7,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=2;g.stroke();lab('나',px(P.x),pz(P.z)-12,'#ffd24a');
+  g.font='bold 14px sans-serif';lab('북',cx,16,'#ccc');lab('남',cx,W-6,'#ccc');lab('서',14,cx+5,'#ccc');lab('동',W-14,cx+5,'#ccc');
+  const l=$('mapl');if(l)l.innerHTML=rows.join('')+'<div style="opacity:.7;margin-top:4px">동굴 입구(빛나는 바위 동굴)에서 E로 입장 · 중심은 마을, 바깥으로 갈수록 위험합니다</div>';
 }

@@ -227,7 +227,8 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   {
     const K='rw_local_db_v1';const lv=g.SES.pf.level;
     g.P.iframes=1e9;g.P.x=60;g.P.z=0;
-    T(g.DGP.length===3,'three dungeon portals exist');
+    T(g.DGP.filter(p=>p.kind==='portal').length===3&&g.DGP.some(p=>p.kind==='map'),'three dungeon portals + town map sign exist');
+    {let ok=true;try{g.openMap()}catch(e){ok=false}T(ok,'town map opens')}
     const p0=g.DGP[0];g.P.x=p0.x+1;g.P.z=p0.z+1;step(2);
     T(g.nearNpc()&&g.nearNpc().kind==='portal','portal is interactable');
     g.P.x=60;g.P.z=0;
