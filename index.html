@@ -4445,6 +4445,7 @@ function dgBuildPortals(){
       BX(8,.3,4,M(0x5a5648),0,.1,.6,g);
       const rocks=[[-3.6,0,1.9,3.4],[-3,0,-.2,3.8],[-1.7,0,-1.2,4.6],[0,0,-1.8,5.2],[1.7,0,-1.2,4.6],[3,0,-.2,3.8],[3.6,0,1.9,3.4],[-2.2,3.6,-1,2.4],[0,4.6,-1.4,2.8],[2.2,3.6,-1,2.4]];
       for(const[x,y,z,sc]of rocks){const r=mesh(new THREE.DodecahedronGeometry(sc*.55,0),rock,x,y+sc*.42,z,g);r.scale.set(1,.9+((x*7|0)%3)*.12,1);r.rotation.y=x}
+      {const th=g.rotation.y,c=Math.cos(th),sn=Math.sin(th);for(const[x,y,z,sc]of rocks)if(y===0)addObst(pos.x+x*c+z*sn,pos.z-x*sn+z*c,sc*.5)}   // boulders block movement
       const hole=mesh(new THREE.CircleGeometry(1.9,20),dark,0,1.9,.15,g,false);hole.scale.set(1,1.15,1);
       const ring=mesh(new THREE.TorusGeometry(2.05,.16,6,24),EM(def.ring,1.7),0,1.9,.2,g,false);ring.scale.set(1,1.15,1);
       const disc=mesh(new THREE.CircleGeometry(1.7,20),new THREE.MeshBasicMaterial({color:def.ring,transparent:true,opacity:.28,side:THREE.DoubleSide,depthWrite:false}),0,1.9,.3,g,false);disc.scale.set(1,1.15,1);
