@@ -260,7 +260,7 @@ function buildHouse(x,z,ry,v){
   }finally{HQ--}
 }
 /* ---- lush grass: clumps of curved leaf blades, swaying in the wind (vertex shader) ---- */
-const GRASS_U={uTime:{value:0}};
+const GRASS_U={uTime:{value:0},uFade:{value:{x:1e5,y:1e5+1,set(a,b){this.x=a;this.y=b}}}};   // uFade: blades shrink to nothing between x and y metres from the camera (balance mode)
 function grassGeoLow(n,h,w,lean,seed){
   try{
     const rnd=mulberry(seed),P=[],N=[],C=[],SEG=3;
@@ -322,7 +322,7 @@ function groundMat(){
   const R0=ZONES.map(z=>z.r0);
   m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;sh.uniforms.uR0={value:R0};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;').replace('#include <begin_vertex>','#include <begin_vertex>\nvGW=(modelMatrix*vec4(position,1.)).xyz;');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;uniform float uTime;uniform float uR0['+R0.length+'];\n'+GD_COMMON)
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;uniform float uTime;uniform float uR0['+R0.length+'];\n'+(balOn()?GD_COMMON.replace('for(int i=0;i<4;i++){s+=a*gn(p)','for(int i=0;i<3;i++){s+=a*gn(p)'):GD_COMMON))
       .replace('#include <color_fragment>','#include <color_fragment>\nvec3 gM=vec3(1.),gE=vec3(0.);{float d=length(vGW.xz);int zi=0;for(int i=1;i<'+R0.length+';i++)if(d>=uR0[i])zi=i;float tn=0.;if(zi<'+(R0.length-1)+')tn=smoothstep(uR0[zi+1]-7.,uR0[zi+1]+1.,d);vec3 m1,e1;gd(zi,vGW.xz,uTime,m1,e1);gM=m1;gE=e1;if(tn>0.){vec3 m2,e2;gd(zi+1,vGW.xz,uTime,m2,e2);gM=mix(m1,m2,tn);gE=mix(e1,e2,tn);}float fade=smoothstep(14.,40.,length(vGW.xz));gM=mix(vec3(1.),gM,fade);gE*=fade;}\ndiffuseColor.rgb*=gM;')
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=gE;');
   };
@@ -332,8 +332,8 @@ const GRASSM={};
 function grassMat(o){
   const k=JSON.stringify(o||{});if(GRASSM[k])return GRASSM[k];
   const m=new THREE.MeshStandardMaterial(Object.assign({color:0xffffff,vertexColors:true,side:THREE.DoubleSide,roughness:.92,metalness:0},o||{}));
-  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;
-    sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec4 _wp=instanceMatrix*vec4(0.,0.,0.,1.);\nfloat _k=transformed.y*transformed.y;\nfloat _s=sin(uTime*1.7+_wp.x*.31+_wp.z*.23)+.45*sin(uTime*3.1+_wp.x*.9);\ntransformed.x+=_s*_k*.16;transformed.z+=cos(uTime*1.3+_wp.z*.27)*_k*.1;\n#endif')};
+  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;sh.uniforms.uFade=GRASS_U.uFade;
+    sh.vertexShader='uniform float uTime;uniform vec2 uFade;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec4 _wp=instanceMatrix*vec4(0.,0.,0.,1.);\nfloat _k=transformed.y*transformed.y;\nfloat _s=sin(uTime*1.7+_wp.x*.31+_wp.z*.23)+.45*sin(uTime*3.1+_wp.x*.9);\ntransformed.x+=_s*_k*.16;transformed.z+=cos(uTime*1.3+_wp.z*.27)*_k*.1;\ntransformed*=clamp((uFade.y-distance(_wp.xz,cameraPosition.xz))/(uFade.y-uFade.x),0.,1.);\n#endif')};
   return GRASSM[k]=m;
 }
 function buildWorld(){

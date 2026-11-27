@@ -352,14 +352,14 @@ function updateDN(dt){
     const o=dnAct[i];o.t+=dt;o.y+=o.vy*dt;o.vy*=.94;
     if(o.t>=o.life){o.el.style.display='none';dnAct.splice(i,1);dnPool.push(o);continue}
     const s=toScreen(o.x,o.y,o.z);const sc=o.t<.1?1+(.1-o.t)*6:1;
-    o.el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-50%) scale('+sc.toFixed(2)+')';
-    o.el.style.opacity=o.t>.55?String(1-(o.t-.55)/.3):'1';
+    const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-50%) scale('+sc.toFixed(2)+')';if(o.tf!==tf){o.tf=tf;o.el.style.transform=tf}
+    const op=o.t>.55?(1-(o.t-.55)/.3).toFixed(2):'1';if(o.op!==op){o.op=op;o.el.style.opacity=op}
   }
 }
 function clearDN(){for(const o of dnAct){o.el.style.display='none';dnPool.push(o)}dnAct.length=0}
 function makeLabel(text,cls){
   const el=document.createElement('div');el.className='nl '+(cls||'');el.textContent=text;labelsEl.appendChild(el);
-  return{el,pos(x,y,z){const s=toScreen(x,y,z);if(!s.vis){el.style.display='none';return}el.style.display='block';el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)'},remove(){el.remove()}};
+  return{el,pos(x,y,z){const s=toScreen(x,y,z);if(!s.vis){el.style.display='none';return}el.style.display='block';const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';if(el._tf!==tf){el._tf=tf;el.style.transform=tf}},remove(){el.remove()}};
 }
 
 /* ---------------- input ---------------- */

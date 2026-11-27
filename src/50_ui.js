@@ -420,21 +420,24 @@ function openPerks(){
 }
 UI.handlers.perk=async v=>{try{await API.call('perk',v);sfx('enhOk');const a=P;if(a){shockRing(a.x,a.z,3,parseInt(PERK[v].col.slice(1),16),.5);burst(a.x,1,a.z,16,0xffe27a,6,.6,2)}const old=S.maxHp;derive();if(P&&S.maxHp>old)P.hp+=S.maxHp-old;UI.refreshHud();UI.rerender&&UI.rerender();if(perkOf(SES.pf).pts<1)setTimeout(()=>{if(UI.modal==='능력치 강화')UI.close()},650)}catch(e){UI.toast(errKo(e.message))}};
 {const el=typeof $==='function'?$('perkrow'):null;if(el)el.onclick=()=>{if(!UI.modal)openPerks()}}
+/* DOM writes are cached on the element: a style or text is only written when its value really changed (cheap on weak CPUs) */
+const domW=(el,v)=>{if(el._w!==v){el._w=v;el.style.width=v}},domT=(el,v)=>{if(el._t!==v){el._t=v;el.textContent=v}},domX=(el,v)=>{if(el._x!==v){el._x=v;el.style.transform=v}};
+const domQ=(el,sel)=>el['_q'+sel]||(el['_q'+sel]=el.querySelector(sel));
 UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
-  const hp=Math.max(0,P.hp);$('hpfill').style.width=(hp/S.maxHp*100)+'%';$('hptxt').textContent=Math.ceil(hp)+' / '+S.maxHp;
-  $('shfill').style.width=Math.min(100,P.shield/S.maxHp*100)+'%';
+  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');domT($('hptxt'),Math.ceil(hp)+' / '+S.maxHp);
+  domW($('shfill'),Math.min(100,P.shield/S.maxHp*100).toFixed(1)+'%');
   for(const k of['dash','q','e','r','f']){
-    const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1;
-    el.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')';el.querySelector('.cdt').textContent=cd>0?Math.ceil(cd):'';
-    const tb=$('tb-'+k);if(tb){tb.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')'}
+    const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1,sy='scaleY('+clamp(cd/mx,0,1).toFixed(3)+')';
+    domX(domQ(el,'.cdm'),sy);domT(domQ(el,'.cdt'),cd>0?String(Math.ceil(cd)):'');
+    const tb=$('tb-'+k);if(tb)domX(domQ(tb,'.cdm'),sy)
   }
-  const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];qs[i].querySelector('.cdm').style.transform='scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1)+')'}
+  const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
   const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
-  if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
+  if(n&&!UI.modal){const ph=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;if(pr._h!==ph){pr._h=ph;pr.innerHTML=ph}pr.classList.add('show');if(use){use.classList.remove('hidden');domT(domQ(use,'span'),n.name)}}
   else{pr.classList.remove('show');if(use)use.classList.add('hidden')}
-  UI.lastMini+=dt;if(UI.lastMini>.12){UI.lastMini=0;drawMini();updatePartyBars()}
+  UI.lastMini+=dt;if(UI.lastMini>(typeof balOn==='function'&&balOn()?.2:.12)){UI.lastMini=0;drawMini();updatePartyBars()}
 };
 function updatePartyBars(){
   if(!NET.party)return;const box=$('partybox');if(!box)return;

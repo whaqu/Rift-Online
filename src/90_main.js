@@ -83,7 +83,8 @@ function frame(dt){
     const z=zoneAt(P.x,P.z);updateAtmo(dt,z.id);
     if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town';ambZone(z.id)}
     KBt+=dt;if(KBn&&KBt>4)flushKills();
-    for(const n of WORLD.npcs){const p=n.model.g.position;n.label.pos(p.x,4.1,p.z);n.model.g.rotation.y=lerpAng(n.model.g.rotation.y,Math.atan2(P.x-p.x,P.z-p.z),dt*2);animHero(n.model,G.t,0,-1,false,1)}
+    const bo=balOn();
+    for(const n of WORLD.npcs){const p=n.model.g.position;if(bo&&(p.x-P.x)*(p.x-P.x)+(p.z-P.z)*(p.z-P.z)>3600){n.label.el.style.display='none';continue}n.label.pos(p.x,4.1,p.z);n.model.g.rotation.y=lerpAng(n.model.g.rotation.y,Math.atan2(P.x-p.x,P.z-p.z),dt*2);animHero(n.model,G.t,0,-1,false,1)}
     ambientFx(dt,z.id,cam.x,cam.z);
     for(const L of WORLD.lava){L.m.material.opacity=.45+Math.sin(G.t*2+L.x)*.12}
     UI.hudTick(dt);
@@ -101,7 +102,8 @@ function frame(dt){
 function loop(now){
   if(GUARD.tripped)return;
   requestAnimationFrame(loop);
-  let dt=Math.min(.05,(now-G.last)/1000);G.last=now;if(!(dt>0))return;
+  const raw=now-G.last;let dt=Math.min(.05,raw/1000);G.last=now;if(!(dt>0))return;
+  balAdapt(raw);
   G.t+=dt;let sdt=dt;if(G.hs>0){G.hs-=dt;sdt=dt*.05}   // hit-stop: sim crawls for a few frames on heavy hits
   frame(sdt);
 }

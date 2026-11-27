@@ -653,14 +653,14 @@ function updateDN(dt){
     const o=dnAct[i];o.t+=dt;o.y+=o.vy*dt;o.vy*=.94;
     if(o.t>=o.life){o.el.style.display='none';dnAct.splice(i,1);dnPool.push(o);continue}
     const s=toScreen(o.x,o.y,o.z);const sc=o.t<.1?1+(.1-o.t)*6:1;
-    o.el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-50%) scale('+sc.toFixed(2)+')';
-    o.el.style.opacity=o.t>.55?String(1-(o.t-.55)/.3):'1';
+    const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-50%) scale('+sc.toFixed(2)+')';if(o.tf!==tf){o.tf=tf;o.el.style.transform=tf}
+    const op=o.t>.55?(1-(o.t-.55)/.3).toFixed(2):'1';if(o.op!==op){o.op=op;o.el.style.opacity=op}
   }
 }
 function clearDN(){for(const o of dnAct){o.el.style.display='none';dnPool.push(o)}dnAct.length=0}
 function makeLabel(text,cls){
   const el=document.createElement('div');el.className='nl '+(cls||'');el.textContent=text;labelsEl.appendChild(el);
-  return{el,pos(x,y,z){const s=toScreen(x,y,z);if(!s.vis){el.style.display='none';return}el.style.display='block';el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)'},remove(){el.remove()}};
+  return{el,pos(x,y,z){const s=toScreen(x,y,z);if(!s.vis){el.style.display='none';return}el.style.display='block';const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';if(el._tf!==tf){el._tf=tf;el.style.transform=tf}},remove(){el.remove()}};
 }
 
 /* ---------------- input ---------------- */
@@ -2197,7 +2197,7 @@ function buildHouse(x,z,ry,v){
   }finally{HQ--}
 }
 /* ---- lush grass: clumps of curved leaf blades, swaying in the wind (vertex shader) ---- */
-const GRASS_U={uTime:{value:0}};
+const GRASS_U={uTime:{value:0},uFade:{value:{x:1e5,y:1e5+1,set(a,b){this.x=a;this.y=b}}}};   // uFade: blades shrink to nothing between x and y metres from the camera (balance mode)
 function grassGeoLow(n,h,w,lean,seed){
   try{
     const rnd=mulberry(seed),P=[],N=[],C=[],SEG=3;
@@ -2259,7 +2259,7 @@ function groundMat(){
   const R0=ZONES.map(z=>z.r0);
   m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;sh.uniforms.uR0={value:R0};
     sh.vertexShader=sh.vertexShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;').replace('#include <begin_vertex>','#include <begin_vertex>\nvGW=(modelMatrix*vec4(position,1.)).xyz;');
-    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;uniform float uTime;uniform float uR0['+R0.length+'];\n'+GD_COMMON)
+    sh.fragmentShader=sh.fragmentShader.replace('#include <common>','#include <common>\nvarying vec3 vGW;uniform float uTime;uniform float uR0['+R0.length+'];\n'+(balOn()?GD_COMMON.replace('for(int i=0;i<4;i++){s+=a*gn(p)','for(int i=0;i<3;i++){s+=a*gn(p)'):GD_COMMON))
       .replace('#include <color_fragment>','#include <color_fragment>\nvec3 gM=vec3(1.),gE=vec3(0.);{float d=length(vGW.xz);int zi=0;for(int i=1;i<'+R0.length+';i++)if(d>=uR0[i])zi=i;float tn=0.;if(zi<'+(R0.length-1)+')tn=smoothstep(uR0[zi+1]-7.,uR0[zi+1]+1.,d);vec3 m1,e1;gd(zi,vGW.xz,uTime,m1,e1);gM=m1;gE=e1;if(tn>0.){vec3 m2,e2;gd(zi+1,vGW.xz,uTime,m2,e2);gM=mix(m1,m2,tn);gE=mix(e1,e2,tn);}float fade=smoothstep(14.,40.,length(vGW.xz));gM=mix(vec3(1.),gM,fade);gE*=fade;}\ndiffuseColor.rgb*=gM;')
       .replace('#include <emissivemap_fragment>','#include <emissivemap_fragment>\ntotalEmissiveRadiance+=gE;');
   };
@@ -2269,8 +2269,8 @@ const GRASSM={};
 function grassMat(o){
   const k=JSON.stringify(o||{});if(GRASSM[k])return GRASSM[k];
   const m=new THREE.MeshStandardMaterial(Object.assign({color:0xffffff,vertexColors:true,side:THREE.DoubleSide,roughness:.92,metalness:0},o||{}));
-  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;
-    sh.vertexShader='uniform float uTime;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec4 _wp=instanceMatrix*vec4(0.,0.,0.,1.);\nfloat _k=transformed.y*transformed.y;\nfloat _s=sin(uTime*1.7+_wp.x*.31+_wp.z*.23)+.45*sin(uTime*3.1+_wp.x*.9);\ntransformed.x+=_s*_k*.16;transformed.z+=cos(uTime*1.3+_wp.z*.27)*_k*.1;\n#endif')};
+  m.onBeforeCompile=sh=>{sh.uniforms.uTime=GRASS_U.uTime;sh.uniforms.uFade=GRASS_U.uFade;
+    sh.vertexShader='uniform float uTime;uniform vec2 uFade;\n'+sh.vertexShader.replace('#include <begin_vertex>','#include <begin_vertex>\n#ifdef USE_INSTANCING\nvec4 _wp=instanceMatrix*vec4(0.,0.,0.,1.);\nfloat _k=transformed.y*transformed.y;\nfloat _s=sin(uTime*1.7+_wp.x*.31+_wp.z*.23)+.45*sin(uTime*3.1+_wp.x*.9);\ntransformed.x+=_s*_k*.16;transformed.z+=cos(uTime*1.3+_wp.z*.27)*_k*.1;\ntransformed*=clamp((uFade.y-distance(_wp.xz,cameraPosition.xz))/(uFade.y-uFade.x),0.,1.);\n#endif')};
   return GRASSM[k]=m;
 }
 function buildWorld(){
@@ -2554,14 +2554,34 @@ function renderFrame(){
    4. every frame, a chunk or prop is drawn only if its box is inside the view frustum and within BAL.rd of the camera.
       Shadow casters just off-screen are still drawn, so shadows near the view do not pop.
    Post-processing (bloom, grade) is off and the shadow map is 1024 instead of 1536; pixel ratio is capped at 1. */
-const BAL={rd:70,keep:20,cell:24,dcell:10,mcell:40,big:150,pad:.5};
+const BAL={rd:70,gd:42,nd:26,sn:2,keep:20,cell:24,dcell:10,mcell:40,macro:96,big:150,pad:.5};   // rd: far limit · gd: grass limit (blades shrink away) · nd: mob outlines hidden beyond · sn: shadow map refreshed every sn frames
+/* adaptive quality: the game watches its own frame time and steps between 4 levels so a slow PC settles near 60 fps */
+const BQ={lv:0,acc:0,n:0,upAt:0,downAt:0,f:0,hold:[0,0,0,0],
+  L:[{pr:1,rd:70,gd:42,nd:26,sn:2},{pr:1,rd:58,gd:34,nd:22,sn:2},{pr:.85,rd:50,gd:30,nd:20,sn:3},{pr:.72,rd:42,gd:26,nd:16,sn:3}]};
+function balApply(lv){
+  BQ.lv=lv;const q=BQ.L[lv];BAL.rd=q.rd;BAL.gd=q.gd;BAL.nd=q.nd;BAL.sn=q.sn;
+  GRASS_U.uFade.value.set(q.gd-10,q.gd);
+  if(Math.abs(renderer.getPixelRatio()-q.pr)>.01){renderer.setPixelRatio(q.pr);try{resize()}catch(e){}}
+}
+function balAdapt(ms){
+  if(!balOn()||G.mode!=='play'||document.hidden||ms>400)return;   // hitches (tab switch, loading) are not a quality signal
+  BQ.acc+=Math.min(ms,100);if(++BQ.n<(ms>60?20:60))return;
+  const avg=BQ.acc/BQ.n,now=performance.now();BQ.acc=0;BQ.n=0;
+  if(avg>19.5&&BQ.lv<BQ.L.length-1){if(now-BQ.upAt<12000)BQ.hold[BQ.lv]=now+60000;BQ.downAt=now;balApply(BQ.lv+1)}   // slower than ~51 fps: lighten
+  else if(avg<17.4&&BQ.lv>0&&now>BQ.hold[BQ.lv-1]&&now-BQ.downAt>10000){BQ.upAt=now;balApply(BQ.lv-1)}              // comfortably 60: try heavier again
+}
 const _balFr=new THREE.Frustum(),_balPM=new THREE.Matrix4(),_balBox=new THREE.Box3(),_balSph=new THREE.Sphere(),_balV=new THREE.Vector3();
 function balOn(){return !!save.balance}
 /* renderer-level settings that follow the balance flag (no reload needed) */
 function applyGfxMode(){
-  renderer.setPixelRatio(balOn()?1:Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
-  const want=balOn()?1024:1536;
+  const on=balOn();
+  renderer.setPixelRatio(on?BQ.L[BQ.lv].pr:Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
+  const want=on?1024:1536;
   if(sun.shadow.mapSize.x!==want){sun.shadow.mapSize.set(want,want);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
+  const ty=on?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;       // hard-edged PCF is clearly cheaper on integrated GPUs
+  if(renderer.shadowMap.type!==ty){renderer.shadowMap.type=ty;scene.traverse(o=>{if(o.material)[].concat(o.material).forEach(m=>{m.needsUpdate=true})})}
+  renderer.shadowMap.autoUpdate=!on;                            // balance mode refreshes the shadow map every BAL.sn frames (see balCull)
+  if(on)balApply(BQ.lv);else{BAL.rd=70;GRASS_U.uFade.value.set(1e5,1e5+1)}
   try{resize()}catch(e){}
 }
 /* called at the end of buildWorld */
@@ -2570,6 +2590,7 @@ function balFinish(){
   if(!balOn())return;
   worldG.updateMatrixWorld(true);
   for(const n of WORLD.npcs)n.model.g.traverse(c=>{if(c.isMesh)c.castShadow=false});   // vendor NPCs keep their model, only the shadow pass skips them
+  renderer.shadowMap.needsUpdate=true;
   balSplitGround();
   balMergeStatic();
   balChunkify();
@@ -2652,7 +2673,7 @@ function balMergeStatic(){
 }
 /* split every instanced mesh of the world into cell-sized chunks; gather nodes are re-pointed to the new chunks */
 function balChunkify(){
-  const remap=new Map();
+  const remap=new Map(),macros=new Map(),MC=BAL.macro;
   for(const m of worldG.children.slice()){
     if(!m.isInstancedMesh)continue;
     const n=m.count,A=m.instanceMatrix.array,C=m.instanceColor?m.instanceColor.array:null,g=m.geometry;
@@ -2677,11 +2698,16 @@ function balChunkify(){
       cm.instanceMatrix.needsUpdate=true;if(C)cm.instanceColor.needsUpdate=true;
       /* box = footprint of the chunk's instances, grown by the largest instance radius (+pad); tall enough for props */
       const p=pd+BAL.pad;
-      cm.userData.bal={bx:[x0-p,x1+p,z0-p,z1+p,2*p],cx:(x0+x1)/2,cz:(z0+z1)/2,r:Math.hypot((x1-x0)/2+p,(z1-z0)/2+p),sh:false};
-      worldG.add(cm);
+      /* draw-distance class: 1 = grass (fades out by BAL.gd), 2 = small props (BAL.gd+16), 0 = trees, houses and other big things (BAL.rd) */
+      const kind=Object.values(GRASSM).includes(m.material)?1:pd<1.6?2:0;
+      const ccx=(x0+x1)/2,ccz=(z0+z1)/2,mk=Math.floor(ccx/MC)+','+Math.floor(ccz/MC);
+      let mg=macros.get(mk);if(!mg){mg=new THREE.Group();mg.userData.balKids=[];macros.set(mk,mg);worldG.add(mg)}
+      mg.add(cm);mg.userData.balKids.push({o:cm,x:ccx,y:0,z:ccz,r:Math.hypot((x1-x0)/2+p,(z1-z0)/2+p),bx:[x0-p,x1+p,z0-p,z1+p,2*p],sh:false,k:kind});
     }
     remap.set(m,map);worldG.remove(m);
   }
+  /* chunks never move: their group skips the per-frame matrix walk, and a hidden group skips its whole subtree in the render list */
+  for(const mg of macros.values()){mg.matrixAutoUpdate=false;mg.updateMatrixWorld=function(){}}
   /* gather nodes must point at the chunk that now holds their instance */
   for(const n of WORLD.nodes)for(const p of n.parts){const mp=remap.get(p[0]);if(mp){const t=mp[p[1]];p[0]=t[0];p[1]=t[1]}}
 }
@@ -2689,7 +2715,9 @@ function balChunkify(){
 function balBuildCull(){
   const list=[];
   for(const o of worldG.children.slice()){
-    if(o.userData.bal){const b=o.userData.bal;list.push({o,x:b.cx,y:0,z:b.cz,r:b.r,bx:b.bx,sh:b.sh});continue}
+    if(o.userData.balKids){
+      let a=1e9,b=-1e9,c=1e9,d=-1e9,h=0;for(const k of o.userData.balKids){a=Math.min(a,k.bx[0]);b=Math.max(b,k.bx[1]);c=Math.min(c,k.bx[2]);d=Math.max(d,k.bx[3]);h=Math.max(h,k.bx[4])}
+      list.push({o,x:(a+b)/2,y:0,z:(c+d)/2,r:Math.hypot(b-a,d-c)/2,bx:[a,b,c,d,h],sh:false,k:0,kids:o.userData.balKids});continue}
     if(o.isSprite){list.push({o,x:o.position.x,y:o.position.y,z:o.position.z,r:Math.max(o.scale.x,o.scale.y)*.71,sh:false});continue}
     _balBox.setFromObject(o);if(_balBox.isEmpty())continue;
     _balBox.getSize(_balV);if(_balV.length()*.5>BAL.big)continue;
@@ -2698,6 +2726,15 @@ function balBuildCull(){
   }
   WORLD.cull=list;
 }
+function balTest(e,cx,cz){
+  const dx=e.x-cx,dz=e.z-cz,d=Math.sqrt(dx*dx+dz*dz),lim=(e.k===1?BAL.gd:e.k===2?BAL.gd+16:BAL.rd)+e.r;
+  let v;
+  if(d>lim)v=false;
+  else if(e.bx){_balBox.min.set(e.bx[0],0,e.bx[2]);_balBox.max.set(e.bx[1],e.bx[4],e.bx[3]);v=_balFr.intersectsBox(_balBox)}
+  else{_balSph.center.set(e.x,e.y,e.z);_balSph.radius=e.r+BAL.pad;v=_balFr.intersectsSphere(_balSph)}
+  if(!v&&e.sh&&d<=BAL.keep+e.r)v=true;
+  return v;
+}
 /* per-frame visibility: view frustum and distance from the camera (shadow casters off-screen within BAL.keep are kept) */
 function balCull(){
   const L=WORLD.cull;if(!L)return;
@@ -2705,12 +2742,22 @@ function balCull(){
   _balPM.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);_balFr.setFromProjectionMatrix(_balPM);
   const cx=camera.position.x,cz=camera.position.z;
   for(let i=0;i<L.length;i++){
-    const e=L[i],dx=e.x-cx,dz=e.z-cz,d=Math.sqrt(dx*dx+dz*dz);
-    let v;
-    if(e.bx){_balBox.min.set(e.bx[0],0,e.bx[2]);_balBox.max.set(e.bx[1],e.bx[4],e.bx[3]);v=d<=BAL.rd+e.r&&_balFr.intersectsBox(_balBox)}
-    else{_balSph.center.set(e.x,e.y,e.z);_balSph.radius=e.r+BAL.pad;v=d<=BAL.rd+e.r&&_balFr.intersectsSphere(_balSph)}
-    if(!v&&e.sh&&d<=BAL.keep+e.r)v=true;
+    const e=L[i],v=balTest(e,cx,cz);
     if(e.o.visible!==v)e.o.visible=v;
+    if(v&&e.kids){const K=e.kids;for(let j=0;j<K.length;j++){const q=K[j],w=balTest(q,cx,cz);if(q.o.visible!==w)q.o.visible=w}}
+  }
+  balMobs(cx,cz);
+  if(++BQ.f%BAL.sn===0)renderer.shadowMap.needsUpdate=true;
+}
+/* far mobs lose their outline shell (a third of their draw calls, invisible at that distance) */
+function balMobs(cx,cz){
+  const lim=BAL.nd*BAL.nd;
+  for(const m of MOBS){
+    if(m.dead||!m.m)continue;
+    const far=(m.x-P.x)*(m.x-P.x)+(m.z-P.z)*(m.z-P.z)>lim;
+    if(m._far===far)continue;m._far=far;
+    if(!m._ol){m._ol=[];m.m.g.traverse(o=>{if(o.isMesh&&o.material===OL_MAT)m._ol.push(o)})}
+    for(const o of m._ol)o.visible=!far;
   }
 }
 
@@ -3532,7 +3579,7 @@ function updateMobLabels(){
     if(i>=n){L.el.style.display='none';continue}
     const m=near[i][1],s=toScreen(m.x,(m.fly||0)+m.r*2.6+1.4,m.z);
     if(!s.vis){L.el.style.display='none';continue}
-    L.el.style.display='block';L.el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';
+    L.el.style.display='block';const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';if(L.tf!==tf){L.tf=tf;L.el.style.transform=tf}
     const txt='Lv.'+m.ml+' '+(m.elite?'정예 ':'')+m.def.n,diff=m.ml-SES.pf.level;
     if(L.last!==txt){L.last=txt;L.n.textContent=txt}
     const cls='ml'+(m.elite?' el':'')+(diff>=5?' hi':diff<=-6?' lo':'');if(L.cls!==cls){L.cls=cls;L.el.className=cls}
@@ -4617,21 +4664,24 @@ function openPerks(){
 }
 UI.handlers.perk=async v=>{try{await API.call('perk',v);sfx('enhOk');const a=P;if(a){shockRing(a.x,a.z,3,parseInt(PERK[v].col.slice(1),16),.5);burst(a.x,1,a.z,16,0xffe27a,6,.6,2)}const old=S.maxHp;derive();if(P&&S.maxHp>old)P.hp+=S.maxHp-old;UI.refreshHud();UI.rerender&&UI.rerender();if(perkOf(SES.pf).pts<1)setTimeout(()=>{if(UI.modal==='능력치 강화')UI.close()},650)}catch(e){UI.toast(errKo(e.message))}};
 {const el=typeof $==='function'?$('perkrow'):null;if(el)el.onclick=()=>{if(!UI.modal)openPerks()}}
+/* DOM writes are cached on the element: a style or text is only written when its value really changed (cheap on weak CPUs) */
+const domW=(el,v)=>{if(el._w!==v){el._w=v;el.style.width=v}},domT=(el,v)=>{if(el._t!==v){el._t=v;el.textContent=v}},domX=(el,v)=>{if(el._x!==v){el._x=v;el.style.transform=v}};
+const domQ=(el,sel)=>el['_q'+sel]||(el['_q'+sel]=el.querySelector(sel));
 UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
-  const hp=Math.max(0,P.hp);$('hpfill').style.width=(hp/S.maxHp*100)+'%';$('hptxt').textContent=Math.ceil(hp)+' / '+S.maxHp;
-  $('shfill').style.width=Math.min(100,P.shield/S.maxHp*100)+'%';
+  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');domT($('hptxt'),Math.ceil(hp)+' / '+S.maxHp);
+  domW($('shfill'),Math.min(100,P.shield/S.maxHp*100).toFixed(1)+'%');
   for(const k of['dash','q','e','r','f']){
-    const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1;
-    el.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')';el.querySelector('.cdt').textContent=cd>0?Math.ceil(cd):'';
-    const tb=$('tb-'+k);if(tb){tb.querySelector('.cdm').style.transform='scaleY('+clamp(cd/mx,0,1)+')'}
+    const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1,sy='scaleY('+clamp(cd/mx,0,1).toFixed(3)+')';
+    domX(domQ(el,'.cdm'),sy);domT(domQ(el,'.cdt'),cd>0?String(Math.ceil(cd)):'');
+    const tb=$('tb-'+k);if(tb)domX(domQ(tb,'.cdm'),sy)
   }
-  const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];qs[i].querySelector('.cdm').style.transform='scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1)+')'}
+  const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
   const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
-  if(n&&!UI.modal){pr.innerHTML=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;pr.classList.add('show');if(use){use.classList.remove('hidden');use.querySelector('span').textContent=n.name}}
+  if(n&&!UI.modal){const ph=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;if(pr._h!==ph){pr._h=ph;pr.innerHTML=ph}pr.classList.add('show');if(use){use.classList.remove('hidden');domT(domQ(use,'span'),n.name)}}
   else{pr.classList.remove('show');if(use)use.classList.add('hidden')}
-  UI.lastMini+=dt;if(UI.lastMini>.12){UI.lastMini=0;drawMini();updatePartyBars()}
+  UI.lastMini+=dt;if(UI.lastMini>(typeof balOn==='function'&&balOn()?.2:.12)){UI.lastMini=0;drawMini();updatePartyBars()}
 };
 function updatePartyBars(){
   if(!NET.party)return;const box=$('partybox');if(!box)return;
@@ -5257,7 +5307,8 @@ function frame(dt){
     const z=zoneAt(P.x,P.z);updateAtmo(dt,z.id);
     if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town';ambZone(z.id)}
     KBt+=dt;if(KBn&&KBt>4)flushKills();
-    for(const n of WORLD.npcs){const p=n.model.g.position;n.label.pos(p.x,4.1,p.z);n.model.g.rotation.y=lerpAng(n.model.g.rotation.y,Math.atan2(P.x-p.x,P.z-p.z),dt*2);animHero(n.model,G.t,0,-1,false,1)}
+    const bo=balOn();
+    for(const n of WORLD.npcs){const p=n.model.g.position;if(bo&&(p.x-P.x)*(p.x-P.x)+(p.z-P.z)*(p.z-P.z)>3600){n.label.el.style.display='none';continue}n.label.pos(p.x,4.1,p.z);n.model.g.rotation.y=lerpAng(n.model.g.rotation.y,Math.atan2(P.x-p.x,P.z-p.z),dt*2);animHero(n.model,G.t,0,-1,false,1)}
     ambientFx(dt,z.id,cam.x,cam.z);
     for(const L of WORLD.lava){L.m.material.opacity=.45+Math.sin(G.t*2+L.x)*.12}
     UI.hudTick(dt);
@@ -5275,7 +5326,8 @@ function frame(dt){
 function loop(now){
   if(GUARD.tripped)return;
   requestAnimationFrame(loop);
-  let dt=Math.min(.05,(now-G.last)/1000);G.last=now;if(!(dt>0))return;
+  const raw=now-G.last;let dt=Math.min(.05,raw/1000);G.last=now;if(!(dt>0))return;
+  balAdapt(raw);
   G.t+=dt;let sdt=dt;if(G.hs>0){G.hs-=dt;sdt=dt*.05}   // hit-stop: sim crawls for a few frames on heavy hits
   frame(sdt);
 }

@@ -331,7 +331,7 @@ function updateMobLabels(){
     if(i>=n){L.el.style.display='none';continue}
     const m=near[i][1],s=toScreen(m.x,(m.fly||0)+m.r*2.6+1.4,m.z);
     if(!s.vis){L.el.style.display='none';continue}
-    L.el.style.display='block';L.el.style.transform='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';
+    L.el.style.display='block';const tf='translate('+(s.x|0)+'px,'+(s.y|0)+'px) translate(-50%,-100%)';if(L.tf!==tf){L.tf=tf;L.el.style.transform=tf}
     const txt='Lv.'+m.ml+' '+(m.elite?'정예 ':'')+m.def.n,diff=m.ml-SES.pf.level;
     if(L.last!==txt){L.last=txt;L.n.textContent=txt}
     const cls='ml'+(m.elite?' el':'')+(diff>=5?' hi':diff<=-6?' lo':'');if(L.cls!==cls){L.cls=cls;L.el.className=cls}

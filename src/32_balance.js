@@ -8,14 +8,34 @@
    4. every frame, a chunk or prop is drawn only if its box is inside the view frustum and within BAL.rd of the camera.
       Shadow casters just off-screen are still drawn, so shadows near the view do not pop.
    Post-processing (bloom, grade) is off and the shadow map is 1024 instead of 1536; pixel ratio is capped at 1. */
-const BAL={rd:70,keep:20,cell:24,dcell:10,mcell:40,big:150,pad:.5};
+const BAL={rd:70,gd:42,nd:26,sn:2,keep:20,cell:24,dcell:10,mcell:40,macro:96,big:150,pad:.5};   // rd: far limit · gd: grass limit (blades shrink away) · nd: mob outlines hidden beyond · sn: shadow map refreshed every sn frames
+/* adaptive quality: the game watches its own frame time and steps between 4 levels so a slow PC settles near 60 fps */
+const BQ={lv:0,acc:0,n:0,upAt:0,downAt:0,f:0,hold:[0,0,0,0],
+  L:[{pr:1,rd:70,gd:42,nd:26,sn:2},{pr:1,rd:58,gd:34,nd:22,sn:2},{pr:.85,rd:50,gd:30,nd:20,sn:3},{pr:.72,rd:42,gd:26,nd:16,sn:3}]};
+function balApply(lv){
+  BQ.lv=lv;const q=BQ.L[lv];BAL.rd=q.rd;BAL.gd=q.gd;BAL.nd=q.nd;BAL.sn=q.sn;
+  GRASS_U.uFade.value.set(q.gd-10,q.gd);
+  if(Math.abs(renderer.getPixelRatio()-q.pr)>.01){renderer.setPixelRatio(q.pr);try{resize()}catch(e){}}
+}
+function balAdapt(ms){
+  if(!balOn()||G.mode!=='play'||document.hidden||ms>400)return;   // hitches (tab switch, loading) are not a quality signal
+  BQ.acc+=Math.min(ms,100);if(++BQ.n<(ms>60?20:60))return;
+  const avg=BQ.acc/BQ.n,now=performance.now();BQ.acc=0;BQ.n=0;
+  if(avg>19.5&&BQ.lv<BQ.L.length-1){if(now-BQ.upAt<12000)BQ.hold[BQ.lv]=now+60000;BQ.downAt=now;balApply(BQ.lv+1)}   // slower than ~51 fps: lighten
+  else if(avg<17.4&&BQ.lv>0&&now>BQ.hold[BQ.lv-1]&&now-BQ.downAt>10000){BQ.upAt=now;balApply(BQ.lv-1)}              // comfortably 60: try heavier again
+}
 const _balFr=new THREE.Frustum(),_balPM=new THREE.Matrix4(),_balBox=new THREE.Box3(),_balSph=new THREE.Sphere(),_balV=new THREE.Vector3();
 function balOn(){return !!save.balance}
 /* renderer-level settings that follow the balance flag (no reload needed) */
 function applyGfxMode(){
-  renderer.setPixelRatio(balOn()?1:Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
-  const want=balOn()?1024:1536;
+  const on=balOn();
+  renderer.setPixelRatio(on?BQ.L[BQ.lv].pr:Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
+  const want=on?1024:1536;
   if(sun.shadow.mapSize.x!==want){sun.shadow.mapSize.set(want,want);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
+  const ty=on?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;       // hard-edged PCF is clearly cheaper on integrated GPUs
+  if(renderer.shadowMap.type!==ty){renderer.shadowMap.type=ty;scene.traverse(o=>{if(o.material)[].concat(o.material).forEach(m=>{m.needsUpdate=true})})}
+  renderer.shadowMap.autoUpdate=!on;                            // balance mode refreshes the shadow map every BAL.sn frames (see balCull)
+  if(on)balApply(BQ.lv);else{BAL.rd=70;GRASS_U.uFade.value.set(1e5,1e5+1)}
   try{resize()}catch(e){}
 }
 /* called at the end of buildWorld */
@@ -24,6 +44,7 @@ function balFinish(){
   if(!balOn())return;
   worldG.updateMatrixWorld(true);
   for(const n of WORLD.npcs)n.model.g.traverse(c=>{if(c.isMesh)c.castShadow=false});   // vendor NPCs keep their model, only the shadow pass skips them
+  renderer.shadowMap.needsUpdate=true;
   balSplitGround();
   balMergeStatic();
   balChunkify();
@@ -106,7 +127,7 @@ function balMergeStatic(){
 }
 /* split every instanced mesh of the world into cell-sized chunks; gather nodes are re-pointed to the new chunks */
 function balChunkify(){
-  const remap=new Map();
+  const remap=new Map(),macros=new Map(),MC=BAL.macro;
   for(const m of worldG.children.slice()){
     if(!m.isInstancedMesh)continue;
     const n=m.count,A=m.instanceMatrix.array,C=m.instanceColor?m.instanceColor.array:null,g=m.geometry;
@@ -131,11 +152,16 @@ function balChunkify(){
       cm.instanceMatrix.needsUpdate=true;if(C)cm.instanceColor.needsUpdate=true;
       /* box = footprint of the chunk's instances, grown by the largest instance radius (+pad); tall enough for props */
       const p=pd+BAL.pad;
-      cm.userData.bal={bx:[x0-p,x1+p,z0-p,z1+p,2*p],cx:(x0+x1)/2,cz:(z0+z1)/2,r:Math.hypot((x1-x0)/2+p,(z1-z0)/2+p),sh:false};
-      worldG.add(cm);
+      /* draw-distance class: 1 = grass (fades out by BAL.gd), 2 = small props (BAL.gd+16), 0 = trees, houses and other big things (BAL.rd) */
+      const kind=Object.values(GRASSM).includes(m.material)?1:pd<1.6?2:0;
+      const ccx=(x0+x1)/2,ccz=(z0+z1)/2,mk=Math.floor(ccx/MC)+','+Math.floor(ccz/MC);
+      let mg=macros.get(mk);if(!mg){mg=new THREE.Group();mg.userData.balKids=[];macros.set(mk,mg);worldG.add(mg)}
+      mg.add(cm);mg.userData.balKids.push({o:cm,x:ccx,y:0,z:ccz,r:Math.hypot((x1-x0)/2+p,(z1-z0)/2+p),bx:[x0-p,x1+p,z0-p,z1+p,2*p],sh:false,k:kind});
     }
     remap.set(m,map);worldG.remove(m);
   }
+  /* chunks never move: their group skips the per-frame matrix walk, and a hidden group skips its whole subtree in the render list */
+  for(const mg of macros.values()){mg.matrixAutoUpdate=false;mg.updateMatrixWorld=function(){}}
   /* gather nodes must point at the chunk that now holds their instance */
   for(const n of WORLD.nodes)for(const p of n.parts){const mp=remap.get(p[0]);if(mp){const t=mp[p[1]];p[0]=t[0];p[1]=t[1]}}
 }
@@ -143,7 +169,9 @@ function balChunkify(){
 function balBuildCull(){
   const list=[];
   for(const o of worldG.children.slice()){
-    if(o.userData.bal){const b=o.userData.bal;list.push({o,x:b.cx,y:0,z:b.cz,r:b.r,bx:b.bx,sh:b.sh});continue}
+    if(o.userData.balKids){
+      let a=1e9,b=-1e9,c=1e9,d=-1e9,h=0;for(const k of o.userData.balKids){a=Math.min(a,k.bx[0]);b=Math.max(b,k.bx[1]);c=Math.min(c,k.bx[2]);d=Math.max(d,k.bx[3]);h=Math.max(h,k.bx[4])}
+      list.push({o,x:(a+b)/2,y:0,z:(c+d)/2,r:Math.hypot(b-a,d-c)/2,bx:[a,b,c,d,h],sh:false,k:0,kids:o.userData.balKids});continue}
     if(o.isSprite){list.push({o,x:o.position.x,y:o.position.y,z:o.position.z,r:Math.max(o.scale.x,o.scale.y)*.71,sh:false});continue}
     _balBox.setFromObject(o);if(_balBox.isEmpty())continue;
     _balBox.getSize(_balV);if(_balV.length()*.5>BAL.big)continue;
@@ -152,6 +180,15 @@ function balBuildCull(){
   }
   WORLD.cull=list;
 }
+function balTest(e,cx,cz){
+  const dx=e.x-cx,dz=e.z-cz,d=Math.sqrt(dx*dx+dz*dz),lim=(e.k===1?BAL.gd:e.k===2?BAL.gd+16:BAL.rd)+e.r;
+  let v;
+  if(d>lim)v=false;
+  else if(e.bx){_balBox.min.set(e.bx[0],0,e.bx[2]);_balBox.max.set(e.bx[1],e.bx[4],e.bx[3]);v=_balFr.intersectsBox(_balBox)}
+  else{_balSph.center.set(e.x,e.y,e.z);_balSph.radius=e.r+BAL.pad;v=_balFr.intersectsSphere(_balSph)}
+  if(!v&&e.sh&&d<=BAL.keep+e.r)v=true;
+  return v;
+}
 /* per-frame visibility: view frustum and distance from the camera (shadow casters off-screen within BAL.keep are kept) */
 function balCull(){
   const L=WORLD.cull;if(!L)return;
@@ -159,11 +196,21 @@ function balCull(){
   _balPM.multiplyMatrices(camera.projectionMatrix,camera.matrixWorldInverse);_balFr.setFromProjectionMatrix(_balPM);
   const cx=camera.position.x,cz=camera.position.z;
   for(let i=0;i<L.length;i++){
-    const e=L[i],dx=e.x-cx,dz=e.z-cz,d=Math.sqrt(dx*dx+dz*dz);
-    let v;
-    if(e.bx){_balBox.min.set(e.bx[0],0,e.bx[2]);_balBox.max.set(e.bx[1],e.bx[4],e.bx[3]);v=d<=BAL.rd+e.r&&_balFr.intersectsBox(_balBox)}
-    else{_balSph.center.set(e.x,e.y,e.z);_balSph.radius=e.r+BAL.pad;v=d<=BAL.rd+e.r&&_balFr.intersectsSphere(_balSph)}
-    if(!v&&e.sh&&d<=BAL.keep+e.r)v=true;
+    const e=L[i],v=balTest(e,cx,cz);
     if(e.o.visible!==v)e.o.visible=v;
+    if(v&&e.kids){const K=e.kids;for(let j=0;j<K.length;j++){const q=K[j],w=balTest(q,cx,cz);if(q.o.visible!==w)q.o.visible=w}}
+  }
+  balMobs(cx,cz);
+  if(++BQ.f%BAL.sn===0)renderer.shadowMap.needsUpdate=true;
+}
+/* far mobs lose their outline shell (a third of their draw calls, invisible at that distance) */
+function balMobs(cx,cz){
+  const lim=BAL.nd*BAL.nd;
+  for(const m of MOBS){
+    if(m.dead||!m.m)continue;
+    const far=(m.x-P.x)*(m.x-P.x)+(m.z-P.z)*(m.z-P.z)>lim;
+    if(m._far===far)continue;m._far=far;
+    if(!m._ol){m._ol=[];m.m.g.traverse(o=>{if(o.isMesh&&o.material===OL_MAT)m._ol.push(o)})}
+    for(const o of m._ol)o.visible=!far;
   }
 }
