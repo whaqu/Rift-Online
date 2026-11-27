@@ -31,7 +31,7 @@ Object.assign(CLS,{
     sty:{t:'melee',range:2.3,arc:2.4,big:3.2,bigMul:1.6,col:0xffe0a0,bigCol:0xffb04a,lunge:5,kb:5,kbBig:9},
     q:{id:'mk_q',name:'기공파',type:'volley',cd:7,n:3,spread:.22,dmg:1.6,pierce:4,speed:32,col:0xffd27a},
     e:{id:'mk_e',name:'호흡',type:'buff',cd:13,dur:5,aps:1.3,atk:1.2,shield:.2,col:0xffe27a}},
-  gunner:{name:'총잡이',blurb:'총알 세례. 빠른 연사와 폭탄',hp:105,hpLv:9.5,atk:4.2,atkLv:2.0,aps:3.6,spd:7.4,crit:.12,range:0,col:0x4a8aa0,
+  gunner:{name:'총잡이',blurb:'총알 세례. 빠른 연사와 폭탄',hp:105,hpLv:9.5,atk:3.8,atkLv:1.8,aps:3.3,spd:7.4,crit:.12,range:0,col:0x4a8aa0,
     sty:{t:'proj',kind:'arrow',spd:60,r:.3,life:.6,pierce:1,col:0xffe27a},
     q:{id:'g_q',name:'난사',type:'volley',cd:8,n:9,spread:.1,dmg:.9,pierce:2,speed:50,col:0xffd24a},
     e:{id:'g_e',name:'집속 폭탄',type:'ground',cd:11,rad:4.6,dmg:3.2,delay:.6,range:13,burn:1,col:0xff8a3a}},

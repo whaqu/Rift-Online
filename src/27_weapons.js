@@ -173,46 +173,45 @@ const WLOOK={
 const AUKIND={7:'storm',8:'eternity',9:'celestial'};
 const AUMAT={};
 const aumat=(c,op)=>AUMAT[c+'_'+op]||(AUMAT[c+'_'+op]=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide}));
+let WINDTEX=null;
+/* three crescent wind streaks: thin faded tail -> thick bright head */
+function windTex(){
+  if(WINDTEX)return WINDTEX;
+  const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+  if(x&&x.arc){
+    x.lineCap='round';
+    for(let k=0;k<3;k++)for(let i=0;i<34;i++){const u=i/33,a=k*TAU/3+u*1.75,r=90+u*22;
+      for(const[col,w]of[['40,190,185',17],['235,255,255',7]]){x.strokeStyle='rgba('+col+','+(u*u*.9+.05).toFixed(2)+')';x.lineWidth=1+w*Math.sin(Math.min(1,u*.93)*Math.PI*.62);x.beginPath();x.arc(128,128,r,a,a+.075);x.stroke()}}
+  }
+  return WINDTEX=new THREE.CanvasTexture(c);
+}
 function auraBuild(kind){
   const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
   if(kind==='storm'){
-    const core=aumat(0xeaffff,1),blue=aumat(0x1458ff,.75),seg=new THREE.BoxGeometry(1,1,1),spark=new THREE.OctahedronGeometry(.09,0);
-    const UP=new THREE.Vector3(0,1,0),dir=new THREE.Vector3();
-    /* 6 zigzag bolts discharging outward from the body: 4 straight pieces each, thinner toward the tip */
-    const bolts=[0,1,2,3,4,5].map(()=>{const b=new THREE.Group();g.add(b);for(let j=0;j<4;j++){add(seg,core,0,0,0,b);add(seg,blue,0,0,0,b)}return b});
-    const sparks=[0,1,2,3,4,5].map(()=>add(spark,core,0,0,0));
-    halo(0x4f7cff,1.1,3.8,.45);
-    let step=-1;
+    /* whirlwind: stacked spinning wind streaks widening upward, with leaves carried up around the body */
+    const wm=new THREE.MeshBasicMaterial({map:windTex(),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+    const disc=new THREE.PlaneGeometry(1,1);
+    const layers=[[.2,2.5],[.85,2.9],[1.55,3.3]].map(([y,d],i)=>{const w=new THREE.Group();w.position.y=y;g.add(w);const m=add(disc,wm,0,0,0,w);m.rotation.x=-Math.PI/2;m.scale.set(d,d,1);return w});
+    const leafM=[aumat(0x8ff0c0,.95),aumat(0xeaffff,.95)],leaf=new THREE.OctahedronGeometry(.13,0);
+    const leaves=[0,1,2,3,4,5,6,7].map(i=>{const m=add(leaf,leafM[i%2],0,0,0);m.scale.set(1.3,.18,.6);return m});
     anim=t=>{
-      const s=Math.floor(t*12);if(s===step)return;step=s;
-      bolts.forEach((b,i)=>{
-        b.visible=(s+i*3)%5<3;
-        const a=i/6*TAU+s*2.4,cx=Math.cos(a),cz=Math.sin(a),end=.2+Math.random()*.5,top=1.8+Math.random()*.8;
-        let px=cx*.4,py=top,pz=cz*.4;
-        for(let j=0;j<4;j++){
-          const k=(j+1)/4,r=.4+k*1.6,off=j===3?0:(j%2?-1:1)*(.3+Math.random()*.2);
-          const x=cx*r-cz*off,y=top+(end-top)*k,z=cz*r+cx*off,len=Math.hypot(x-px,y-py,z-pz),th=.06-j*.011;
-          dir.set((x-px)/len,(y-py)/len,(z-pz)/len);
-          [0,1].forEach(n=>{const m=b.children[j*2+n],w=n?th*2.3:th;m.position.set((px+x)/2,(py+y)/2,(pz+z)/2);if(m.quaternion)m.quaternion.setFromUnitVectors(UP,dir);m.scale.set(w,len+.02,w)});
-          px=x;py=y;pz=z;
-        }
-      });
-      sparks.forEach(m=>{const a=Math.random()*TAU,r=.6+Math.random();m.position.set(Math.cos(a)*r,.15+Math.random()*2,Math.sin(a)*r);m.scale.set(.5,.6+Math.random(),.5)});
+      layers.forEach((w,i)=>{w.rotation.y=-t*(5.2-i*.9)-i*1.3;w.position.y=[.2,.85,1.55][i]+Math.sin(t*3+i*2)*.08});
+      leaves.forEach((m,i)=>{const k=(t*.6+i/8)%1,a=t*4.2+i*2.4,r=.7+k*.9;m.position.set(Math.cos(a)*r,.15+k*2.1,Math.sin(a)*r);m.rotation.set(t*5+i,-a,t*3)});
     };
   }else if(kind==='eternity'){
     const pink=aumat(0xe45cff,.9),deep=aumat(0x7a2fd0,.85),pale=aumat(0xffd6ff,.95),bead=new THREE.OctahedronGeometry(.14,0);
-    const rings=[0,1].map(i=>{const tilt=new THREE.Group();tilt.position.y=1.2;tilt.rotation.z=i?-.55:.55;g.add(tilt);const sp=new THREE.Group();tilt.add(sp);
+    const rings=[0,1].map(i=>{const tilt=new THREE.Group();tilt.position.y=1.2;tilt.rotation.z=i?-.55:.55;g.add(tilt);const sp=new THREE.Group();tilt.add(sp);tilt.scale.setScalar(.72);
       add(new THREE.TorusGeometry(1.35+i*.2,.065,4,40),i?deep:pink,0,0,0,sp).rotation.x=Math.PI/2;
       add(bead,pale,1.35+i*.2,0,0,sp).scale.setScalar(1.5);add(bead,pale,-1.35-i*.2,0,0,sp).scale.setScalar(1.5);return sp});
-    const clock=new THREE.Group();clock.position.set(0,1.9,-1);clock.rotation.x=-.8;clock.scale.setScalar(1.3);g.add(clock);
+    const clock=new THREE.Group();clock.position.set(0,1.85,-.75);clock.rotation.x=-.8;clock.scale.setScalar(.9);g.add(clock);
     add(new THREE.TorusGeometry(.92,.08,4,36),pink,0,0,0,clock);add(new THREE.TorusGeometry(.72,.015,4,32),deep,0,0,0,clock);
     const tick=new THREE.BoxGeometry(.08,.19,.04);
     for(let i=0;i<12;i++){const a=i/12*TAU;add(tick,pale,Math.sin(a)*.82,Math.cos(a)*.82,0,clock).rotation.z=-a}
     const hands=[.68,.46].map(l=>{const h=new THREE.Group();clock.add(h);add(new THREE.BoxGeometry(.09,l,.04),pale,0,l/2,0,h);return h});
-    halo(0xb04cff,1.2,4.6,.55);
-    anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.9+Math.sin(t*1.3)*.07};
+    halo(0xb04cff,1.2,3.2,.45);
+    anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.85+Math.sin(t*1.3)*.07};
   }else{
     const gold=aumat(0xffc21a,1),white=aumat(0xfffbe8,.95),soft=aumat(0xffd24a,.95);
     const crown=new THREE.Group();crown.position.y=2.85;g.add(crown);

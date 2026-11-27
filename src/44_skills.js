@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',6,0xff4a7a,'sword','적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',4.5,0xff4a7a,'sword','적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -96,6 +96,21 @@ function geo(k){
 function part(g,k,hex,sx,sy,sz,x,y,z,em){const m=new THREE.Mesh(geo(k),em?EM(hex,em):M(hex));m.scale.set(sx,sy,sz);m.position.set(x||0,y||0,z||0);m.castShadow=false;g.add(m);return m}
 function flatRing(g,r,hex,op,y){const m=new THREE.Mesh(shared.ringG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.13;m.scale.set(r,r,r);g.add(m);return m}
 function flatDisc(g,r,hex,op,y){const m=new THREE.Mesh(shared.discG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.11;m.scale.set(r,r,r);g.add(m);return m}
+/* summoned stone golem: faceted rocks with joints that overlap (no floating limbs), glowing eyes and core, mossy shoulders */
+function golemBuild(){
+  const g=grp(),stone=M(0x8f8268),dark=M(0x675c48),light=M(0xab9d7e),moss=M(0x5f8a4a),glowM=EM(0x6bffd0,1.4);
+  const rock=(p,mat,sx,sy,sz,x,y,z)=>{const m=mesh(shared.golemRock||(shared.golemRock=new THREE.DodecahedronGeometry(.5,0)),mat,x,y,z,p,false);m.scale.set(sx,sy,sz);return m};
+  const legs=[-1,1].map(s=>{const l=grp(s*.55,1.45,0,g);rock(l,dark,.85,1.1,.85,0,-.4,0);rock(l,stone,.95,.9,1,0,-.95,.04);rock(l,dark,1.15,.55,1.35,0,-1.25,.16);return l});
+  rock(g,dark,1.5,.9,1.1,0,1.55,0);                                  // narrow hips -> wide chest (V silhouette)
+  rock(g,stone,2.4,1.75,1.6,0,2.45,0);rock(g,light,1.35,.95,.6,0,2.5,.6);
+  part(g,'ball',0x6bffd0,.55,.55,.4,0,2.45,.9,1.5);g.add((()=>{const q=glow(0x6bffd0,1.8,.6);q.position.set(0,2.45,1.05);return q})());
+  BX(.95,.8,.85,light,0,3.8,.35,g);BX(1.1,.24,.35,dark,0,4.12,.7,g);BX(.7,.28,.3,dark,0,3.46,.72,g);   // boxy head, brow, jaw
+  for(const s of[-1,1])part(g,'ball',0x7dffd8,.24,.18,.16,s*.23,3.84,.8,2.2);
+  const arms=[-1,1].map(s=>{const a=grp(s*1.5,3,0,g);rock(a,dark,1.3,1.2,1.3,s*.05,.05,0);rock(a,moss,1,.42,1,s*.08,.6,0);
+    rock(a,stone,.6,1.25,.6,s*.35,-.75,0);rock(a,light,.8,1.1,.8,s*.55,-1.55,.15);rock(a,dark,1.25,1.1,1.25,s*.65,-2.2,.3);return a});
+  for(let i=0;i<3;i++){const k=mesh(shared.golemShard||(shared.golemShard=new THREE.OctahedronGeometry(.28,0)),glowM,(i-1)*.55,3.2+(i===1?.25:0),-.8,g,false);k.scale.set(.7,1.7,.7);k.rotation.z=(1-i)*.35}
+  return{g,arms,legs};
+}
 /* run `up(t,dt)` each frame for `life` seconds; `g` is removed afterwards. returning true from up ends early */
 function act(life,up,end,g){const a={t:0,life,up,end,g};if(g&&!g.parent)entG.add(g);ACTS.push(a);return a}
 function actDrop(a){if(a.g){entG.remove(a.g);a.g.traverse&&a.g.traverse(c=>{if(c.userData&&c.userData.own&&c.material)c.material.dispose()})}}
@@ -251,7 +266,7 @@ const SK={
     burst(P.x,1.2,P.z,14,0x8a6ad0,6,.4,0);boltFx(P.x,P.z,bx,bz,0x8a6ad0);blinkTo(bx,bz);P.face=Math.atan2(m.x-P.x,m.z-P.z);P.stealth=0;P.iframes=Math.max(P.iframes,.4);
     sHit(c,m,amb?10:4.2,{kb:4,crit:true,big:true});
     slashArc(m.x,m.z,P.face+1.6,3,2,c.col,.25);slashArc(m.x,m.z,P.face-1.6,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0});
-    if(m.dead){later(.05,()=>{P.cd.q=0});dmgNum(P.x,3.2,P.z,'처형','info')}
+    act(1.5,()=>{if(!m.dead)return;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
     act(5,()=>{if(!(P.stealth>0))return true;P.slow=1.35},()=>{P.slow=1})},
@@ -356,12 +371,10 @@ const SK={
   },
   /* 소환사 */
   s_q(c){
-    const g=grp(P.x+c.a.x*3,0,P.z+c.a.z*3);
-    part(g,'box',0x8a7a5a,1.8,1.7,1.2,0,2,0);part(g,'box',0x9a8a68,.9,.8,.9,0,3.3,0);part(g,'ball',0x6bffd0,.4,.4,.4,0,2.1,.65,1.2);
-    const arms=[-1,1].map(s=>{const a=grp(s*1.35,2.6,0,g);part(a,'box',0x7a6a4c,.7,1.9,.7,0,-.8,0);return a});for(const s of[-1,1])part(g,'box',0x6a5a40,.7,1.2,.8,s*.5,.6,0);
+    const{g,arms,legs}=golemBuild();g.position.set(P.x+c.a.x*3,0,P.z+c.a.z*3);
     const decoy={x:g.position.x,z:g.position.z,pull:.35};DECOYS.push(decoy);
     let cd=.8,swing=0;
-    act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);arms.forEach(a=>a.rotation.x=-swing*2.4);
+    act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
       const m=nearTo(g.position.x,g.position.z,16)||null,tx=m?m.x:P.x,tz=m?m.z:P.z,dx=tx-g.position.x,dz=tz-g.position.z,d=Math.hypot(dx,dz)||1;
       if(d>(m?m.r+1.8:3.5)){g.position.x+=dx/d*5*dt;g.position.z+=dz/d*5*dt}g.rotation.y=Math.atan2(dx,dz);decoy.x=g.position.x;decoy.z=g.position.z;
       if(m&&d<m.r+2.6&&cd<=0){cd=1.3;swing=1;const x=g.position.x+dx/d*2,z=g.position.z+dz/d*2;sArea(c,x,z,3,2,{kb:8,freeze:.5,big:true});boom(x,z,3,0xc8a860,.35)}},

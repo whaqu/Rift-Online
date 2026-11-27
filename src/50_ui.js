@@ -58,6 +58,8 @@ function itemRow(it,o){
   return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'||it.kind==='mat'||it.kind==='rune'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
 const myItems=()=>SES.pf.items.filter(i=>!i.listed);
+/* most valuable first (price of one piece) */
+const byValue=(a,b)=>itemPrice(b)-itemPrice(a)||(a.kind>b.kind?-1:a.kind<b.kind?1:0)||a.id-b.id;
 const byId=id=>SES.pf.items.find(i=>i.id==id);
 async function guarded(fn,okMsg){
   try{const r=await fn();if(okMsg)UI.toast(okMsg);UI.refreshHud();if(P){const old=S.maxHp;derive();if(S.maxHp!==old)P.hp=Math.min(P.hp,S.maxHp)}if(UI.rerender)UI.rerender();return r}
@@ -84,7 +86,7 @@ function equipRow(){
 function openInventory(){
   UI.sel=null;UI.multi=new Set();UI.multiMode=false;flushGather();
   UI.page('가방',()=>{
-    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||(a.kind>b.kind?-1:1)||(wTier(b.base||'x_1')-wTier(a.base||'x_1')));
+    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
     let det='<div class="dim">아이템을 선택하세요.</div>';
     if(sel){
@@ -177,7 +179,7 @@ function openShop(){
       for(const sl of ASLOTS){const b=sl+'_'+atier+'_'+aset,pr=AVALUE[atier-1],cl=TIER_COL[atier-1];h+='<div class="item" style="--tc:'+cl+'">'+ico(ic(sl,cl,26),cl)+'<div><div class="nm" style="color:'+cl+'">'+armorName(b)+'</div><div class="sub">방어 '+armorDef(b,0)+' · 체력 +'+armorHp(b,0)+'</div></div><div class="rt"><div class="gold">'+fmtG(pr)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<pr?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
-      const items=myItems().filter(i=>!i.eq);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
+      const items=myItems().filter(i=>!i.eq).sort(byValue);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
       if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">채집 재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
       h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(itemPrice(i))+'</div>'+(i.kind==='potion'||i.kind==='mat'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }

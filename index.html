@@ -1222,7 +1222,7 @@ Object.assign(CLS,{
     sty:{t:'melee',range:2.3,arc:2.4,big:3.2,bigMul:1.6,col:0xffe0a0,bigCol:0xffb04a,lunge:5,kb:5,kbBig:9},
     q:{id:'mk_q',name:'기공파',type:'volley',cd:7,n:3,spread:.22,dmg:1.6,pierce:4,speed:32,col:0xffd27a},
     e:{id:'mk_e',name:'호흡',type:'buff',cd:13,dur:5,aps:1.3,atk:1.2,shield:.2,col:0xffe27a}},
-  gunner:{name:'총잡이',blurb:'총알 세례. 빠른 연사와 폭탄',hp:105,hpLv:9.5,atk:4.2,atkLv:2.0,aps:3.6,spd:7.4,crit:.12,range:0,col:0x4a8aa0,
+  gunner:{name:'총잡이',blurb:'총알 세례. 빠른 연사와 폭탄',hp:105,hpLv:9.5,atk:3.8,atkLv:1.8,aps:3.3,spd:7.4,crit:.12,range:0,col:0x4a8aa0,
     sty:{t:'proj',kind:'arrow',spd:60,r:.3,life:.6,pierce:1,col:0xffe27a},
     q:{id:'g_q',name:'난사',type:'volley',cd:8,n:9,spread:.1,dmg:.9,pierce:2,speed:50,col:0xffd24a},
     e:{id:'g_e',name:'집속 폭탄',type:'ground',cd:11,rad:4.6,dmg:3.2,delay:.6,range:13,burn:1,col:0xff8a3a}},
@@ -2038,46 +2038,45 @@ const WLOOK={
 const AUKIND={7:'storm',8:'eternity',9:'celestial'};
 const AUMAT={};
 const aumat=(c,op)=>AUMAT[c+'_'+op]||(AUMAT[c+'_'+op]=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide}));
+let WINDTEX=null;
+/* three crescent wind streaks: thin faded tail -> thick bright head */
+function windTex(){
+  if(WINDTEX)return WINDTEX;
+  const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
+  if(x&&x.arc){
+    x.lineCap='round';
+    for(let k=0;k<3;k++)for(let i=0;i<34;i++){const u=i/33,a=k*TAU/3+u*1.75,r=90+u*22;
+      for(const[col,w]of[['40,190,185',17],['235,255,255',7]]){x.strokeStyle='rgba('+col+','+(u*u*.9+.05).toFixed(2)+')';x.lineWidth=1+w*Math.sin(Math.min(1,u*.93)*Math.PI*.62);x.beginPath();x.arc(128,128,r,a,a+.075);x.stroke()}}
+  }
+  return WINDTEX=new THREE.CanvasTexture(c);
+}
 function auraBuild(kind){
   const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
   if(kind==='storm'){
-    const core=aumat(0xeaffff,1),blue=aumat(0x1458ff,.75),seg=new THREE.BoxGeometry(1,1,1),spark=new THREE.OctahedronGeometry(.09,0);
-    const UP=new THREE.Vector3(0,1,0),dir=new THREE.Vector3();
-    /* 6 zigzag bolts discharging outward from the body: 4 straight pieces each, thinner toward the tip */
-    const bolts=[0,1,2,3,4,5].map(()=>{const b=new THREE.Group();g.add(b);for(let j=0;j<4;j++){add(seg,core,0,0,0,b);add(seg,blue,0,0,0,b)}return b});
-    const sparks=[0,1,2,3,4,5].map(()=>add(spark,core,0,0,0));
-    halo(0x4f7cff,1.1,3.8,.45);
-    let step=-1;
+    /* whirlwind: stacked spinning wind streaks widening upward, with leaves carried up around the body */
+    const wm=new THREE.MeshBasicMaterial({map:windTex(),transparent:true,depthWrite:false,side:THREE.DoubleSide});
+    const disc=new THREE.PlaneGeometry(1,1);
+    const layers=[[.2,2.5],[.85,2.9],[1.55,3.3]].map(([y,d],i)=>{const w=new THREE.Group();w.position.y=y;g.add(w);const m=add(disc,wm,0,0,0,w);m.rotation.x=-Math.PI/2;m.scale.set(d,d,1);return w});
+    const leafM=[aumat(0x8ff0c0,.95),aumat(0xeaffff,.95)],leaf=new THREE.OctahedronGeometry(.13,0);
+    const leaves=[0,1,2,3,4,5,6,7].map(i=>{const m=add(leaf,leafM[i%2],0,0,0);m.scale.set(1.3,.18,.6);return m});
     anim=t=>{
-      const s=Math.floor(t*12);if(s===step)return;step=s;
-      bolts.forEach((b,i)=>{
-        b.visible=(s+i*3)%5<3;
-        const a=i/6*TAU+s*2.4,cx=Math.cos(a),cz=Math.sin(a),end=.2+Math.random()*.5,top=1.8+Math.random()*.8;
-        let px=cx*.4,py=top,pz=cz*.4;
-        for(let j=0;j<4;j++){
-          const k=(j+1)/4,r=.4+k*1.6,off=j===3?0:(j%2?-1:1)*(.3+Math.random()*.2);
-          const x=cx*r-cz*off,y=top+(end-top)*k,z=cz*r+cx*off,len=Math.hypot(x-px,y-py,z-pz),th=.06-j*.011;
-          dir.set((x-px)/len,(y-py)/len,(z-pz)/len);
-          [0,1].forEach(n=>{const m=b.children[j*2+n],w=n?th*2.3:th;m.position.set((px+x)/2,(py+y)/2,(pz+z)/2);if(m.quaternion)m.quaternion.setFromUnitVectors(UP,dir);m.scale.set(w,len+.02,w)});
-          px=x;py=y;pz=z;
-        }
-      });
-      sparks.forEach(m=>{const a=Math.random()*TAU,r=.6+Math.random();m.position.set(Math.cos(a)*r,.15+Math.random()*2,Math.sin(a)*r);m.scale.set(.5,.6+Math.random(),.5)});
+      layers.forEach((w,i)=>{w.rotation.y=-t*(5.2-i*.9)-i*1.3;w.position.y=[.2,.85,1.55][i]+Math.sin(t*3+i*2)*.08});
+      leaves.forEach((m,i)=>{const k=(t*.6+i/8)%1,a=t*4.2+i*2.4,r=.7+k*.9;m.position.set(Math.cos(a)*r,.15+k*2.1,Math.sin(a)*r);m.rotation.set(t*5+i,-a,t*3)});
     };
   }else if(kind==='eternity'){
     const pink=aumat(0xe45cff,.9),deep=aumat(0x7a2fd0,.85),pale=aumat(0xffd6ff,.95),bead=new THREE.OctahedronGeometry(.14,0);
-    const rings=[0,1].map(i=>{const tilt=new THREE.Group();tilt.position.y=1.2;tilt.rotation.z=i?-.55:.55;g.add(tilt);const sp=new THREE.Group();tilt.add(sp);
+    const rings=[0,1].map(i=>{const tilt=new THREE.Group();tilt.position.y=1.2;tilt.rotation.z=i?-.55:.55;g.add(tilt);const sp=new THREE.Group();tilt.add(sp);tilt.scale.setScalar(.72);
       add(new THREE.TorusGeometry(1.35+i*.2,.065,4,40),i?deep:pink,0,0,0,sp).rotation.x=Math.PI/2;
       add(bead,pale,1.35+i*.2,0,0,sp).scale.setScalar(1.5);add(bead,pale,-1.35-i*.2,0,0,sp).scale.setScalar(1.5);return sp});
-    const clock=new THREE.Group();clock.position.set(0,1.9,-1);clock.rotation.x=-.8;clock.scale.setScalar(1.3);g.add(clock);
+    const clock=new THREE.Group();clock.position.set(0,1.85,-.75);clock.rotation.x=-.8;clock.scale.setScalar(.9);g.add(clock);
     add(new THREE.TorusGeometry(.92,.08,4,36),pink,0,0,0,clock);add(new THREE.TorusGeometry(.72,.015,4,32),deep,0,0,0,clock);
     const tick=new THREE.BoxGeometry(.08,.19,.04);
     for(let i=0;i<12;i++){const a=i/12*TAU;add(tick,pale,Math.sin(a)*.82,Math.cos(a)*.82,0,clock).rotation.z=-a}
     const hands=[.68,.46].map(l=>{const h=new THREE.Group();clock.add(h);add(new THREE.BoxGeometry(.09,l,.04),pale,0,l/2,0,h);return h});
-    halo(0xb04cff,1.2,4.6,.55);
-    anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.9+Math.sin(t*1.3)*.07};
+    halo(0xb04cff,1.2,3.2,.45);
+    anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.85+Math.sin(t*1.3)*.07};
   }else{
     const gold=aumat(0xffc21a,1),white=aumat(0xfffbe8,.95),soft=aumat(0xffd24a,.95);
     const crown=new THREE.Group();crown.position.y=2.85;g.add(crown);
@@ -3893,7 +3892,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',6,0xff4a7a,'sword','적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',4.5,0xff4a7a,'sword','적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -3973,6 +3972,21 @@ function geo(k){
 function part(g,k,hex,sx,sy,sz,x,y,z,em){const m=new THREE.Mesh(geo(k),em?EM(hex,em):M(hex));m.scale.set(sx,sy,sz);m.position.set(x||0,y||0,z||0);m.castShadow=false;g.add(m);return m}
 function flatRing(g,r,hex,op,y){const m=new THREE.Mesh(shared.ringG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.13;m.scale.set(r,r,r);g.add(m);return m}
 function flatDisc(g,r,hex,op,y){const m=new THREE.Mesh(shared.discG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.11;m.scale.set(r,r,r);g.add(m);return m}
+/* summoned stone golem: faceted rocks with joints that overlap (no floating limbs), glowing eyes and core, mossy shoulders */
+function golemBuild(){
+  const g=grp(),stone=M(0x8f8268),dark=M(0x675c48),light=M(0xab9d7e),moss=M(0x5f8a4a),glowM=EM(0x6bffd0,1.4);
+  const rock=(p,mat,sx,sy,sz,x,y,z)=>{const m=mesh(shared.golemRock||(shared.golemRock=new THREE.DodecahedronGeometry(.5,0)),mat,x,y,z,p,false);m.scale.set(sx,sy,sz);return m};
+  const legs=[-1,1].map(s=>{const l=grp(s*.55,1.45,0,g);rock(l,dark,.85,1.1,.85,0,-.4,0);rock(l,stone,.95,.9,1,0,-.95,.04);rock(l,dark,1.15,.55,1.35,0,-1.25,.16);return l});
+  rock(g,dark,1.5,.9,1.1,0,1.55,0);                                  // narrow hips -> wide chest (V silhouette)
+  rock(g,stone,2.4,1.75,1.6,0,2.45,0);rock(g,light,1.35,.95,.6,0,2.5,.6);
+  part(g,'ball',0x6bffd0,.55,.55,.4,0,2.45,.9,1.5);g.add((()=>{const q=glow(0x6bffd0,1.8,.6);q.position.set(0,2.45,1.05);return q})());
+  BX(.95,.8,.85,light,0,3.8,.35,g);BX(1.1,.24,.35,dark,0,4.12,.7,g);BX(.7,.28,.3,dark,0,3.46,.72,g);   // boxy head, brow, jaw
+  for(const s of[-1,1])part(g,'ball',0x7dffd8,.24,.18,.16,s*.23,3.84,.8,2.2);
+  const arms=[-1,1].map(s=>{const a=grp(s*1.5,3,0,g);rock(a,dark,1.3,1.2,1.3,s*.05,.05,0);rock(a,moss,1,.42,1,s*.08,.6,0);
+    rock(a,stone,.6,1.25,.6,s*.35,-.75,0);rock(a,light,.8,1.1,.8,s*.55,-1.55,.15);rock(a,dark,1.25,1.1,1.25,s*.65,-2.2,.3);return a});
+  for(let i=0;i<3;i++){const k=mesh(shared.golemShard||(shared.golemShard=new THREE.OctahedronGeometry(.28,0)),glowM,(i-1)*.55,3.2+(i===1?.25:0),-.8,g,false);k.scale.set(.7,1.7,.7);k.rotation.z=(1-i)*.35}
+  return{g,arms,legs};
+}
 /* run `up(t,dt)` each frame for `life` seconds; `g` is removed afterwards. returning true from up ends early */
 function act(life,up,end,g){const a={t:0,life,up,end,g};if(g&&!g.parent)entG.add(g);ACTS.push(a);return a}
 function actDrop(a){if(a.g){entG.remove(a.g);a.g.traverse&&a.g.traverse(c=>{if(c.userData&&c.userData.own&&c.material)c.material.dispose()})}}
@@ -4128,7 +4142,7 @@ const SK={
     burst(P.x,1.2,P.z,14,0x8a6ad0,6,.4,0);boltFx(P.x,P.z,bx,bz,0x8a6ad0);blinkTo(bx,bz);P.face=Math.atan2(m.x-P.x,m.z-P.z);P.stealth=0;P.iframes=Math.max(P.iframes,.4);
     sHit(c,m,amb?10:4.2,{kb:4,crit:true,big:true});
     slashArc(m.x,m.z,P.face+1.6,3,2,c.col,.25);slashArc(m.x,m.z,P.face-1.6,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0});
-    if(m.dead){later(.05,()=>{P.cd.q=0});dmgNum(P.x,3.2,P.z,'처형','info')}
+    act(1.5,()=>{if(!m.dead)return;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
     act(5,()=>{if(!(P.stealth>0))return true;P.slow=1.35},()=>{P.slow=1})},
@@ -4233,12 +4247,10 @@ const SK={
   },
   /* 소환사 */
   s_q(c){
-    const g=grp(P.x+c.a.x*3,0,P.z+c.a.z*3);
-    part(g,'box',0x8a7a5a,1.8,1.7,1.2,0,2,0);part(g,'box',0x9a8a68,.9,.8,.9,0,3.3,0);part(g,'ball',0x6bffd0,.4,.4,.4,0,2.1,.65,1.2);
-    const arms=[-1,1].map(s=>{const a=grp(s*1.35,2.6,0,g);part(a,'box',0x7a6a4c,.7,1.9,.7,0,-.8,0);return a});for(const s of[-1,1])part(g,'box',0x6a5a40,.7,1.2,.8,s*.5,.6,0);
+    const{g,arms,legs}=golemBuild();g.position.set(P.x+c.a.x*3,0,P.z+c.a.z*3);
     const decoy={x:g.position.x,z:g.position.z,pull:.35};DECOYS.push(decoy);
     let cd=.8,swing=0;
-    act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);arms.forEach(a=>a.rotation.x=-swing*2.4);
+    act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
       const m=nearTo(g.position.x,g.position.z,16)||null,tx=m?m.x:P.x,tz=m?m.z:P.z,dx=tx-g.position.x,dz=tz-g.position.z,d=Math.hypot(dx,dz)||1;
       if(d>(m?m.r+1.8:3.5)){g.position.x+=dx/d*5*dt;g.position.z+=dz/d*5*dt}g.rotation.y=Math.atan2(dx,dz);decoy.x=g.position.x;decoy.z=g.position.z;
       if(m&&d<m.r+2.6&&cd<=0){cd=1.3;swing=1;const x=g.position.x+dx/d*2,z=g.position.z+dz/d*2;sArea(c,x,z,3,2,{kb:8,freeze:.5,big:true});boom(x,z,3,0xc8a860,.35)}},
@@ -5027,6 +5039,7 @@ function dgUpdate(dt){
       if(near){p.disc.material.opacity=.22+Math.sin(G.t*2.2)*.08;p.label.pos(p.x,7,p.z)}else if(p.label.el)p.label.el.style.display='none';
     }
   }
+  else if(DG.on)for(const p of DGP)if(p.label.el)p.label.el.style.display='none';   // world portal name tags must not show inside
   if(!DG.on){
     if(P&&P.x>600&&!P.dead){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
     return;
@@ -5324,6 +5337,8 @@ function itemRow(it,o){
   return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'||it.kind==='mat'||it.kind==='rune'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
 const myItems=()=>SES.pf.items.filter(i=>!i.listed);
+/* most valuable first (price of one piece) */
+const byValue=(a,b)=>itemPrice(b)-itemPrice(a)||(a.kind>b.kind?-1:a.kind<b.kind?1:0)||a.id-b.id;
 const byId=id=>SES.pf.items.find(i=>i.id==id);
 async function guarded(fn,okMsg){
   try{const r=await fn();if(okMsg)UI.toast(okMsg);UI.refreshHud();if(P){const old=S.maxHp;derive();if(S.maxHp!==old)P.hp=Math.min(P.hp,S.maxHp)}if(UI.rerender)UI.rerender();return r}
@@ -5350,7 +5365,7 @@ function equipRow(){
 function openInventory(){
   UI.sel=null;UI.multi=new Set();UI.multiMode=false;flushGather();
   UI.page('가방',()=>{
-    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||(a.kind>b.kind?-1:1)||(wTier(b.base||'x_1')-wTier(a.base||'x_1')));
+    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
     let det='<div class="dim">아이템을 선택하세요.</div>';
     if(sel){
@@ -5443,7 +5458,7 @@ function openShop(){
       for(const sl of ASLOTS){const b=sl+'_'+atier+'_'+aset,pr=AVALUE[atier-1],cl=TIER_COL[atier-1];h+='<div class="item" style="--tc:'+cl+'">'+ico(ic(sl,cl,26),cl)+'<div><div class="nm" style="color:'+cl+'">'+armorName(b)+'</div><div class="sub">방어 '+armorDef(b,0)+' · 체력 +'+armorHp(b,0)+'</div></div><div class="rt"><div class="gold">'+fmtG(pr)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<pr?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
-      const items=myItems().filter(i=>!i.eq);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
+      const items=myItems().filter(i=>!i.eq).sort(byValue);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
       if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">채집 재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
       h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(itemPrice(i))+'</div>'+(i.kind==='potion'||i.kind==='mat'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }
@@ -6426,7 +6441,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

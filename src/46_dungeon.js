@@ -500,6 +500,7 @@ function dgUpdate(dt){
       if(near){p.disc.material.opacity=.22+Math.sin(G.t*2.2)*.08;p.label.pos(p.x,7,p.z)}else if(p.label.el)p.label.el.style.display='none';
     }
   }
+  else if(DG.on)for(const p of DGP)if(p.label.el)p.label.el.style.display='none';   // world portal name tags must not show inside
   if(!DG.on){
     if(P&&P.x>600&&!P.dead){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
     return;
