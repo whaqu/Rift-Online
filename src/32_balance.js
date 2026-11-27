@@ -112,8 +112,8 @@ function balMergeStatic(){
     _balBox.getCenter(_balV);const ck=Math.floor(_balV.x/BAL.mcell)+','+Math.floor(_balV.z/BAL.mcell);
     const meshes=[];o.traverse(c=>{if(c.isMesh&&!c.isInstancedMesh&&!c.isSprite&&!keep.has(c))meshes.push(c)});
     for(const m of meshes){
-      const key=ck+'|'+m.material.uuid+'|'+(m.castShadow?1:0)+(m.receiveShadow?1:0);
-      let b=buckets.get(key);if(!b){b={mat:m.material,cs:m.castShadow,rs:m.receiveShadow,geos:[]};buckets.set(key,b)}
+      const key=ck+'|'+(m.renderOrder||0)+'|'+m.material.uuid+'|'+(m.castShadow?1:0)+(m.receiveShadow?1:0);
+      let b=buckets.get(key);if(!b){b={mat:m.material,ro:m.renderOrder||0,cs:m.castShadow,rs:m.receiveShadow,geos:[]};buckets.set(key,b)}
       const g=m.geometry.index?m.geometry.toNonIndexed():m.geometry.clone();
       g.applyMatrix4(m.matrixWorld);b.geos.push(g);
       if(m.parent)m.parent.remove(m);
@@ -121,7 +121,7 @@ function balMergeStatic(){
   }
   for(const b of buckets.values()){
     const mesh=new THREE.Mesh(balConcat(b.geos),b.mat);
-    mesh.castShadow=b.cs;mesh.receiveShadow=b.rs;mesh.frustumCulled=false;
+    mesh.castShadow=b.cs;mesh.receiveShadow=b.rs;mesh.frustumCulled=false;mesh.renderOrder=b.ro;
     worldG.add(mesh);
   }
 }

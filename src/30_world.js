@@ -378,7 +378,7 @@ function buildWorld(){
       const geo=new THREE.PlaneGeometry(4.8,len);geo.rotateX(-Math.PI/2);
       const uv=geo.attributes&&geo.attributes.uv;if(uv&&uv.count){for(let i=0;i<uv.count;i++)uv.setY(i,uv.getY(i)*len/9)}
       const m=new THREE.Mesh(geo,new THREE.MeshStandardMaterial({map:pt,transparent:true,roughness:1,depthWrite:false}));
-      m.position.set(Math.sin(th)*(r0+len/2),.03,Math.cos(th)*(r0+len/2));m.rotation.y=th;m.receiveShadow=true;worldG.add(m)};
+      m.position.set(Math.sin(th)*(r0+len/2),.03,Math.cos(th)*(r0+len/2));m.rotation.y=th;m.receiveShadow=true;m.renderOrder=-1;worldG.add(m)};   // draw before auras/effects: a long transparent strip otherwise paints over them
     mkPath(0,17.9,44);mkPath(Math.PI,17.9,44);mkPath(-Math.PI/2,17.9,44);mkPath(Math.PI/2,17.9,WORLD_R-12)}
   /* gates */
   const stoneG=M(0x8a8798,{roughness:.9}),darkG=M(0x55526a,{roughness:.9});
