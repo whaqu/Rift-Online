@@ -32,40 +32,104 @@ function dgBuildPortals(){
   }catch(e){console.error('portals',e)}
 }
 
-/* ---------- arena ---------- */
+/* ---------- arena: a dark cave dungeon laid out as a forward path (z decreases): 4 rooms joined by corridors, then the boss hall ---------- */
+const DGL={rw:17,cw:5,rl:46,gap:22,pitch:68,zt0:6,hallR:30};
+const dgZT=i=>DGL.zt0-i*DGL.pitch,dgZB=i=>dgZT(i)-DGL.rl,dgGate=i=>dgZB(i)-6;
+const DG_HALL_Z=dgZB(3)-DGL.gap-26;   // hall centre
+function dgBuildShapes(){
+  const s=[],ins=1.3;
+  for(let i=0;i<4;i++){s.push({x0:-DGL.rw+ins,x1:DGL.rw-ins,z0:dgZB(i)+ins,z1:dgZT(i)-ins});
+    s.push({x0:-DGL.cw+ins,x1:DGL.cw-ins,z0:(i<3?dgZT(i+1):dgZB(3)-DGL.gap)-1,z1:dgZB(i)+1})}
+  s.push({c:1,x:0,z:DG_HALL_Z,r:DGL.hallR-ins});
+  return s;
+}
+/* keep an entity inside the walkable cave and behind the closed gate */
+function dgClampXZ(e){
+  const sh=DG.shapes||(DG.shapes=dgBuildShapes());let lx=e.x-DG.cx,lz=e.z-DG.cz,bx=lx,bz=lz,bd=1e18,inside=false;
+  for(const s of sh){
+    let px,pz;
+    if(s.c){const dx=lx-s.x,dz=lz-s.z,d=Math.hypot(dx,dz)||.001;if(d<=s.r){inside=true;break}px=s.x+dx/d*s.r;pz=s.z+dz/d*s.r}
+    else{px=Math.max(s.x0,Math.min(s.x1,lx));pz=Math.max(s.z0,Math.min(s.z1,lz));if(px===lx&&pz===lz){inside=true;break}}
+    const d=(px-lx)*(px-lx)+(pz-lz)*(pz-lz);if(d<bd){bd=d;bx=px;bz=pz}
+  }
+  if(!inside){lx=bx;lz=bz}
+  const lim=dgLimit();if(lz<lim)lz=lim;
+  e.x=DG.cx+lx;e.z=DG.cz+lz;
+}
+function dgClampPt(x,z){const o={x,z};dgClampXZ(o);return o}
+/* furthest z (most negative) that may be reached; DG.wave = index of the room that is currently open */
+function dgLimit(){return DG.wave>=4?-1e9:dgGate(DG.wave)+1.2}
+function dgRoomTrigger(idx){return idx>=4?DG_HALL_Z+DGL.hallR-4:dgZT(idx)-5}
+function dgRespawnZ(){return DG.wave>=4?DG_HALL_Z+DGL.hallR-3:dgZT(Math.max(0,DG.wave))-3}
+
 function dgBuildArena(){
   if(DG.arena)return DG.arena;
   const g=new THREE.Group();g.position.set(DG.cx,0,DG.cz);g.visible=false;scene.add(g);
-  const gm=new THREE.MeshStandardMaterial({color:0x56a044,roughness:.95,flatShading:true}),pm=new THREE.MeshStandardMaterial({color:0x6a6a78,roughness:.8,flatShading:true}),
-    rm=new THREE.MeshBasicMaterial({color:0x9aff7a,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide});
-  const fl=new THREE.Mesh(new THREE.CircleGeometry(DG.R+10,48),gm);fl.rotation.x=-Math.PI/2;fl.receiveShadow=true;g.add(fl);
-  for(let i=0;i<18;i++){const a=i/18*TAU,x=Math.cos(a)*(DG.R+.4),z=Math.sin(a)*(DG.R+.4);const p=new THREE.Mesh(new THREE.BoxGeometry(2.2,6,2.2),pm);p.position.set(x,3,z);p.castShadow=true;g.add(p)}
-  for(const rr of[.62,.3]){const r=new THREE.Mesh(new THREE.RingGeometry(DG.R*rr,DG.R*rr+.6,64),rm);r.rotation.x=-Math.PI/2;r.position.y=.06;g.add(r)}
-  const rocks=[[14,6],[-15,8],[6,-16],[-7,-14],[18,-9],[-19,-8],[0,16],[-3,6]];
-  for(const[x,z]of rocks){const p=new THREE.Mesh(new THREE.CylinderGeometry(1.4,2,2.8,7),pm);p.position.set(x,1.4,z);p.castShadow=true;p.receiveShadow=true;g.add(p);addObst(DG.cx+x,DG.cz+z,2.1)}
-  // common: central dais + braziers between the pillars
-  const dais=new THREE.Mesh(new THREE.CylinderGeometry(4.6,5.2,.35,24),pm);dais.position.y=.17;dais.receiveShadow=true;g.add(dais);
-  for(let i=0;i<9;i++){const a=(i+.5)/9*TAU,x=Math.cos(a)*(DG.R-2.2),z=Math.sin(a)*(DG.R-2.2);
-    const b=new THREE.Mesh(new THREE.CylinderGeometry(.5,.35,1.2,6),pm);b.position.set(x,.6,z);g.add(b);
-    const f=glow(0xffa23a,3.2,.7);f.position.set(x,1.7,z);g.add(f)}
-  const th={},mk=(n)=>{const t=new THREE.Group();t.visible=false;g.add(t);th[n]=t;return t};
-  const rr=(a,b)=>a+Math.random()*(b-a),ring=(r0,r1)=>{const a=rr(0,TAU),r=rr(r0,r1);return[Math.cos(a)*r,Math.sin(a)*r]};
-  {const t=mk('meadow'),tr=new THREE.MeshStandardMaterial({color:0x7a5434,roughness:.95,flatShading:true}),lf=[0x4c9a46,0x5aae4e,0x68b856].map(c=>new THREE.MeshStandardMaterial({color:c,roughness:.9,flatShading:true})),
-    fl=[0xff7aa8,0xffe27a,0xffffff,0xb07aff].map(c=>new THREE.MeshBasicMaterial({color:c}));
-    for(let i=0;i<18;i++){const[x,z]=ring(DG.R+3,DG.R+11),s=rr(.9,1.5);const k=new THREE.Mesh(new THREE.CylinderGeometry(.35*s,.5*s,3*s,6),tr);k.position.set(x,1.5*s,z);t.add(k);
-      const c=new THREE.Mesh(new THREE.IcosahedronGeometry(2*s,0),lf[i%3]);c.position.set(x,3.6*s,z);c.castShadow=true;t.add(c)}
-    for(let i=0;i<40;i++){const[x,z]=ring(6,DG.R-3);const f=new THREE.Mesh(new THREE.SphereGeometry(.2,5,4),fl[i%4]);f.position.set(x,.25,z);t.add(f)}
-    for(let i=0;i<10;i++){const[x,z]=ring(10,DG.R-4);const m=new THREE.Mesh(new THREE.SphereGeometry(.6,6,4,0,TAU,0,Math.PI/2),new THREE.MeshStandardMaterial({color:0xd8503a,flatShading:true}));m.position.set(x,.1,z);t.add(m)}}
-  {const t=mk('crystal'),cm=[0x6ee7ff,0xb07aff,0x7a9aff].map(c=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9,roughness:.3,flatShading:true}));
-    for(let i=0;i<26;i++){const[x,z]=ring(i<14?DG.R-8:DG.R+2,i<14?DG.R-3:DG.R+9),h=rr(2.5,7);const c=new THREE.Mesh(new THREE.ConeGeometry(rr(.5,1.1),h,5),cm[i%3]);c.position.set(x,h/2,z);c.rotation.z=rr(-.25,.25);c.rotation.x=rr(-.25,.25);t.add(c)}
-    for(let i=0;i<4;i++){const[x,z]=ring(12,DG.R-6),gl=glow([0x6ee7ff,0xb07aff][i%2],6,.45);gl.position.set(x,1.6,z);t.add(gl)}}
-  {const t=mk('storm'),sm=new THREE.MeshStandardMaterial({color:0x3a4252,roughness:.8,flatShading:true}),tip=new THREE.MeshBasicMaterial({color:0xffe27a});
-    for(let i=0;i<9;i++){const a=i/9*TAU+.2,x=Math.cos(a)*(DG.R-5),z=Math.sin(a)*(DG.R-5);const sp=new THREE.Mesh(new THREE.ConeGeometry(.9,9,5),sm);sp.position.set(x,4.5,z);t.add(sp);
-      const o=new THREE.Mesh(new THREE.SphereGeometry(.45,6,5),tip);o.position.set(x,9.4,z);t.add(o);const gl=glow(0xffe27a,4,.6);gl.position.set(x,9.4,z);t.add(gl)}
-    for(let i=0;i<12;i++){const[x,z]=ring(DG.R+2,DG.R+14),s=rr(1.2,3);const r=new THREE.Mesh(new THREE.DodecahedronGeometry(s,0),sm);r.position.set(x,rr(5,12),z);r.rotation.set(rr(0,3),rr(0,3),0);t.add(r)}}
-  DG.arena={g,gm,pm,rm,th};return DG.arena;
+  const std=c=>new THREE.MeshStandardMaterial({color:c,roughness:.95,flatShading:true});
+  const gm=std(0x2a2a30),wm=std(0x3a3a44),pm=std(0x4a4a56),rm=new THREE.MeshBasicMaterial({color:0x9aff7a,transparent:true,opacity:.5,depthWrite:false,side:THREE.DoubleSide});
+  const A={g,gm,wm,pm,rm,th:{},gates:[],arrows:null};
+  const flat=(geo,mat,x,z)=>{const m=new THREE.Mesh(geo,mat);m.rotation.x=-Math.PI/2;m.position.set(x,0,z);m.receiveShadow=true;g.add(m);return m};
+  const box=(w,h,d,x,z,mat,y)=>{const m=new THREE.Mesh(new THREE.BoxGeometry(w,h,d),mat||wm);m.position.set(x,(y!=null?y:h/2),z);m.castShadow=true;m.receiveShadow=true;g.add(m);return m};
+  const {rw,cw,rl,gap}=DGL,WH=8;
+  for(let i=0;i<4;i++){
+    const zt=dgZT(i),zb=dgZB(i),zm=(zt+zb)/2;
+    flat(new THREE.PlaneGeometry(rw*2,rl),gm,0,zm);
+    box(3,WH,rl+3,-(rw+1.5),zm);box(3,WH,rl+3,rw+1.5,zm);
+    const sideW=rw-cw;
+    if(i===0)box(rw*2+6,WH,3,0,zt+1.5);else for(const sx of[-1,1])box(sideW,WH,3,sx*(cw+sideW/2),zt+1.5);
+    for(const sx of[-1,1])box(sideW,WH,3,sx*(cw+sideW/2),zb-1.5);
+    // corridor
+    const cz0=zb,cz1=i<3?dgZT(i+1):zb-gap,cm=(cz0+cz1)/2,cl=Math.abs(cz0-cz1);
+    flat(new THREE.PlaneGeometry(cw*2,cl),gm,0,cm);
+    for(const sx of[-1,1])box(3,WH,cl,sx*(cw+1.5),cm);
+    // gate barrier
+    const gz=dgGate(i),gt=new THREE.Group();gt.position.set(0,0,gz);
+    const bar=new THREE.Mesh(new THREE.PlaneGeometry(cw*2,7),new THREE.MeshBasicMaterial({color:0x9aff7a,transparent:true,opacity:.35,side:THREE.DoubleSide,depthWrite:false}));bar.position.y=3.5;gt.add(bar);
+    for(const sx of[-1,1]){const p=new THREE.Mesh(new THREE.CylinderGeometry(.5,.6,7.5,6),pm);p.position.set(sx*cw,3.7,0);gt.add(p)}
+    g.add(gt);A.gates.push({g:gt,bar});
+    // cover rocks (collide)
+    for(const sx of[-1,1]){const x=sx*7,z=zm+(sx<0?6:-6);const r=new THREE.Mesh(new THREE.CylinderGeometry(1.5,2.1,3,7),pm);r.position.set(x,1.5,z);r.castShadow=true;g.add(r);addObst(DG.cx+x,DG.cz+z,2.2)}
+  }
+  // boss hall
+  const hz=DG_HALL_Z,hr=DGL.hallR;
+  const hall=new THREE.Mesh(new THREE.CircleGeometry(hr,40),gm);hall.rotation.x=-Math.PI/2;hall.position.set(0,0,hz);hall.receiveShadow=true;g.add(hall);
+  for(let i=0;i<20;i++){const a=i/20*TAU;if(Math.abs(Math.atan2(Math.sin(a),Math.cos(a))-Math.PI/2)<.5)continue;
+    const w=box(2*Math.PI*(hr+1.5)/20+.8,WH+2,3,Math.cos(a)*(hr+1.5),hz+Math.sin(a)*(hr+1.5));w.rotation.y=-a+Math.PI/2}
+  for(const rr of[.62,.3]){const r=new THREE.Mesh(new THREE.RingGeometry(hr*rr,hr*rr+.6,64),rm);r.rotation.x=-Math.PI/2;r.position.set(0,.06,hz);g.add(r)}
+  const dais=new THREE.Mesh(new THREE.CylinderGeometry(5,5.6,.35,24),pm);dais.position.set(0,.17,hz);g.add(dais);
+  // torches along the walls
+  const torch=(x,z)=>{const b=new THREE.Mesh(new THREE.CylinderGeometry(.35,.28,1.3,6),pm);b.position.set(x,.65,z);g.add(b);const f=glow(0xffa23a,3.4,.8);f.position.set(x,1.8,z);g.add(f)};
+  for(let i=0;i<4;i++){const zt=dgZT(i);for(const k of[10,36])for(const sx of[-1,1])torch(sx*(rw-1.3),zt-k)}
+  for(let i=0;i<8;i++){const a=(i+.5)/8*TAU+Math.PI*.1;if(Math.sin(a)>.85)continue;torch(Math.cos(a)*(hr-2),hz+Math.sin(a)*(hr-2))}
+  // themed props
+  const R=mulberry(7731),rr=(a,b)=>a+R()*(b-a);
+  const edge=(i,n,fn)=>{const zt=dgZT(i);for(let k=0;k<n;k++){const sx=R()<.5?-1:1;fn(sx*rr(rw-6,rw-1.6),zt-rr(3,rl-3))}};
+  const hallPt=()=>{const a=rr(0,TAU),r=rr(hr-9,hr-2);return[Math.cos(a)*r,hz+Math.sin(a)*r]};
+  const mk=n=>{const t=new THREE.Group();t.visible=false;g.add(t);A.th[n]=t;return t};
+  { // meadow: mossy cave, glowing mushrooms, roots
+    const t=mk('meadow'),cap=[0x4aff9a,0x6aff6a,0x9aff7a].map(c=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:.9,roughness:.5,flatShading:true})),stalk=std(0xcdbf9a),moss=std(0x3a5a2a);
+    const shroom=(x,z)=>{const s=rr(.7,1.7);const st=new THREE.Mesh(new THREE.CylinderGeometry(.18*s,.26*s,1.3*s,6),stalk);st.position.set(x,.65*s,z);t.add(st);
+      const c=new THREE.Mesh(new THREE.SphereGeometry(.8*s,8,5,0,TAU,0,Math.PI/2),cap[(x*7|0)%3<0?0:Math.abs(x*7|0)%3]);c.position.set(x,1.3*s,z);t.add(c)};
+    for(let i=0;i<4;i++){edge(i,9,shroom);edge(i,4,(x,z)=>{const m=new THREE.Mesh(new THREE.DodecahedronGeometry(rr(.8,1.8),0),moss);m.position.set(x,.5,z);t.add(m)})}
+    for(let i=0;i<16;i++){const[x,z]=hallPt();shroom(x,z)}
+    for(let i=0;i<5;i++){const[x,z]=hallPt(),gl=glow(0x6aff9a,7,.4);gl.position.set(x,1.5,z);t.add(gl)}}
+  { // crystal cavern
+    const t=mk('crystal'),cm=[0x6ee7ff,0xb07aff,0x7a9aff].map(c=>new THREE.MeshStandardMaterial({color:c,emissive:c,emissiveIntensity:1.1,roughness:.3,flatShading:true}));
+    const cr=(x,z)=>{const h=rr(2.5,7);const c=new THREE.Mesh(new THREE.ConeGeometry(rr(.5,1.1),h,5),cm[(Math.abs(x*3|0))%3]);c.position.set(x,h/2,z);c.rotation.z=rr(-.25,.25);c.rotation.x=rr(-.25,.25);t.add(c)};
+    for(let i=0;i<4;i++){edge(i,12,cr);const[x,z]=[0,dgZT(i)-rl/2],gl=glow([0x6ee7ff,0xb07aff][i%2],9,.35);gl.position.set(x,1.6,z);t.add(gl)}
+    for(let i=0;i<20;i++){const[x,z]=hallPt();cr(x,z)}
+    for(let i=0;i<4;i++){const[x,z]=hallPt(),gl=glow(0x6ee7ff,8,.4);gl.position.set(x,1.6,z);t.add(gl)}}
+  { // storm: ruined cave, lightning spires, floating rubble
+    const t=mk('storm'),sm=std(0x4a5262),tip=new THREE.MeshBasicMaterial({color:0xffe27a});
+    const sp=(x,z)=>{const h=rr(5,9);const c=new THREE.Mesh(new THREE.ConeGeometry(.9,h,5),sm);c.position.set(x,h/2,z);t.add(c);const o=new THREE.Mesh(new THREE.SphereGeometry(.4,6,5),tip);o.position.set(x,h+.2,z);t.add(o);const gl=glow(0xffe27a,4,.6);gl.position.set(x,h+.2,z);t.add(gl)};
+    for(let i=0;i<4;i++){edge(i,3,sp);edge(i,6,(x,z)=>{const r=new THREE.Mesh(new THREE.DodecahedronGeometry(rr(.7,1.6),0),sm);r.position.set(x,rr(.5,3),z);r.rotation.set(rr(0,3),rr(0,3),0);t.add(r)})}
+    for(let i=0;i<6;i++){const[x,z]=hallPt();sp(x,z)}}
+  // advance arrows (chevrons that point down the path)
+  const ar=new THREE.Group();ar.visible=false;g.add(ar);A.arrows=ar;A.arrowMats=[];
+  for(let k=0;k<4;k++){const m=new THREE.MeshBasicMaterial({color:0xfff2a0,transparent:true,opacity:.6,depthWrite:false,side:THREE.DoubleSide});A.arrowMats.push(m);
+    const c=new THREE.Mesh(new THREE.ConeGeometry(1.5,2.2,3),m);c.rotation.x=-Math.PI/2;c.position.set(0,.1,-k*5);ar.add(c)}
+  DG.arena=A;return A;
 }
-
 /* ---------- boss ---------- */
 function dgBossModel(){
   const bk=DG.mkBk;
@@ -105,7 +169,7 @@ function dgBossAI(m,dt,dx,dz,d){
       if(m.pat==='rush'){m.state='rush';m.st=.75}
       else{
         if(m.pat==='nova'){const n=enr?24:16,o=m.age;for(let i=0;i<n;i++){const a=i/n*TAU+o;emitEvent({t:'b',x:m.x+Math.sin(a),z:m.z+Math.cos(a),a,s:8.5,d:m.dmg*.7*en,c:def.ring,l:3})}}
-        else if(m.pat==='summon'){let c=0;for(const q of MOBS)if(q.dg&&!q.dead&&q!==m)c++;if(c<8){const k=enr?3:2;for(let i=0;i<k;i++){const a=rnd(0,TAU);dgSpawnAdd(pick(def.adds),clampArena(m.x+Math.cos(a)*5,'x'),clampArena(m.z+Math.sin(a)*5,'z'))}emitEvent({t:'f',x:m.x,z:m.z,c:def.ring,n:'whoosh'})}}
+        else if(m.pat==='summon'){let c=0;for(const q of MOBS)if(q.dg&&!q.dead&&q!==m)c++;if(c<8){const k=enr?3:2;for(let i=0;i<k;i++){const a=rnd(0,TAU),q=dgClampPt(m.x+Math.cos(a)*5,m.z+Math.sin(a)*5);dgSpawnAdd(pick(def.adds),q.x,q.z)}emitEvent({t:'f',x:m.x,z:m.z,c:def.ring,n:'whoosh'})}}
         m.state='rec';m.st=.9;m.cd=rnd(1.5,2.3)*cdm;
       }
     }
@@ -114,7 +178,6 @@ function dgBossAI(m,dt,dx,dz,d){
     if(m.st<=0){m.state='rec';m.st=1.1;m.cd=rnd(1.5,2.3)*cdm}
   }else{m.st-=dt;if(m.st<=0)m.state='chase'}
 }
-function clampArena(v,ax){const c=ax==='x'?DG.cx:DG.cz,o=v-c;return c+Math.max(-DG.R*.8,Math.min(DG.R*.8,o))}
 
 /* ---------- entering / leaving ---------- */
 function dgEnter(id){
@@ -122,9 +185,13 @@ function dgEnter(id){
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
   DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
-  A.gm.color.setHex(def.col);A.pm.color.setHex((def.col>>1)&0x7f7f7f);A.rm.color.setHex(def.ring);for(const k in A.th)A.th[k].visible=(k===id);A.g.visible=true;worldG.visible=false;
+  DG.atmo=def.atmo;DG.shapes=null;
+  A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);A.rm.color.setHex(def.ring);
+  for(const k in A.th)A.th[k].visible=(k===id);for(const gt of A.gates){gt.bar.material.color.setHex(def.ring);gt.g.visible=true}A.arrows.visible=false;
+  A.g.visible=true;worldG.visible=false;
+  if(THREE.PointLight&&!(typeof balOn==='function'&&balOn())){if(!DG.lamp){DG.lamp=new THREE.PointLight(0xffb878,1.5,36,1.5)}DG.lamp.position.set(P.x,6,P.z);scene.add(DG.lamp)}
   resetMobs();
-  P.recall=0;P.x=DG.cx+rnd(-2,2);P.z=DG.cz+DG.R-13;P.vx=P.vz=0;P.iframes=2;P.hp=S.maxHp;P.dead=false;cam.x=P.x;cam.z=P.z;
+  P.recall=0;P.x=DG.cx+rnd(-2,2);P.z=DG.cz+1;P.vx=P.vz=0;P.iframes=2;P.hp=S.maxHp;P.dead=false;cam.x=P.x;cam.z=P.z;
   const mini=$('mini');if(mini&&mini.style)mini.style.display='none';
   UI.zone=-1;DG.dm=null;dgHud(true);sfx('level');
   shockRing(P.x,P.z,5,def.ring,.6);
@@ -132,7 +199,7 @@ function dgEnter(id){
 function dgLeave(msg){
   if(!DG.on)return;
   const id=DG.id;DG.on=false;DG.ph='idle';DG.boss=null;
-  if(DG.arena)DG.arena.g.visible=false;worldG.visible=true;
+  if(DG.arena)DG.arena.g.visible=false;worldG.visible=true;DG.atmo=null;if(DG.lamp&&DG.lamp.parent)scene.remove(DG.lamp);
   resetMobs();
   const pt=DGP.find(p=>p.dg===id);
   if(pt){const l=Math.hypot(pt.x,pt.z)||1;P.x=pt.x-pt.x/l*4.5;P.z=pt.z-pt.z/l*4.5}else{P.x=SPAWN.x;P.z=SPAWN.z}
@@ -153,7 +220,7 @@ function dgRespawn(){
     if(DG.deaths>DG.maxDeaths){P.dead=false;UI.deadOn(false);dgFail('부활 횟수를 모두 사용했습니다');return}
     UI.toast('부활했습니다 (남은 부활 '+(DG.maxDeaths-DG.deaths)+'회)',2000);
   }
-  P.dead=false;P.x=DG.cx+rnd(-3,3);P.z=DG.cz+DG.R-13;P.vx=P.vz=0;P.hp=S.maxHp;P.iframes=2.5;UI.deadOn(false);cam.x=P.x;cam.z=P.z;
+  P.dead=false;P.x=DG.cx+rnd(-3,3);P.z=DG.cz+dgRespawnZ();P.vx=P.vz=0;P.hp=S.maxHp;P.iframes=2.5;UI.deadOn(false);cam.x=P.x;cam.z=P.z;
 }
 
 /* ---------- portal interaction ---------- */
@@ -185,17 +252,17 @@ async function dgJoin(id){
 /* ---------- authority: waves & boss ---------- */
 function dgPlayers(){return allPos().filter(q=>q.x>600)}
 function dgSpawnWave(){
-  const def=DGDEF[DG.id],A=dgPlayers(),pc=Math.max(1,A.length),n=Math.min(24,Math.round(def.waves[DG.wave]*(1+.5*(pc-1))));
-  sfx('boom');
+  const def=DGDEF[DG.id],A=dgPlayers(),pc=Math.max(1,A.length),idx=DG.wave,n=Math.min(24,Math.round(def.waves[idx]*(1+.5*(pc-1))));
+  sfx('boom');const zt=dgZT(idx),zb=dgZB(idx);
   for(let i=0;i<n;i++){
-    let x=DG.cx,z=DG.cz;
-    for(let k=0;k<8;k++){const a=rnd(0,TAU),r=rnd(16,27);x=DG.cx+Math.cos(a)*r;z=DG.cz+Math.sin(a)*r;if(!blocked(x,z,1.2)&&A.every(q=>d2(x,z,q.x,q.z)>10*10))break}
-    dgSpawnAdd(pick(def.mobs),x,z,DG.wave===def.waves.length-1&&i===0&&pc>1);
+    let x=DG.cx,z=DG.cz+zb+6;
+    for(let k=0;k<10;k++){x=DG.cx+rnd(-13,13);z=DG.cz+rnd(zb+4,zt-18);if(!blocked(x,z,1.2)&&A.every(q=>d2(x,z,q.x,q.z)>9*9))break}
+    dgSpawnAdd(pick(def.mobs),x,z,idx===def.waves.length-1&&i===0&&pc>1);
   }
 }
 function dgSpawnBoss(){
   const def=DGDEF[DG.id],pc=Math.max(1,dgPlayers().length);
-  DG.mkBk=DG.id;const m=makeMobObj(mobSeq++,'dgboss',DG.cx,DG.cz-6,def.ml,false,false,false);
+  DG.mkBk=DG.id;const m=makeMobObj(mobSeq++,'dgboss',DG.cx,DG.cz+DG_HALL_Z-4,def.ml,false,false,false);
   dgBossSetup(m,DG.id);m.maxHp=m.hp=Math.round(mobHp(def.ml)*def.hpM*(1+.9*(pc-1)));
   DG.boss=m;sfx('boom');cam.shake=Math.max(cam.shake,.8);
   shockRing(m.x,m.z,10,def.ring,.8);
@@ -206,9 +273,11 @@ function dgTick(dt,A){
   if(DG.t>600){dgFail('제한 시간이 초과되었습니다');return}
   let alive=0;for(const m of MOBS)if(m.dg&&!m.dead&&!m.ghost&&m.type!=='dgboss')alive++;DG.alive=alive;
   if(DG.ph==='intro'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
-  else if(DG.ph==='wave'){if(alive===0){DG.wave++;if(DG.wave>=def.waves.length){DG.ph='bossIntro';DG.pt=3}else{DG.ph='gap';DG.pt=2.5}}}
-  else if(DG.ph==='gap'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
-  else if(DG.ph==='bossIntro'){DG.pt-=dt;if(DG.pt<=0){DG.ph='boss';dgSpawnBoss()}}
+  else if(DG.ph==='wave'){if(alive===0){DG.wave++;DG.ph='advance'}}
+  else if(DG.ph==='advance'){
+    const tz=dgRoomTrigger(DG.wave);
+    if(dgPlayers().some(q=>q.z-DG.cz<tz)){if(DG.wave>=def.waves.length){DG.ph='boss';dgSpawnBoss()}else{DG.ph='wave';dgSpawnWave()}}
+  }
   else if(DG.ph==='boss'){if(DG.boss&&DG.boss.dead)dgClear()}
   DG.lastSt+=dt;
   if(DG.lastSt>.5){DG.lastSt=0;if(NET.on&&NET.party&&NET.party.members.length>1){const b=DG.boss;netSend('dg',{k:'st',id:DG.id,ph:DG.ph,w:DG.wave,al:alive,t:Math.round(DG.t),bh:b&&!b.dead?Math.round(b.hp/b.maxHp*100):0,dm:Object.fromEntries(Object.entries(DG.dmg).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>[x[0],Math.round(x[1])]))})}}
@@ -314,7 +383,7 @@ const DG_CSS=`
 #dgboss .tx{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:800;text-shadow:0 1px 2px #000;transform:skewX(12deg)}
 #dgboss .st{font-size:11px;margin-top:2px;color:#ff9a7a;letter-spacing:2px;opacity:0;transition:opacity .3s}
 #dgboss.enr .st{opacity:1;animation:dgpulse .8s infinite}
-#dgrank{top:150px;left:12px;width:190px;padding:7px 9px;border-radius:10px;background:rgba(12,14,26,.78);border:1px solid rgba(255,255,255,.16);font-size:12px}
+#dgrank{top:200px;left:12px;width:190px;padding:7px 9px;border-radius:10px;background:rgba(12,14,26,.78);border:1px solid rgba(255,255,255,.16);font-size:12px}
 #dgrank .h{font-weight:800;color:#ffd24a;margin-bottom:4px;letter-spacing:1px;font-size:11px}
 #dgrank .r{position:relative;margin:2px 0;padding:1px 4px;border-radius:3px;overflow:hidden;display:flex;justify-content:space-between}
 #dgrank .r i{position:absolute;left:0;top:0;bottom:0;background:linear-gradient(90deg,var(--dc,#9aff7a),transparent);opacity:.4}
@@ -360,6 +429,13 @@ function dgBanner(m,s,col){
   DGH.ban.innerHTML='<div class="a"><div class="m">'+esc(m)+'</div><div class="s">'+esc(s||'')+'</div></div>';
   clearTimeout(DGH.bt);DGH.bt=setTimeout(()=>{DGH.ban.style.display='none'},2700);
 }
+function dgScene(dt){
+  const A=DG.arena;if(!A)return;
+  for(let i=0;i<A.gates.length;i++){const open=DG.wave>i;if(A.gates[i].g.visible===open)A.gates[i].g.visible=!open;if(!open)A.gates[i].bar.material.opacity=.28+Math.sin(G.t*3+i)*.1}
+  const adv=DG.ph==='advance';if(A.arrows.visible!==adv)A.arrows.visible=adv;
+  if(adv){const gz=DG.wave>=4?dgGate(3)-12:dgGate(DG.wave-1)-8;A.arrows.position.set(0,0,gz);A.arrowMats.forEach((m,k)=>{m.opacity=.25+.5*Math.max(0,Math.sin(G.t*5-k*.9))})}
+  if(DG.lamp)DG.lamp.position.set(P.x,6.5,P.z);
+}
 function dgUpdate(dt){
   if(DGP.length&&!DG.on){
     for(const p of DGP){
@@ -367,7 +443,11 @@ function dgUpdate(dt){
       if(near){p.disc.material.opacity=.22+Math.sin(G.t*2.2)*.08;p.label.pos(p.x,7,p.z)}else if(p.label.el)p.label.el.style.display='none';
     }
   }
-  if(!DG.on)return;
+  if(!DG.on){
+    if(P&&P.x>600&&!P.dead){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
+    return;
+  }
+  dgScene(dt);
   if(DG.ph!=='clear'&&DG.ph!=='fail'&&(NET.party?NET.party.leader:SES.name)!==DG.leader){dgFail('파티 구성이 바뀌어 던전에서 나갑니다');return}
   DGH.t+=dt;if(DGH.t<.2)return;DGH.t=0;
   const def=DGDEF[DG.id];if(!def||!DGH.el)return;
@@ -377,14 +457,14 @@ function dgUpdate(dt){
     DGH.bk=bk;
     if(DG.ph==='intro')dgBanner(def.name,'준비하세요…',def.ring);
     else if(DG.ph==='wave')dgBanner('WAVE '+(DG.wave+1)+' / '+nw,'몬스터를 모두 처치하라',def.ring);
-    else if(DG.ph==='bossIntro')dgBanner('경고','강력한 기운이 다가옵니다',0xff5a3a);
+    else if(DG.ph==='advance')dgBanner(DG.wave>=nw?'보스의 방':'길이 열렸다','앞으로 나아가세요',DG.wave>=nw?0xff5a3a:def.ring);
     else if(DG.ph==='boss')dgBanner(def.bn,'BOSS',0xff7a3a);
     else if(DG.ph==='clear')dgBanner('DUNGEON CLEAR','보상을 정산합니다…',0xffd24a);
   }
   let boss=null;for(const m of MOBS)if(m.type==='dgboss'&&!m.dead){boss=m;break}
   const bh=boss?Math.max(0,boss.hp/boss.maxHp*100):(DG.ph==='boss'?DG.bh:0);
   const tl=Math.max(0,600-DG.t),mm=Math.floor(tl/60),ss=Math.floor(tl%60);
-  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(DG.wave+1,nw)+' / '+nw;
+  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(DG.wave+1,nw)+' / '+nw;
   const dm=Object.entries(DG.dm||DG.dmg||{}).sort((a,b)=>b[1]-a[1]).slice(0,4);
   const key=pt+'|'+mm+':'+ss+'|'+DG.deaths+'|'+DG.alive+'|'+DG.wave+'|'+DG.ph+'|'+Math.round(bh)+'|'+dm.map(x=>x[0]+Math.round(x[1]/50)).join();
   if(key===DGH.last)return;DGH.last=key;

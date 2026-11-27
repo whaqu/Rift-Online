@@ -41,12 +41,16 @@ function buildPlayerModel(){
 function myWeaponBase(){const w=SES.pf&&SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);return w?w.base:null}
 function skillOf(slot){
   const pf=SES.pf,c=CLS[pf.cls],j=JOBS[pf.job];
+  if(pf.cls==='cleric'){
+    if(slot==='q'){const L=pf.level;if(L<10)return null;const t=L>=30?3:L>=20?2:1;return CLQ[t]}
+    if(slot==='e'&&pf.level<15)return null;
+  }
   if(slot==='q')return c.q;if(slot==='e')return c.e;if(slot==='f')return pf.level>=MAXLV?ULT[pf.cls]:null;
   return j&&j.tier>0?j.r:null;
 }
-const effAtk=()=>S.atk*(P.buff&&P.buff.atk?P.buff.atk:1)*(P.pot.atk>0?1.3:1);
-const effAps=()=>S.aps*((S.berserk&&P.hp<S.maxHp*.5)?1.4:1)*(P.buff&&P.buff.aps?P.buff.aps:1);
-const effSpd=()=>S.spd*(P.buff&&P.buff.spd?P.buff.spd:1)*(P.pot.spd>0?1.4:1)*(P.spinT>0?.6:1)*(P.slow||1);
+const effAtk=()=>S.atk*(P.buff&&P.buff.atk?P.buff.atk:1)*(P.pot.atk>0?1.3:1)*(P.hb&&hbOn('my')?1.1:1);
+const effAps=()=>S.aps*((S.berserk&&P.hp<S.maxHp*.5)?1.4:1)*(P.buff&&P.buff.aps?P.buff.aps:1)*(P.hb&&hbOn('my')?1.25:1);
+const effSpd=()=>S.spd*(P.buff&&P.buff.spd?P.buff.spd:1)*(P.hb&&hbOn('my')?1.2:1)*(P.pot.spd>0?1.4:1)*(P.spinT>0?.6:1)*(P.slow||1);
 
 /* ----- targeting ----- */
 function nearestMob(range,from){
@@ -116,11 +120,13 @@ function updatePlayerModel(dt){
 
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;P.dashCd-=dt;
-  for(const k of['q','e','r','f'])P.cd[k]-=dt;
+  const cdk=P.hb&&hbOn('my')?1.4:1;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;P.dashCd-=dt*cdk;
+  for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
-  if(S.regen>0&&P.hp<S.maxHp&&!P.dead){P.regenAcc+=S.maxHp*S.regen*dt;if(P.regenAcc>=1){const v=Math.floor(P.regenAcc);P.regenAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+  const rgn=S.regen+(P.hb&&hbOn('my')?.025:0);
+  if(rgn>0&&P.hp<S.maxHp&&!P.dead){P.regenAcc+=S.maxHp*rgn*dt;if(P.regenAcc>=1){const v=Math.floor(P.regenAcc);P.regenAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
   if(inTown(P.x,P.z)&&P.hp<S.maxHp&&!P.dead)P.hp=Math.min(S.maxHp,P.hp+S.maxHp*.12*dt);
   if(!P.dead&&P.hp<S.maxHp*.25){P.beatT=(P.beatT||0)-dt;if(P.beatT<=0){P.beatT=1.1;sfx('beat',.8)}}
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
@@ -276,7 +282,7 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz){
   if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)));
+  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
@@ -287,7 +293,7 @@ function hurtPlayer(dmg,sx,sz){
   return true;
 }
 function playerDown(){
-  P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
+  P.hb=null;P.hs=null;P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
 }
 function respawn(){
   if(DG.on){dgRespawn();return}

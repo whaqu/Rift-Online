@@ -451,6 +451,7 @@ UI.hudTick=function(dt){
     const tb=$('tb-'+k);if(tb)domX(domQ(tb,'.cdm'),sy)
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
+  {const zb=$('zone');const hide=!!DG.on;if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
   const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
   if(n&&!UI.modal){const ph=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;if(pr._h!==ph){pr._h=ph;pr.innerHTML=ph}pr.classList.add('show');if(use){use.classList.remove('hidden');domT(domQ(use,'span'),n.name)}}

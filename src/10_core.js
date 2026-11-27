@@ -371,7 +371,7 @@ addEventListener('keydown',e=>{
 });
 addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
 addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouse.down=false});
-canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;auInit()}});
+canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;auInit()}else if(e.button===2&&typeof rightClickSkill==='function'){rightClickSkill()}});
 addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false});
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
 canvas.addEventListener('contextmenu',e=>e.preventDefault());

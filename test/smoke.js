@@ -234,17 +234,17 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     await g.dgStart('meadow');
     T(g.DG.on&&g.DG.id==='meadow'&&g.P.x>900,'entered the meadow dungeon arena');
     T(g.zoneAt(g.P.x,g.P.z).name==='초원 던전','zone label override');
-    g.P.x=g.DG.cx+500;g.P.z=g.DG.cz;step(2);T(Math.hypot(g.P.x-g.DG.cx,g.P.z-g.DG.cz)<=g.DG.R,'arena clamps the player');
+    g.P.x=g.DG.cx+500;g.P.z=g.DG.cz;step(2);T(Math.abs(g.P.x-g.DG.cx)<=20&&g.P.z-g.DG.cz>=-70,'cave clamps the player (sideways + closed gate)');
     step(300);
     T(g.DG.ph==='wave'&&g.MOBS.filter(m=>m.dg&&!m.dead).length>=5,'wave 1 spawned '+g.DG.ph+' '+g.MOBS.length);
-    T(g.MOBS.every(m=>!m.dg||Math.hypot(m.x-g.DG.cx,m.z-g.DG.cz)<=g.DG.R),'wave mobs inside arena');
+    T(g.MOBS.every(m=>!m.dg||Math.abs(m.x-g.DG.cx)<=20),'wave mobs inside cave room');
     let guard=0;
-    while(g.DG.ph!=='boss'&&guard++<40){for(const m of g.MOBS.slice())if(m.dg&&!m.dead&&m.type!=='dgboss')g.applyMobDmg(m,1e9,null,g.SES.name);step(200)}
+    while(g.DG.ph!=='boss'&&guard++<60){for(const m of g.MOBS.slice())if(m.dg&&!m.dead&&m.type!=='dgboss')g.applyMobDmg(m,1e9,null,g.SES.name);step(200);if(g.DG.ph==='advance'){g.P.x=g.DG.cx;g.P.z=g.DG.cz+(g.DG.wave>=4?-4*68+6-46-22-26+30-5:6-g.DG.wave*68-6);step(100)}}
     T(g.DG.ph==='boss','reached boss phase after 3 waves ('+g.DG.ph+')');
     const boss=g.MOBS.find(m=>m.type==='dgboss');T(boss&&boss.bn==='멧돼지 왕'&&boss.maxHp>1000,'boss spawned '+(boss&&boss.maxHp));
     const pats=new Set();for(let i=0;i<2500&&!boss.dead;i++){g.frame(.016);if(boss.pat)pats.add(boss.pat)}
     T(pats.size>=3,'boss cycles patterns '+[...pats]);
-    T(Math.hypot(boss.x-g.DG.cx,boss.z-g.DG.cz)<=g.DG.R+1,'boss stays in arena');
+    T(boss.z-g.DG.cz<-200&&Math.abs(boss.x-g.DG.cx)<=32,'boss stays in hall');
     // death handling
     g.P.iframes=0;g.hurtPlayer(1e9,0,0);T(g.P.dead,'dies in dungeon');step(300);
     T(!g.P.dead&&g.DG.on&&g.DG.deaths===1&&g.P.x>900,'respawns inside the arena (deaths '+g.DG.deaths+')');g.P.iframes=1e9;
@@ -260,6 +260,54 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(!g.DG.on&&Math.hypot(g.P.x,g.P.z)<100&&g.MOBS.length===0,'left dungeon back to the world');
     let e3='';try{await g.API.call('dgEnd','meadow',1)}catch(e){e3=e.message}T(e3==='NO_RUN','a finished run cannot be claimed twice');
     g.P.iframes=1e9;
+  }
+  // ---- cleric rework ----
+  {
+    const K0='rw_local_db_v1',orig={};{const d=JSON.parse(localStorage.getItem(K0)),a=d.acc[g.SES.name];orig.cls=a.cls;orig.job=a.job;orig.level=a.level;a.cls='cleric';a.job='cleric';localStorage.setItem(K0,JSON.stringify(d))}
+    await g.API.resume(g.SES.name,g.SES.token);g.derive();g.skReset();g.UI.close&&g.UI.close();
+    const P=g.P,setLv=async l=>{const K='rw_local_db_v1',d=JSON.parse(localStorage.getItem(K));d.acc[g.SES.name].level=l;localStorage.setItem(K,JSON.stringify(d));await g.API.resume(g.SES.name,g.SES.token);g.derive()};
+    const noParty=()=>{g.NET.party=null;g.NET.peers={}};noParty();
+    await setLv(9);T(!g.skillOf('q')&&!g.skillOf('e'),'cleric below Lv10 has no heal / armor');
+    await setLv(10);T(g.skillOf('q')&&g.skillOf('q').name==='스몰 힐'&&!g.skillOf('e'),'Lv10: 스몰 힐');
+    await setLv(15);T(g.skillOf('e')&&g.skillOf('e').name==='홀리 아머','Lv15: 홀리 아머');
+    await setLv(20);T(g.skillOf('q').name==='힐','Lv20: 힐');
+    await setLv(30);T(g.skillOf('q').name==='홀리 힐'&&g.skillOf('q').pct>g.CLQ[2].pct,'Lv30: 홀리 힐');
+    g.P.x=300;g.P.z=0;g.P.dead=false;g.P.iframes=1e9;g.P.cd={q:0,e:0,r:0,f:0};g.P.hp=g.S.maxHp*.2;
+    g.trySkill('q');T(g.P.hp>g.S.maxHp*.2+1&&g.P.cd.q>0,'solo: Q heals yourself');
+    // party: target selection + second press heals the partner, right click heals self
+    const sent=[];g.NET.on=true;g.NET.ch={send(m){sent.push(m)}};
+    g.NET.peers['동료']={name:'동료',x:g.P.x,z:g.P.z+8,tx:g.P.x,tz:g.P.z+8,got:true,hp:50,lv:5,cls:'warrior',job:'warrior',anim:0};
+    g.NET.party={id:'p9',leader:g.SES.name,members:[g.SES.name,'동료']};
+    g.mouse.gx=g.P.x;g.mouse.gz=g.P.z+8;g.P.cd.q=0;g.P.hp=g.S.maxHp*.5;g.P.face=0;
+    g.trySkill('q');T(g.P.hs&&g.P.cd.q===0,'party: first Q only arms the heal (no cooldown)');
+    for(let i=0;i<3;i++){g.mouse.gx=g.P.x;g.mouse.gz=g.P.z+8;g.tickPlayer(.016)}
+    T(g.P.hs&&g.P.hs.tg&&g.P.hs.tg.name==='동료','heal marker targets the partner you face');
+    g.mouse.gx=g.P.x;g.mouse.gz=g.P.z+8;g.trySkill('q');
+    T(sent.some(x=>x.event==='ch'&&x.payload.to==='동료'&&x.payload.pct>0.5)&&g.P.cd.q>0&&!g.P.hs,'second Q sends the heal to that partner');
+    g.P.cd.q=0;g.P.hp=g.S.maxHp*.3;g.rightClickSkill();T(g.P.hp>g.S.maxHp*.3+1&&g.P.cd.q>0,'right click heals yourself in a party');
+    // receiving a heal from a party member
+    g.P.hp=g.S.maxHp*.2;g.onCh({to:g.SES.name,from:'동료',pct:.5,sh:.1});T(g.P.hp>=g.S.maxHp*.69,'incoming heal applies');
+    g.onCh({to:g.SES.name,from:'낯선사람',pct:.5});T(g.P.hp<g.S.maxHp*.9,'heal from non-party is ignored');
+    // buffs go to the whole party
+    sent.length=0;g.P.cd.e=0;g.trySkill('e');
+    T(g.hbOn('ar')&&sent.some(x=>x.event==='cb'&&x.payload.k==='ar'&&x.payload.to.includes('동료')),'홀리 아머 buffs self and sends to party');
+    const dm=g.S.maxHp;g.P.iframes=0;g.P.hp=dm;g.P.shield=0;g.hurtPlayer(100,0,0);T(dm-g.P.hp<=75,'홀리 아머 reduces damage ('+(dm-g.P.hp)+')');
+    g.P.hb=null;g.onCb({to:[g.SES.name],from:'동료',k:'wp',d:10,pw:1.5});T(g.hbOn('wp'),'receives 홀리 웨폰 from a party member');
+    g.onCb({to:[g.SES.name],from:'낯선사람',k:'my',d:10,pw:1});T(!g.hbOn('my'),'buff from non-party is ignored');
+    // holy weapon alters hits
+    const mm=g.makeMobObj(9000,'slime',g.P.x,g.P.z+3,50,false,false,false);mm.spawning=false;mm.sp=0;mm.hp=mm.maxHp=1e12;mm.dmg=0;
+    const hitN=()=>{mm.hp=mm.maxHp;for(let i=0;i<40;i++)g.dealMob(mm,1000,{crit:false});return mm.maxHp-mm.hp};g.P.hb=null;const h0=hitN();g.applyHB('wp',20,1.5);const h1=hitN();
+    T(h1>h0*1.1,'홀리 웨폰 adds holy damage to hits ('+Math.round(h0)+' -> '+Math.round(h1)+')');
+    g.P.hb=null;g.P.shield=0;g.applyHB('ar',20,1.5);g.dealMob(mm,1000,{});T(g.P.shield>0,'홀리 아머 grants shield per hit');
+    // holy moly: speed / attack speed / cooldown / regen
+    g.P.hb=null;const sp0=g.effSpd(),as0=g.effAps();g.applyHB('my',16,1.5);
+    T(g.effSpd()>sp0*1.15&&g.effAps()>as0*1.2,'홀리 몰리 raises move and attack speed');
+    g.P.cd.q=10;g.tickPlayer(1);T(g.P.cd.q<8.7,'홀리 몰리 speeds up cooldowns');
+    g.P.hp=g.S.maxHp*.5;g.P.regenAcc=0;const hpb=g.P.hp;for(let i=0;i<60;i++)g.tickPlayer(.05);T(g.P.hp>hpb+g.S.maxHp*.03,'홀리 몰리 adds natural regen');
+    T(g.JOBS.priest_fire&&g.JOBS.priest_fire.r.fx==='moly'&&g.JOBS.crusader_holy.r.name==='홀리 몰리'&&g.JOBS.priest.r.name==='홀리 웨폰','2nd jobs get 홀리 몰리, 1st jobs 홀리 웨폰');
+    g.P.hb=null;g.NET.party=null;g.NET.peers={};g.NET.on=false;g.NET.ch=null;
+    {const d=JSON.parse(localStorage.getItem(K0)),a=d.acc[g.SES.name];a.cls=orig.cls;a.job=orig.job;a.level=orig.level;localStorage.setItem(K0,JSON.stringify(d))}
+    await g.API.resume(g.SES.name,g.SES.token);g.derive();g.P.cd={q:0,e:0,r:0,f:0};
   }
   // ---- party / ghost mobs ----
   g.NET.on=true;g.NET.ch={send(){}};
@@ -386,6 +434,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         run(10);let hit=m.hp<m.maxHp||m2.hp<m2.maxHp;
         for(let i=0;i<520;i+=10){run(10);if(m.hp<m.maxHp||m2.hp<m2.maxHp)hit=true}
         if(sk.fx==='r_e'){aim(0,1);hit=true}
+        if(['c_q','c_e','priest','crusader','moly'].includes(sk.fx))hit=true;   // support skills: no damage
         T(cd>0&&hit,'skill '+job+' '+slot+' '+sk.name+' cd='+cd+' hit='+hit);
         run(400);T(g.ACTS.length===0&&g.DECOYS.length===0&&!g.skBusy()&&Number.isFinite(g.P.x)&&Number.isFinite(g.P.hp),'skill '+sk.name+' cleans up '+g.ACTS.length);
       }

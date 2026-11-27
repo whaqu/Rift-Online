@@ -19,7 +19,7 @@ Object.assign(CLS,{
     sty:{t:'melee',range:2.5,arc:1.9,big:2.6,bigMul:1.5,col:0xd0b0ff,bigCol:0xff6bd6,lunge:7,kb:3,kbBig:6},
     q:{id:'r_q',name:'연막탄',type:'nova',cd:8,rad:5,dmg:1.7,kb:6,freeze:1.2,col:0xb08aff},
     e:{id:'r_e',name:'그림자 걸음',type:'buff',cd:12,dur:5,aps:1.35,spd:1.4,col:0xa07aff}},
-  cleric:{name:'성직자',blurb:'성스러운 빛으로 싸우고 스스로 치유',hp:140,hpLv:12,atk:4.6,atkLv:2.0,aps:2.0,spd:6.6,crit:.06,range:0,col:0xe8d27a,
+  cleric:{name:'성직자',blurb:'성스러운 빛으로 파티를 치유하고 강화하는 버퍼',hp:140,hpLv:12,atk:4.6,atkLv:2.0,aps:2.0,spd:6.6,crit:.06,range:0,col:0xe8d27a,
     sty:{t:'proj',kind:'orb',spd:22,r:.6,life:1.1,splash:1.9,col:0xfff2a0},
     q:{id:'c_q',name:'성스러운 빛',type:'nova',cd:9,rad:6,dmg:1.8,kb:8,heal:.18,col:0xfff2a0},
     e:{id:'c_e',name:'신의 가호',type:'buff',cd:15,dur:6,shield:.4,spd:1.1,col:0xffe9a0}},
@@ -265,15 +265,15 @@ function nightK(p){p=p==null?dayPhase():p;const sm=x=>x*x*(3-2*x);if(p<.5)return
 function huntInfo(){const t=(Date.now()/1000)%600;return t<150?{on:true,left:150-t}:{on:false,next:600-t}}
 /* dungeons: instanced arena far outside the world (x≈1000) */
 const DGDEF={
-  meadow:{name:'초원 던전',need:8,zid:1,ml:10,col:0x56a044,ring:0x9aff7a,mobs:['slime','bat','boar'],waves:[6,8,10,12],bn:'멧돼지 왕',hpM:26,dmgM:1.3,spd:4.2,sc:2.2,r:1.9,pa:2.4,pr:32,bits:4,
+  meadow:{name:'초원 던전',need:8,zid:1,ml:10,col:0x56a044,ring:0x9aff7a,fl:0x23301f,wl:0x2f3a2a,atmo:{bg:0x070d0a,sky:0x16241c,gr:0x0c140f,hi:.5,sun:.3,sc:0x9ab8a0,rc:0x6aff9a,ri:.35,fd:.017},mobs:['slime','bat','boar'],waves:[6,8,10,12],bn:'멧돼지 왕',hpM:26,dmgM:1.3,spd:4.2,sc:2.2,r:1.9,pa:2.4,pr:32,bits:4,
     pat:['slam','rush','nova','summon','rush'],adds:['slime','bat']},
-  crystal:{name:'수정 던전',need:30,zid:4,ml:34,col:0x585a86,ring:0x7a9aff,mobs:['golem','spider','archer','bomber'],waves:[6,8,10,12],bn:'수정 거인왕',hpM:30,dmgM:1.3,spd:3.2,sc:1.5,r:2.2,pa:.8,pr:204,bits:8,
+  crystal:{name:'수정 던전',need:30,zid:4,ml:34,col:0x585a86,ring:0x7a9aff,fl:0x1c1c34,wl:0x2a2a4a,atmo:{bg:0x070716,sky:0x181838,gr:0x0c0c20,hi:.55,sun:.28,sc:0x8aa0ff,rc:0xb07aff,ri:.45,fd:.018},mobs:['golem','spider','archer','bomber'],waves:[6,8,10,12],bn:'수정 거인왕',hpM:30,dmgM:1.3,spd:3.2,sc:1.5,r:2.2,pa:.8,pr:204,bits:8,
     pat:['slam','quake','nova','summon','barrage'],adds:['spider','spider']},
-  storm:{name:'폭풍 던전',need:48,zid:5,ml:54,col:0x5a6678,ring:0xffe27a,mobs:['stormhawk','golem','bomber','archer'],waves:[6,8,10,12],bn:'폭풍매 군주',hpM:36,dmgM:1.35,spd:4.4,sc:2.6,r:1.8,pa:3.9,pr:268,bits:16,
+  storm:{name:'폭풍 던전',need:48,zid:5,ml:54,col:0x5a6678,ring:0xffe27a,fl:0x1e232c,wl:0x30384a,atmo:{bg:0x080b12,sky:0x18202e,gr:0x0c1118,hi:.5,sun:.28,sc:0xa0b8e0,rc:0xffe27a,ri:.5,fd:.017},mobs:['stormhawk','golem','bomber','archer'],waves:[6,8,10,12],bn:'폭풍매 군주',hpM:36,dmgM:1.35,spd:4.4,sc:2.6,r:1.8,pa:3.9,pr:268,bits:16,
     pat:['bolts','nova','barrage','slam','summon'],adds:['stormhawk','stormhawk']}
 };
 const DGK=Object.keys(DGDEF);
-const DG={on:false,id:null,cx:1000,cz:0,R:34,zone:null,ph:'idle',t:0,wave:0,wn:0,pt:0,dmg:{},deaths:0,maxDeaths:3,leader:null,boss:null,res:null,st:null,lastSt:0,arena:null,mkBk:'meadow'};
+const DG={on:false,id:null,cx:1000,cz:0,R:34,atmo:null,shapes:null,lamp:null,zone:null,ph:'idle',t:0,wave:0,wn:0,pt:0,dmg:{},deaths:0,maxDeaths:3,leader:null,boss:null,res:null,st:null,lastSt:0,arena:null,mkBk:'meadow'};
 function zoneAt(x,z){if(DG.on&&x>600)return DG.zone;const d=Math.hypot(x,z);for(let i=ZONES.length-1;i>=0;i--)if(d>=ZONES[i].r0)return ZONES[i];return ZONES[0]}
 function mobLevel(x,z){const zn=zoneAt(x,z);if(!zn.id)return 0;const k=clamp((Math.hypot(x,z)-zn.r0)/(zn.r1-zn.r0),0,1);return Math.max(zn.lo,Math.min(zn.hi,Math.round(zn.lo+k*(zn.hi-zn.lo)+rnd(-1,1))))}
 const mobHp=ml=>Math.round(30+ml*ml*1.6);

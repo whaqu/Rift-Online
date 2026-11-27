@@ -55,6 +55,7 @@ function dealMob(m,base,o){
     for(const q of MOBS){if(n>=2)break;if(q.dead||q.spawning||used.has(q))continue;if(d2(q.x,q.z,m.x,m.z)<81){used.add(q);boltFx(px,pz,q.x,q.z);dealMob(q,base*.6,{noProc:true,noKb:true});px=q.x;pz=q.z;n++}}
   }
   if(S.explP>0&&Math.random()<S.explP)explodeAt(m.x,m.z,3.2,base*.5,0xff9a3a);
+  if(P.hb)holyProc(m,base);
 }
 
 /* ---------------- player projectiles ---------------- */
