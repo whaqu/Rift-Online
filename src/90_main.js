@@ -107,7 +107,7 @@ function loop(now){
 
 async function boot(){
   showLoading('세계를 만드는 중…');await wait(60);   // let the loading screen paint before the heavy build
-  loadSave();setVol(save.vol);
+  loadSave();setVol(save.vol);applyGfxMode();
   scene.fog=new THREE.FogExp2(0x8fb4d8,.0052);
   sun.castShadow=!!save.shadows;renderer.shadowMap.enabled=!!save.shadows;
   buildWorld();try{buildLoginScene()}catch(e){console.error('login scene',e);LOGIN.g=null}initLogin();

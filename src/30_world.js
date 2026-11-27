@@ -367,7 +367,7 @@ function buildWorld(){
   CY(2.8,3.1,.9,stone,0,.45,0,worldG,16);CY(2.3,2.3,.6,water,0,.85,0,worldG,16);CY(.5,.7,2.6,stone,0,1.5,0,worldG,8);SP(.8,stone,0,2.9,0,worldG,8,6);
   const fgl=glow(0x7fd6ff,6,.35);fgl.position.set(0,2,0);worldG.add(fgl);addObst(0,0,3.2);
   {const em=new THREE.Mesh(new THREE.PlaneGeometry(17,17),new THREE.MeshBasicMaterial({map:emblemTex(),transparent:true,opacity:.95,blending:THREE.AdditiveBlending,depthWrite:false}));em.rotation.x=-Math.PI/2;em.position.y=.075;worldG.add(em);WORLD.emblem=em}
-  {const fl=instMesh(new THREE.IcosahedronGeometry(.2,0),M(0xffffff),22);fl.castShadow=false;const fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff];
+  if(!balOn()){const fl=instMesh(new THREE.IcosahedronGeometry(.2,0),M(0xffffff),22);fl.castShadow=false;const fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff];
     for(let i=0;i<22;i++){const a=i/22*TAU;instSet(fl,i,Math.cos(a)*4.5,.28,Math.sin(a)*4.5,1,1,1,0,fc[i%4])}instDone(fl)}
   /* torches */
   for(let i=0;i<10;i++){const a=i/10*TAU+.3,x=Math.cos(a)*18.6,z=Math.sin(a)*18.6;
@@ -495,7 +495,8 @@ function buildWorld(){
   cover(1,500,GT,grassMat(),(m,i,x,z)=>{const s=.8+R()*.7;instSet(m,i,x,0,z,s,s,s,R()*6,pick([0x7ab858,0x88c460,0x96c868]))});
   {const gl=[0x4a8a3a,0x58984a,0x66a650];const n=700,m=instMesh(GB,grassMat(),n);m.castShadow=false;let k=0;
     for(let i=0;i<n;i++){const a=R()*TAU,r=19+R()*5,x=Math.cos(a)*r,z=Math.sin(a)*r;if(onPath(x,z))continue;const s=.6+R()*.7;instSet(m,k++,x,0,z,s,s,s,R()*6,gl[i%3])}m.count=k;instDone(m)}
-  {const N=sc(420,1),fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff,0xff8a4a],st=instMesh(new THREE.CylinderGeometry(.025,.025,.42,3),M(0x3f7a38),N),hd=instMesh(new THREE.IcosahedronGeometry(.17,0),M(0xffffff,{emissive:0x222222}),N);st.castShadow=hd.castShadow=false;let k=0;
+  /* flower field: balance mode skips it, but draws the same random numbers so the layout stays identical */
+  if(balOn())placeIn(1,sc(420,1),.05,()=>{R();R();R()});else{const N=sc(420,1),fc=[0xff7aa8,0xffd24a,0xffffff,0xb48aff,0xff8a4a],st=instMesh(new THREE.CylinderGeometry(.025,.025,.42,3),M(0x3f7a38),N),hd=instMesh(new THREE.IcosahedronGeometry(.17,0),M(0xffffff,{emissive:0x222222}),N);st.castShadow=hd.castShadow=false;let k=0;
     placeIn(1,N,.05,(i,x,z)=>{const s=.8+R()*.6;instSet(st,i,x,.21*s,z,s,s,s,0);instSet(hd,i,x,.46*s,z,s,s,s,R()*6,fc[Math.floor(R()*5)]);k=i+1});st.count=hd.count=k;instDone(st);instDone(hd)}
   cover(2,1300,GT,grassMat(),(m,i,x,z)=>{const s=.6+R()*.9;instSet(m,i,x,0,z,s,s*(.8+R()*.7),s,R()*6,R()<.5?0x6a6a78:0x55556a)});
   {const N=sc(110,2),cap=instMesh(new THREE.SphereGeometry(.42,7,5),M(0xffffff,{emissive:0x6a5acd,emissiveIntensity:.9,roughness:.5}),N),stm=instMesh(new THREE.CylinderGeometry(.1,.14,.5,5),M(0xd8d4c0),N);cap.castShadow=stm.castShadow=false;let k=0;
@@ -515,6 +516,7 @@ function buildWorld(){
   }catch(e){console.error('deco2',e)}
   /* far mountains */
   {const N=130,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
+  balFinish();
 }
 
 const ATMO=[

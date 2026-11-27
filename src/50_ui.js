@@ -300,6 +300,7 @@ function openSettings(){
     return '<div class="grid"><div class="card"><div class="row sp"><span>볼륨</span><input type="range" id="vol" min="0" max="100" value="'+Math.round(save.vol*100)+'" style="width:60%"></div>'
       +'<div class="row sp" style="margin-top:8px"><span>고품질 그래픽 효과 (빛 번짐·색감·비네트)</span><input type="checkbox" id="pfx" '+(save.fx?'checked':'')+'></div>'
       +'<div class="row sp" style="margin-top:8px"><span>나무·풀 모델링</span><span class="row" style="gap:6px"><button class="btn sm '+(save.treeQ===0?'':'sec')+'" data-a="tq" data-v="0">가볍게</button><button class="btn sm '+(save.treeQ===0?'sec':'')+'" data-a="tq" data-v="1">정교하게</button></span></div>'
+      +'<div class="row sp" style="margin-top:8px"><span>밸런스 모드 (저사양 PC용: 먼 곳·꽃 생략, 60fps 목표)</span><input type="checkbox" id="bal" '+(save.balance?'checked':'')+'></div>'
       +'<div class="row sp" style="margin-top:8px"><span>그림자 (끄면 더 부드럽습니다)</span><input type="checkbox" id="shd" '+(save.shadows?'checked':'')+'></div>'
       +'<div class="row sp" style="margin-top:8px"><span>캐릭터 외곽선 (재접속 후 완전 적용)</span><input type="checkbox" id="oln" '+(save.outline?'checked':'')+'></div>'
       +(IS_TOUCH?'<div class="row sp" style="margin-top:8px"><span>자동 공격</span><input type="checkbox" id="aut" '+(save.auto?'checked':'')+'></div>':'')+'</div>'
@@ -310,6 +311,7 @@ function openSettings(){
   const s=$('shd');if(s)s.onchange=()=>{save.custom=true;save.shadows=s.checked;writeSave();applyShadows()};
   const fx=$('pfx');if(fx)fx.onchange=()=>{save.custom=true;save.fx=fx.checked;writeSave()};
   const ol=$('oln');if(ol)ol.onchange=()=>{save.custom=true;save.outline=ol.checked;writeSave()};
+  const bl=$('bal');if(bl)bl.onchange=()=>{save.custom=true;save.balance=bl.checked;writeSave();UI.toast('밸런스 모드를 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{applyGfxMode();buildWorld()}catch(e){console.error('balance',e)}UI.toast(save.balance?'밸런스 모드: 먼 곳과 꽃은 그리지 않습니다':'밸런스 모드 꺼짐');UI.rerender&&UI.rerender()},60)};
   const a=$('aut');if(a)a.onchange=()=>{save.custom=true;save.auto=a.checked;writeSave()};
   UI.handlers.tq=v=>{v=+v;if(save.treeQ===v)return;save.custom=true;save.treeQ=v;writeSave();UI.toast('나무·풀 모델을 바꾸는 중…');UI.rerender&&UI.rerender();setTimeout(()=>{try{buildWorld()}catch(e){console.error('rebuild',e)}UI.toast(v?'나무·풀: 정교하게':'나무·풀: 가볍게');UI.rerender&&UI.rerender()},60)};
   UI.handlers.logout=()=>{try{localStorage.removeItem('rw_sess')}catch(e){}location.reload()};
