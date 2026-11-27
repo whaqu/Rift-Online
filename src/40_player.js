@@ -123,7 +123,7 @@ function tickPlayer(dt){
   if(inTown(P.x,P.z)&&P.hp<S.maxHp&&!P.dead)P.hp=Math.min(S.maxHp,P.hp+S.maxHp*.12*dt);
   if(!P.dead&&P.hp<S.maxHp*.25){P.beatT=(P.beatT||0)-dt;if(P.beatT<=0){P.beatT=1.1;sfx('beat',.8)}}
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
-  else tickSkills(dt);
+  else{tickSkills(dt);tickRecall(dt)}
 }
 const AUTO_LV=5;
 const canAuto=()=>IS_TOUCH||SES.pf.level>=AUTO_LV;
@@ -278,6 +278,7 @@ function hurtPlayer(dmg,sx,sz){
   dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
+  if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
   if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);hitStop(.06);
     if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
   burst(P.x,1.2,P.z,10,0xff5a6a,6,.4,10);
@@ -285,11 +286,36 @@ function hurtPlayer(dmg,sx,sz){
   return true;
 }
 function playerDown(){
-  P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
+  P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
 }
 function respawn(){
   P.dead=false;P.x=SPAWN.x+rnd(-2,2);P.z=SPAWN.z;P.vx=P.vz=0;P.hp=S.maxHp;P.iframes=1.5;UI.deadOn(false);
   clearMobsNearTown();cam.x=P.x;cam.z=P.z;
+}
+
+/* ----- town recall (C): 3 s channel, cancelled by moving, dashing, skills, damage or death ----- */
+const RECALL_T=3;
+function startRecall(){
+  if(!P||P.dead||UI.modal)return;
+  if(P.recall>0){cancelRecall('마을 귀환을 취소했습니다');return}
+  if(inTown(P.x,P.z)){UI.toast('이미 마을입니다');return}
+  if(P.dashT>0||skBusy())return;
+  P.recall=RECALL_T;P.recallN=Math.ceil(RECALL_T);P.recallFx=0;sfx('click');
+  UI.toast('마을로 귀환 중… '+P.recallN+' (움직이면 취소)',1100);
+}
+function cancelRecall(msg){P.recall=0;if(msg)UI.toast(msg)}
+function tickRecall(dt){
+  if(!(P.recall>0))return;
+  if(P.ix||P.iz||P.dashT>0||skBusy()){cancelRecall('마을 귀환이 취소되었습니다');return}
+  P.recall-=dt;P.recallFx-=dt;
+  if(P.recallFx<=0){P.recallFx=.18;burst(P.x,.3,P.z,4,0x8fe8ff,2.5,.7,-1,.8)}
+  const n=Math.ceil(Math.max(0,P.recall));if(n!==P.recallN&&n>0){P.recallN=n;UI.toast('마을로 귀환 중… '+n+' (움직이면 취소)',1100)}
+  if(P.recall<=0){
+    P.recall=0;ringBurst(P.x,.2,P.z,18,0x8fe8ff,9,.5);pillar(P.x,P.z,0x8fe8ff,14,.5);
+    P.x=SPAWN.x+rnd(-2,2);P.z=SPAWN.z;P.vx=P.vz=0;P.iframes=Math.max(P.iframes,1);
+    clearMobsNearTown();cam.x=P.x;cam.z=P.z;
+    ringBurst(P.x,.2,P.z,18,0x8fe8ff,9,.5);pillar(P.x,P.z,0x8fe8ff,14,.5);sfx('level');UI.toast('마을로 돌아왔습니다');
+  }
 }
 
 /* ----- potions ----- */

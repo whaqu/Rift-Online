@@ -184,6 +184,13 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   g.P.x=40;g.P.z=0;step(30);g.P.cd.r=0;g.trySkill('r');step(20);T(true,'R skill cast');
   // death + respawn
   g.P.iframes=0;g.hurtPlayer(1e9,0,0);T(g.P.dead,'player dies');step(300);T(!g.P.dead&&Math.hypot(g.P.x,g.P.z)<19,'respawn in town');
+  // town recall (C key)
+  g.startRecall();T(!(g.P.recall>0),'recall is refused inside town');
+  g.P.x=60;g.P.z=0;g.P.iframes=0;g.startRecall();T(g.P.recall>0,'recall starts outside town');
+  g.hurtPlayer(1,0,0);T(!(g.P.recall>0)&&g.P.x===60,'damage cancels recall');
+  g.P.iframes=0;g.startRecall();g.startRecall();T(!(g.P.recall>0),'pressing C again cancels recall');
+  g.startRecall();g.keys['d']=true;step(3);g.keys['d']=false;T(!(g.P.recall>0)&&Math.hypot(g.P.x,g.P.z)>30,'moving cancels recall');
+  g.P.x=60;g.P.z=0;g.P.iframes=1e9;g.startRecall();step(100);T(Math.hypot(g.P.x,g.P.z)>30&&g.P.recall>0,'recall still channelling after ~1.6s');step(160);T(Math.hypot(g.P.x,g.P.z)<19&&!(g.P.recall>0),'recall brings the player to town after 3s');
   // ---- party / ghost mobs ----
   g.NET.on=true;g.NET.ch={send(){}};
   g.NET.peers['동료']={name:'동료',x:5,z:5,tx:5,tz:5,got:true,hp:100,lv:5,cls:'mage',job:'mage',anim:0};
