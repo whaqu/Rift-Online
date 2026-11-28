@@ -397,13 +397,14 @@ const SK={
       g.position.set(cx+Math.sin(an)*off,0,cz+Math.cos(an)*off);g.scale.setScalar(size);alive.push(g);
       const decoy={x:g.position.x,z:g.position.z,pull:.35};DECOYS.push(decoy);
       let cd=.8+k/n*.7,swing=0;
-      act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6+k)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
+      const me={g,armored,swing:0},run=act(12,(t,dt)=>{me.swing=swing;cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6+k)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
         const m=nearTo(g.position.x,g.position.z,16)||null,tx=m?m.x:P.x+Math.sin(an)*off,tz=m?m.z:P.z+Math.cos(an)*off,dx=tx-g.position.x,dz=tz-g.position.z,d=Math.hypot(dx,dz)||1;
         if(d>(m?m.r+1.8:1.5)){g.position.x+=dx/d*5*dt;g.position.z+=dz/d*5*dt}g.rotation.y=Math.atan2(dx,dz);
         for(const q of alive){if(q===g)continue;const ex=g.position.x-q.position.x,ez=g.position.z-q.position.z,e=Math.hypot(ex,ez);if(e>.01&&e<2.4*size){g.position.x+=ex/e*3*dt;g.position.z+=ez/e*3*dt}}   // don't stack
         decoy.x=g.position.x;decoy.z=g.position.z;
         if(m&&d<m.r+2.6&&cd<=0){cd=1.3;swing=1;const x=g.position.x+dx/d*2,z=g.position.z+dz/d*2;sArea(c,x,z,3,2,{kb:8,freeze:.5,big:true});boom(x,z,3,0xc8a860,.35)}},
         ()=>{const i=DECOYS.indexOf(decoy);if(i>=0)DECOYS.splice(i,1);burst(g.position.x,2,g.position.z,24,0xc8a860,7,.6,12)},g);
+      run.gol=me;
     }
     if(armored)shockRing(P.x,P.z,3,0xaecbff,.4);
     boom(cx,cz,2.5,c.col,.4);netFx('nova',{x:cx,z:cz,r:3,c:c.col});

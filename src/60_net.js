@@ -124,12 +124,12 @@ function applyPeerInfo(p,m){
   p.lv=lv;if(p.label)p.label.el.textContent=peerLabel(p);
   return changed;
 }
-function dropPeer(k){const p=NET.peers[k];if(!p)return;if(p.model)entG.remove(p.model.g);if(p.label)p.label.remove();delete NET.peers[k]}
+function dropPeer(k){const p=NET.peers[k];if(!p)return;dropGolems(p);if(p.model)entG.remove(p.model.g);if(p.label)p.label.remove();delete NET.peers[k]}
 function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
   p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
-  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
+  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.gl=golemData(d.gl);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
   if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
@@ -237,8 +237,9 @@ function netUpdate(dt){
     const now=performance.now();
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
-      if(moved||now-NET.lastPos>(DU.on?200:1200)){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0})}
+      const gl=myGolems();
+      if(moved||(NET.hadGol&&!gl)||now-NET.lastPos>(DU.on||gl?200:1200)){NET.hadGol=!!gl;NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -251,6 +252,33 @@ function netUpdate(dt){
     p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
     if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
+    peerGolems(p,dt,duelShows(k));
   }
 }
-function netClearModels(){for(const k in NET.peers){const p=NET.peers[k];if(p.model){entG.remove(p.model.g);p.model=null}if(p.label){p.label.remove();p.label=null}}}
+/* ---------- golems are visible to others too: the owner sends [armored, [x,z,facing,swing]...] with his position ---------- */
+function myGolems(){
+  let armored=0;const l=[];
+  for(const a of ACTS){const o=a.gol;if(!o)continue;armored=o.armored?1:0;l.push([+o.g.position.x.toFixed(1),+o.g.position.z.toFixed(1),+o.g.rotation.y.toFixed(2),+o.swing.toFixed(1)])}
+  return l.length?[armored,l.slice(-5)]:null;
+}
+function golemData(a){
+  if(!Array.isArray(a)||!Array.isArray(a[1]))return null;
+  const l=a[1].slice(0,5).filter(q=>Array.isArray(q)&&[0,1,2,3].every(i=>isFinite(q[i])));
+  return l.length?{a:a[0]?1:0,l,at:performance.now()}:null;
+}
+function dropGolems(p){if(p.gol){for(const o of p.gol)entG.remove(o.g);p.gol=null}}
+function peerGolems(p,dt,show){
+  const d=p.gl;
+  if(!d||performance.now()-d.at>2500){dropGolems(p);return}
+  if(p.gol&&(p.gol.length!==d.l.length||p.golA!==d.a))dropGolems(p);
+  if(!p.gol){p.golA=d.a;p.gol=d.l.map(q=>{const o=golemBuild(!!d.a);o.g.position.set(q[0],0,q[1]);o.g.scale.setScalar(d.l.length>3?.75:1);entG.add(o.g);o.swing=0;o.t=0;o.seen=0;return o})}
+  const k=1-Math.exp(-dt*10);
+  p.gol.forEach((o,i)=>{
+    const q=d.l[i],dx=q[0]-o.g.position.x,dz=q[1]-o.g.position.z,walk=Math.hypot(dx,dz)>.15;
+    o.g.position.x+=dx*k;o.g.position.z+=dz*k;o.g.rotation.y=lerpAng(o.g.rotation.y,q[2],k);o.g.visible=show;
+    if(o.seen!==d.at){o.seen=d.at;if(q[3]>.5&&o.swing<.3){o.swing=q[3];if(show){const x=q[0]+Math.sin(q[2])*2,z=q[1]+Math.cos(q[2])*2;shockRing(x,z,3,0xc8a860,.35);burst(x,.5,z,10,0xc8a860,6,.4,10)}}}
+    o.swing=Math.max(0,o.swing-dt*3);o.t+=dt;const step=walk?Math.sin(o.t*6+i)*.35:0;
+    o.arms.forEach((a,j)=>a.rotation.x=-o.swing*2.4+(j?-step:step)*.4*(1-o.swing));o.legs.forEach((l,j)=>l.rotation.x=j?step:-step);
+  });
+}
+function netClearModels(){for(const k in NET.peers){const p=NET.peers[k];dropGolems(p);if(p.model){entG.remove(p.model.g);p.model=null}if(p.label){p.label.remove();p.label=null}}}

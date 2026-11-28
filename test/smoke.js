@@ -602,6 +602,10 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.openParty();g.P.x=0;g.P.z=0;g.duelSpectate('갑');g.frame(.03);g.duelUpdate(.1);T(g.DU.on&&g.DU.role==='spec'&&Math.abs(g.P.x)<20,'spectate from town');
     g.onDuelEnd({id:'spec-test',w:'갑',l:'을',counted:1});for(let i=0;i<45;i++)g.duelUpdate(.1);T(!g.DU.on,'spectator leaves when duel ends');
     delete N.peers['갑'];delete N.peers['을'];
+    {g.skReset();g.SK.s_q({a:{x:0,z:1},atk:10,m:1,col:0xffffff});const gl=g.myGolems();T(gl&&gl[1].length>=1,'own golems are sent to others');
+      N.peers['소환']={got:true,x:0,z:0,tx:0,tz:0,f:0,tf:0,hp:100,lv:40,cls:'summoner',job:'summoner',anim:0,live:true};
+      g.onPos({n:'소환',x:1,z:1,f:0,m:0,h:100,d:0,gl});g.netUpdate(.05);T(N.peers['소환'].gol&&N.peers['소환'].gol.length===gl[1].length,'other players see the golems');
+      g.onPos({n:'소환',x:1,z:1,f:0,m:0,h:100,d:0,gl:0});g.netUpdate(.05);T(!N.peers['소환'].gol,'golems disappear for others when gone');delete N.peers['소환'];g.skReset()}
     N.on=on0;N.ch=ch0;N.party=party0;delete N.peers['상대'];
   }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
