@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다. 사거리 12m, 10레벨마다 +1.5m. 사거리 안에 적이 없으면 바라보는 쪽(PC는 마우스 쪽)으로 돌진합니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다. 12m 안에 적이 없으면 바라보는 쪽(PC는 마우스 쪽)으로 돌진합니다. 돌진 거리 12m, 10레벨마다 +1.5m.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -278,7 +278,7 @@ const SK={
   },
   /* 암살자 */
   r_q(c){
-    const ch=c.charge==null?1:c.charge,m=aimMob(rqRange());
+    const ch=c.charge==null?1:c.charge,m=aimMob(12);
     if(!m){   // nothing in reach: dash where you look (touch) or toward the mouse (PC)
       let dx=Math.sin(P.face),dz=Math.cos(P.face);
       if(!(IS_TOUCH||mv.on)){const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);if(l>.01){dx=mx/l;dz=mz/l}}
@@ -700,7 +700,7 @@ function holyProc(m,base){
 /* assassin Q is a charge gauge: usable at any charge (spammable), power grows with the charge, a full gauge gets a bonus */
 const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;
 const qPower=ch=>ch>=1?1.4:.08+.82*ch;
-const rqRange=(lv=SES.pf.level)=>12+Math.floor(lv/10)*1.5;   // assassin Q reach grows every 10 levels
+const rqRange=(lv=SES.pf.level)=>12+Math.floor(lv/10)*1.5;   // assassin Q dash distance grows every 10 levels (target search stays 12m)
 /* returns false when the skill could not be used */
 function castFx(sk){
   const atk=effAtk(),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
