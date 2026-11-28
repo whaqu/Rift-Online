@@ -1583,9 +1583,9 @@ async function rpc(fn,args){
 const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
 /* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, zone id (= weapon grade), side runes, potion] (area rune = dungeon id) */
 const DGSRV={
-  meadow:[8,4000,1,['holy','ice'],'hp1'],forest:[14,10000,2,['dark','meadow'],'hp1'],ember:[22,18000,3,['fire','thunder'],'hp2'],
-  crystal:[30,30000,4,['ice','dark'],'hp2'],storm:[48,90000,5,['thunder','fire'],'hp3'],void:[62,150000,6,['dark','crystal'],'hp3'],
-  snow:[72,200000,7,['ice','crystal'],'hp3'],desert:[80,250000,8,['holy','fire'],'hp3'],sky:[90,330000,9,['holy','storm'],'hp3']
+  meadow:[8,800,1,['holy','ice'],'hp1'],forest:[14,2000,2,['dark','meadow'],'hp1'],ember:[22,3600,3,['fire','thunder'],'hp2'],
+  crystal:[30,6000,4,['ice','dark'],'hp2'],storm:[48,18000,5,['thunder','fire'],'hp3'],void:[62,30000,6,['dark','crystal'],'hp3'],
+  snow:[72,40000,7,['ice','crystal'],'hp3'],desert:[80,50000,8,['holy','fire'],'hp3'],sky:[90,66000,9,['holy','storm'],'hp3']
 };
 const LocalAPI=(()=>{
   const KEY='rw_local_db_v1';
@@ -1718,7 +1718,7 @@ const LocalAPI=(()=>{
       const rk=clamp(rank|0||5,1,5),[,base,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
-        if(rnd01()<.5){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        if(rnd01()<.2){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
         else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
