@@ -33,6 +33,8 @@ function initTouch(){
 }
 function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
 
+/* typing in a text box (on-screen keyboard) is not a sign that a real keyboard is being used */
+const isTyping=t=>!!t&&(t.tagName==='INPUT'||t.tagName==='TEXTAREA'||t.isContentEditable===true);
 /* ---- switch between touch UI and keyboard/mouse UI depending on the input actually used ---- */
 function setTouchMode(on){
   if(on===IS_TOUCH)return;
@@ -41,12 +43,12 @@ function setTouchMode(on){
   if(on)initTouch();
   if(!save.custom){save.auto=on;writeSave()}
   if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}
-  if(!on)try{canvas.focus()}catch(e){}
+  if(!on&&!isTyping(document.activeElement))try{canvas.focus()}catch(e){}
 }
 {
   let lastT=0;
   window.addEventListener('keydown',e=>{
-    if(!IS_TOUCH)return;if(e.isComposing||e.keyCode===229||!e.code||e.key==='Unidentified')return;
+    if(!IS_TOUCH||isTyping(e.target)||isTyping(document.activeElement))return;if(e.isComposing||e.keyCode===229||!e.code||e.key==='Unidentified')return;
     if(['Shift','Control','Alt','Meta','CapsLock'].includes(e.key))return;
     if(performance.now()-lastT<800)return;setTouchMode(false);
   },true);
