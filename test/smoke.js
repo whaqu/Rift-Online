@@ -512,7 +512,10 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     { // sky temple: two waves in every room before the gate opens
       g.UI.close();g.dgEnter('sky');g.P.dead=false;let n=0,prev='';
       for(let i=0;i<200&&D.ph!=='boss';i++){g.P.iframes=1e9;for(const m of g.MOBS.slice())if(m.dg&&!m.dead&&m.type!=='dgboss')g.applyMobDmg(m,1e9,null,g.SES.name);if(D.ph==='advance'){g.P.x=D.cx;g.P.z=D.cz-300}step(60);if(D.ph==='wave'&&prev!=='wave')n++;prev=D.ph}
-      T(n===8&&D.ph==='boss','sky dungeon runs 8 waves then boss ('+n+' '+D.ph+')');g.dgLeave('x');step(2);
+      T(n===8&&D.ph==='boss','sky dungeon runs 8 waves then boss ('+n+' '+D.ph+')');
+      const P=g.P,run=()=>{P.dead=false;P.hp=1e9;P.hp=P.maxHp||P.hp;D.curseT=0.001;const h=P.hp;g.frame(.016);return h-P.hp};
+      P.hb=null;const bare=run();P.hb={ar:{t:20,pw:1}};const buffed=run();P.hb=null;
+      T(bare>buffed*3&&buffed>0,'sky boss curse needs a holy buff ('+Math.round(bare)+'/'+Math.round(buffed)+')');g.dgLeave('x');step(2);
     }
     const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});

@@ -126,7 +126,7 @@ function tickPlayer(dt){
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
   const rgn=S.regen+(P.hb&&hbOn('my')?.025:0);
-  if(rgn>0&&P.hp<S.maxHp&&!P.dead){P.regenAcc+=S.maxHp*rgn*dt;if(P.regenAcc>=1){const v=Math.floor(P.regenAcc);P.regenAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+  if(rgn>0&&P.hp<S.maxHp&&!P.dead){P.regenAcc+=S.maxHp*rgn*dt*dgHealMul();if(P.regenAcc>=1){const v=Math.floor(P.regenAcc);P.regenAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
   if(inTown(P.x,P.z)&&P.hp<S.maxHp&&!P.dead)P.hp=Math.min(S.maxHp,P.hp+S.maxHp*.12*dt);
   if(!P.dead&&P.hp<S.maxHp*.25){P.beatT=(P.beatT||0)-dt;if(P.beatT<=0){P.beatT=1.1;sfx('beat',.8)}}
   if(P.dead){P.deadT-=dt;if(P.deadT<=0)respawn()}
@@ -278,7 +278,7 @@ function doDash(){
 
 /* ----- health ----- */
 function healP(n){
-  const before=P.hp;P.hp=Math.min(S.maxHp,P.hp+n);const g=Math.round(P.hp-before);
+  n*=dgHealMul();const before=P.hp;P.hp=Math.min(S.maxHp,P.hp+n);const g=Math.round(P.hp-before);
   if(g>0){dmgNum(P.x,3,P.z,'+'+g,'heal');burst(P.x,1.2,P.z,8,0x6bffb0,3,.6,-1,.8)}
 }
 function hurtPlayer(dmg,sx,sz){

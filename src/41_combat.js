@@ -48,7 +48,7 @@ function dealMob(m,base,o){
   if(m.duel){duelHitOut(m,d);if(kk.kb)duelPushOut(kk.kx,kk.kz,kk.kb*.22);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
-  if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+  if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp*dgHealMul();if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
   if(o.noProc)return;
   if(S.burnLv>0)burnMob(m,effAtk()*.25*S.burnLv);
   if(S.chainP>0&&Math.random()<S.chainP){
@@ -126,9 +126,11 @@ function updateEB(dt){
 /* ---------------- kill rewards (server-verified) ---------------- */
 const KB={};let KBn=0,KBt=0,claiming=false;
 function registerKill(m){
-  const k=m.zid+'|'+m.ml+'|'+(m.elite?1:0)+'|'+(m.golden?1:0);KB[k]=(KB[k]||0)+1;KBn++;KBt=Math.max(KBt,0);comboHit(m);
+  /* elite-only dungeons: an elite counts as 3 normal kills, so rewards stay about what the old crowds gave */
+  const eo=m.elite&&DG.on&&DGDEF[DG.id].elite,el=m.elite&&!eo,w=eo?3:1;
+  const k=m.zid+'|'+m.ml+'|'+(el?1:0)+'|'+(m.golden?1:0);KB[k]=(KB[k]||0)+w;KBn+=w;KBt=Math.max(KBt,0);comboHit(m);
   if(m.golden){UI.feedText('황금 슬라임 처치! 골드가 쏟아집니다','#ffd24a');shockRing(m.x,m.z,5,0xffd24a,.6);for(let i=0;i<40;i++)emit(m.x,1,m.z,rnd(-7,7),rnd(5,13),rnd(-7,7),1.1,0xffd24a,22);sfx('level')}
-  const gold=Math.floor((2+m.ml*1.6)*(m.elite?5:1)),xp=(6+m.ml*4)*(m.elite?6:1);
+  const gold=Math.floor((2+m.ml*1.6)*(el?5:1))*w,xp=(6+m.ml*4)*(el?6:1)*w;
   dmgNum(m.x,m.r*1.5+2.2,m.z,'+'+fmtN(xp)+' XP','xp');
   const n=Math.min(8,Math.ceil(gold/6));for(let i=0;i<n;i++)emit(m.x,1,m.z,rnd(-4,4),rnd(4,9),rnd(-4,4),.8,0xffd24a,22);
   if(KBn>=12)flushKills();
