@@ -720,13 +720,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         T(mm.hp<1e12&&Math.abs(g.P.x-(x0+19))<1.5&&!g.P.qRun,'then leaps 16m through the enemy '+(g.P.x-x0).toFixed(1));
         const r=g.SK.r_q({atk:100,a:{x:-1,z:0},col:0,m:1,sk:{}});T(r===false&&!g.P.leap,'assassin Q waits between dashes');g.P.qNext=0;
         const mid=g.qLineMult(0),end=g.qLineMult(8);T(mid===2&&end===.5&&g.qLineMult(-8)===.5&&g.qLineMult(4)>end&&g.qLineMult(4)<mid,'damage peaks in the middle of the leap');}
-      {g.P.leap=null;g.keys.q=true;const px=g.P.x,pz=g.P.z;const other=g.makeMobObj(99003,'slime',px-3.5,pz,1,false,false,false);if(!g.MOBS.includes(other))g.MOBS.push(other);other.spawning=false;other.hp=other.maxHp=1e12;
-        mm.x=px+3.5;mm.z=pz;mm.hp=1e12;mm.qT=other.qT=0;for(let k=0;k<4;k++){g.P.x=px;g.P.z=pz;g.P.qNext=0;g.P.leap=null;g.P.qChain=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});g.P.qChain=false;for(let i=0;i<18;i++){g.P.qRun=false;g.movePlayer(.05)}}
-        T(mm.hp<1e12&&other.hp<1e12&&mm.qT>0&&other.qT>0&&Math.abs(mm.qT-other.qT)===1,'held assassin Q weaves between enemies');g.keys.q=false;g.P.leap=null;g.P.qRun=false;g.P.qNext=0;g.P.x=px;g.P.z=pz;}
+      {g.P.leap=null;g.P.qNext=0;g.P.qLast=null;const px=g.P.x,pz=g.P.z;mm.x=px+5;mm.z=pz;mm.hp=1e12;g.keys.q=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<40;i++)g.movePlayer(.05);const h=mm.hp;
+        mm.x=g.P.x+5;mm.z=g.P.z;for(let i=0;i<40;i++)g.movePlayer(.05);T(h<1e12&&mm.hp===h&&!g.P.leap&&!g.P.glide,'holding assassin Q attacks only once');g.keys.q=false;g.P.x=px;g.P.z=pz;g.P.qArm=null;}
+      {g.MOBS.splice(0);const bx=g.P.x,bz=g.P.z;g.P.x=0;g.P.z=0;g.P.leap=null;g.P.glide=null;g.P.stunT=0;g.P.spinT=0;g.P.dead=false;g.UI.modal=null;g.P.qNext=0;g.keys.q=true;const c0=g.SES.pf.cls,j0=g.SES.pf.job;g.SES.pf.cls=g.SES.pf.job='rogue';
+        g.trySkill('q');for(let i=0;i<4;i++)g.movePlayer(.05);const one=!g.P.glide;g.trySkill('q');for(let i=0;i<10;i++)g.movePlayer(.05);
+        T(one&&g.P.glide&&g.P.glide.h>2,'assassin can double tap and glide in town');g.keys.q=false;for(let i=0;i<30;i++)g.movePlayer(.05);g.P.glide=null;g.P.qArm=null;g.P.qLast=null;g.P.x=bx;g.P.z=bz;g.SES.pf.cls=c0;g.SES.pf.job=j0;}
       {g.MOBS.splice(0);g.P.leap=null;g.P.stunT=0;g.keys.q=true;g.P.qArm=g.P.qClock||0;const x1=g.P.x,z1=g.P.z;g.P.z=z1+40;const z2=g.P.z;for(let i=0;i<10;i++)g.movePlayer(.05);
         const up=g.P.glide&&g.P.glide.h>2,moved=Math.hypot(g.P.x-x1,g.P.z-z2);T(up&&moved>2,'double tap and hold glides '+moved.toFixed(1));
         const v=g.makeMobObj(99004,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(v))g.MOBS.push(v);v.spawning=false;v.hp=v.maxHp=1e12;g.qPlunge({col:0});for(let i=0;i<6;i++)g.movePlayer(.05);
-        T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.P.qRun=false;g.MOBS.splice(0);
+        T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.MOBS.splice(0);
         {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<6;i++)g.movePlayer(.05);const h0=g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);const h1=g.P.glide.h;
           g.keys.q=false;for(let i=0;i<4;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h,landing=!!(g.P.glide&&g.P.glide.land>0);g.keys.q=true;for(let i=0;i<7;i++)g.movePlayer(.05);const h3=g.P.glide&&g.P.glide.h;
           g.keys.q=false;for(let i=0;i<40;i++)g.movePlayer(.05);const down=!g.P.glide;
@@ -743,7 +745,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       {g.keys.q=true;g.keyReleased({key:'ㅂ',code:'KeyQ'});T(g.keyName({key:'ㅈ',code:'KeyW'})==='w'&&g.keyName({key:'Process',code:'KeyD'})==='d'&&g.keyName({key:' ',code:'Space'})===' ','movement keys work with the Korean IME on');const a=g.keys.q;g.keys.q=true;g.mv.q=true;g.releaseAll();T(a===false&&!g.keys.q&&!g.mv.q,'Q never stays held after release');}
       {g.mv.q=true;g.mv.qt=7;g.qTouchCheck({touches:[{identifier:3},{identifier:7}]});const a=g.mv.q;g.qTouchCheck({touches:[{identifier:3}]});T(a===true&&g.mv.q===false&&g.mv.qt===null,'a lost Q finger is released while the joystick moves');}
       T(g.isTyping({tagName:'INPUT'})&&!g.isTyping({tagName:'CANVAS'})&&!g.isTyping(null),'typing in a box keeps touch mode');
-        g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}
+        g.keys.q=false;g.movePlayer(.05);T(r===false&&d<.5&&!g.P.leap,'holding assassin Q without a target does not run '+d.toFixed(1));}
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
