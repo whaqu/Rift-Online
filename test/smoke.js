@@ -567,6 +567,10 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
     T([c,a,b].sort(g.byValue).map(i=>i.id).join()==='2,1,3','inventory sorted by value');
   }
+  { // assassin Q charge gauge
+    g.P.cdMax.q=3;g.P.cd.q=1.5;T(Math.abs(g.qCharge()-.5)<1e-9,'q charge half');g.P.cd.q=0;T(g.qCharge()===1,'q charge full');
+    T(g.qPower(1)===1.4&&g.qPower(.2)<g.qPower(.6)&&g.qPower(.99)<1,'q power grows with charge');
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

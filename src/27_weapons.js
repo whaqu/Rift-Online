@@ -101,7 +101,7 @@ const WLOOK={
   rogue(o,ty,t,m){
     const k=grp(0,0,0,o.weapon),k2=wsecond(o);
     for(const q of[k,k2]){
-      if(ty===0){wblade(q,m,.85,.09,.1,.035);BX(.26,.06,.08,m.edge,0,.08,0,q);CY(.035,.035,.22,m.grip,0,-.05,0,q,6)}
+      if(ty===0){if(q===k2)continue;wblade(q,m,1.45,.085,.12,.032);BX(.28,.06,.12,m.edge,0,.1,0,q);CY(.038,.038,.34,m.grip,0,-.09,0,q,8)}
       else if(ty===1){CY(.04,.04,.8,m.grip,0,.05,0,q,6);
         const tor=mesh(new THREE.TorusGeometry(.5,.045,5,14,Math.PI*.85),m.blade,0,.5,.5,q);tor.rotation.y=Math.PI/2;
         if(t>=3){const e=mesh(new THREE.TorusGeometry(.52,.018,4,14,Math.PI*.85),m.edge,0,.5,.5,q);e.rotation.y=Math.PI/2}

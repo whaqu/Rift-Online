@@ -450,8 +450,16 @@ UI.hudTick=function(dt){
   domW($('shfill'),Math.min(100,P.shield/S.maxHp*100).toFixed(1)+'%');
   for(const k of['dash','q','e','r','f']){
     const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1,sy='scaleY('+clamp(cd/mx,0,1).toFixed(3)+')';
+    const sk=k==='q'?skillOf('q'):null,tb=$('tb-'+k);
+    if(sk&&sk.fx==='r_q'){   // round charge gauge
+      const ch=qCharge(),deg=Math.round(ch*360),full=ch>=1,
+        bg='conic-gradient(rgba(255,74,122,.28) '+deg+'deg, rgba(4,5,10,'+(ch<Q_MIN?.82:.62)+') '+deg+'deg)';
+      for(const b of[el,tb]){if(!b)continue;const m=domQ(b,'.cdm');if(!m)continue;if(m._bg!==bg){m._bg=bg;m.style.background=bg}domX(m,full?'scaleY(0)':'scaleY(1)')}
+      domT(domQ(el,'.cdt'),full?'':Math.floor(ch*100)+'%');continue;
+    }
+    for(const b of[el,tb]){const m=b&&domQ(b,'.cdm');if(m&&m._bg){m._bg='';m.style.background=''}}
     domX(domQ(el,'.cdm'),sy);domT(domQ(el,'.cdt'),cd>0?String(Math.ceil(cd)):'');
-    const tb=$('tb-'+k);if(tb)domX(domQ(tb,'.cdm'),sy)
+    if(tb)domX(domQ(tb,'.cdm'),sy)
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
   {const zb=$('zone');const hide=!!DG.on;if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}

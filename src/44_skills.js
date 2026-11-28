@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','게이지가 20% 이상이면 사용(다 찰수록 강함, 가득이면 특히 강함). 처치하면 즉시 가득. 적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -261,10 +261,10 @@ const SK={
   },
   /* 암살자 */
   r_q(c){
-    const m=aimMob(12);if(!m){UI.toast('가까운 대상이 없습니다');return false}
+    const ch=c.charge==null?1:c.charge,m=aimMob(12);if(!m){UI.toast('가까운 대상이 없습니다');return false}
     const bx=m.x-Math.sin(m.face||0)*(m.r+1),bz=m.z-Math.cos(m.face||0)*(m.r+1),amb=P.stealth>0;
-    burst(P.x,1.2,P.z,14,0x8a6ad0,6,.4,0);boltFx(P.x,P.z,bx,bz,0x8a6ad0);blinkTo(bx,bz);P.face=Math.atan2(m.x-P.x,m.z-P.z);P.stealth=0;P.iframes=Math.max(P.iframes,.4);
-    sHit(c,m,amb?10:4.2,{kb:4,crit:true,big:true});
+    burst(P.x,1.2,P.z,14,0x8a6ad0,6,.4,0);boltFx(P.x,P.z,bx,bz,0x8a6ad0);blinkTo(bx,bz);P.face=Math.atan2(m.x-P.x,m.z-P.z);P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);
+    sHit(c,m,(amb?10:4.2)*qPower(ch),{kb:4,crit:true,big:true});
     slashArc(m.x,m.z,P.face+1.6,3,2,c.col,.25);slashArc(m.x,m.z,P.face-1.6,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0});
     act(1.5,()=>{if(!m.dead)return;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
@@ -650,9 +650,13 @@ function holyProc(m,base){
       shockRing(m.x,m.z,3.4,0xffe27a,.3);flashDisc(m.x,m.z,2.6,0xfff2a0,.3);burst(m.x,1.2,m.z,10,0xffe27a,6,.4,6)}}
   if(ar){const k=hbOn('ar')?1:.7;P.shield=Math.min(S.maxHp*.4,P.shield+S.maxHp*.012*k*pw);if(Math.random()<.25)shockRing(P.x,P.z,2.2,0x9fd0ff,.3)}
 }
+/* assassin Q is a charge gauge: usable from Q_MIN, power grows with the charge, a full gauge gets a bonus */
+const Q_MIN=.2;
+const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;
+const qPower=ch=>ch>=1?1.4:.15+.75*ch;
 /* returns false when the skill could not be used */
 function castFx(sk){
-  const atk=effAtk(),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk};
+  const atk=effAtk(),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
   const ambush=P.stealth>0&&sk.fx!=='r_q'&&sk.fx!=='r_e';
   if(ambush)c.atk*=2.5;
   if(SK[sk.fx](c)===false)return false;
