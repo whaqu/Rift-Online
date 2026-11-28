@@ -413,6 +413,27 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
   T(Object.keys(g.RUNES).every(k=>{const s=g.runeFrom(k);return s&&!s.includes('undefined')&&(k==='all'||s.endsWith(' 던전'))})&&g.runeFrom('meadow').startsWith('초원')&&g.runeFrom('fire').includes('화염 황무지'),'every rune names its region');
+  // NPC quests
+  {
+    const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}};
+    await g.API.register('퀘스트맨','pw1234','warrior');g.enterGame();step(3);
+    const qn=g.WORLD.npcs.filter(n=>n.kind==='quest');
+    T(qn.length===3&&qn.every(n=>g.WORLD.obst.filter(o=>Math.hypot(o.x-n.x,o.z-n.z)<o.r+.8-.01).length===1),'three quest NPCs stand clear of other objects');
+    g.P.x=qn[0].x;g.P.z=qn[0].z+1.5;g.interact();T(g.UI.modal==='길드장 아론','talking opens the quest window');
+    T(g.questMark('story')==='❗ ','new quest mark');
+    await g.UI.handlers.qsacc();await sleep(20);T(g.SES.pf.quest.story.cur.k==='zone'&&g.SES.pf.quest.story.cur.t===30,'story accepted');
+    const n=g.SES.name,t=g.SES.token;
+    T(code(()=>A.quest(n,t,'story','claim'))==='NOT_READY'&&code(()=>A.quest(n,t,'story','accept'))==='QUEST_ACTIVE','no early claim or double accept');
+    await g.API.call('claim',[{z:1,ml:3,n:30}]);T(g.SES.pf.quest.story.cur.p===30&&g.questMark('story')==='❓ ','hunting fills the quest');
+    const g0=g.SES.pf.gold;await g.UI.handlers.qsend();await sleep(20);T(g.SES.pf.gold===g0+500&&g.SES.pf.quest.story.i===1&&!g.SES.pf.quest.story.cur,'reward paid once');
+    g.UI.close();
+    for(let i=0;i<3;i++){await g.API.call('quest','herb','accept');const c=g.SES.pf.quest.herb.cur;await sleep(10);
+      A.quest;await g.API.call('gather',c.k==='weed'?c.t:0,c.k==='wood'?c.t:0);await sleep(4000);
+      if(g.SES.pf.quest.herb.cur.p<c.t)await g.API.call('gather',c.k==='weed'?c.t:0,c.k==='wood'?c.t:0);
+      await g.API.call('quest','herb','claim')}
+    T(g.SES.pf.quest.herb.n===3&&code(()=>A.quest(n,t,'herb','accept'))==='QUEST_LIMIT','gathering quests: three a day');
+    g.openDaily('npc');T(!!g.UI.modal,'quest overview tab');g.UI.close();
+  }
   // semi-developer account: fixed Lv.65 storm +5 gear, nothing in or out, job switching only
   {
     const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}},N='1테스트';

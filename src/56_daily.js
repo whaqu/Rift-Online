@@ -6,12 +6,57 @@ function dqText(q){
   if(q.k==='elite')return '엘리트 몬스터 '+q.t+'마리 처치';
   return '물약 '+q.t+'개 사용';
 }
+/* ---------- NPC quests ---------- */
+const questOf=line=>(SES.pf&&SES.pf.quest&&SES.pf.quest[line])||(line==='story'?{i:0,cur:null}:{n:0,cur:null});
+const questReward=q=>'골드 '+fmtN(q.g)+' · 경험치 '+fmtN(q.x)+' · '+POTIONS[q.pot].name+' ×'+q.pn;
+const questBar=c=>'<div class="row sp"><b>'+questText(c)+'</b><span class="'+(questDone(c)?'grn':'dim')+'">'+c.p+' / '+c.t+'</span></div><div class="qbar"><i style="width:'+Math.min(100,c.p/c.t*100)+'%"></i></div>';
+/* mark over an NPC: ! = something to take, ? = ready to report */
+function questMark(line){
+  const s=questOf(line),lv=SES.pf?SES.pf.level:1;
+  if(s.cur)return questDone(s.cur)?'❓ ':'';
+  const d=line==='story'?questDef(line,s.i,lv):s.n<QUEST_DAY?questDef(line,s.n,lv):null;
+  return d&&(!d.req||lv>=d.req)?'❗ ':'';
+}
+function questMarks(){for(const n of WORLD.npcs)if(n.kind==='quest'){const t=questMark(n.line)+n.name;if(n._t!==t){n._t=t;n.label.el.textContent=t}}}
+function openQuest(line){
+  const info=QUEST_NPC[line];
+  UI.page(info.who,()=>{
+    const s=questOf(line),lv=SES.pf.level,c=s.cur;
+    const d=c||(line==='story'?questDef(line,s.i,lv):s.n<QUEST_DAY?questDef(line,s.n,lv):null);
+    let h='<div class="dim" style="margin-bottom:8px">“'+(line==='story'&&d?QUEST_STORY[d.z-1][d.k==='dungeon'?1:0]:info.hi)+'”</div>';
+    h+='<div class="dim" style="margin-bottom:6px">'+info.title+' · '+(line==='story'?Math.min(18,s.i+1)+' / 18장':'오늘 완료 '+s.n+' / '+QUEST_DAY)+'</div>';
+    if(!d)return h+'<div class="card">'+(line==='story'?'모든 이야기를 끝냈네. 고맙네, 영웅이여.':'오늘 의뢰는 모두 끝났습니다. 내일 다시 오세요.')+'</div>';
+    h+='<div class="card">'+(c?questBar(c):'<b>'+questText(d)+'</b>')+'<div class="dim" style="margin-top:6px">보상: '+questReward(d)+'</div><div style="text-align:right;margin-top:8px">';
+    if(!c)h+=d.req&&lv<d.req?'<span class="red">Lv.'+d.req+'부터 받을 수 있습니다</span>':'<button class="btn" data-a="qsacc">수락</button>';
+    else h+='<button class="btn" data-a="qsend" '+(questDone(c)?'':'disabled')+'>'+(questDone(c)?'보고하고 보상 받기':'진행 중')+'</button>';
+    return h+'</div></div>';
+  });
+  const act=async(a,msg)=>{
+    const lv=SES.pf.level;await flushKills();const r=await guarded(()=>API.call('quest',line,a));if(!r)return;
+    sfx(a==='claim'?'level':'equip');UI.toast(msg);if(r.gold)UI.feedText('+'+fmtN(r.gold)+' G','#ffd24a');
+    if(SES.pf.level>lv&&P)onLevelUp();UI.refreshHud();UI.rerender&&UI.rerender();
+  };
+  UI.handlers.qsacc=()=>act('accept','퀘스트를 받았습니다');
+  UI.handlers.qsend=()=>act('claim','퀘스트 완료!');
+}
+/* tell the player once when a quest becomes ready to report */
+const _qsSeen={};
+function questWatch(){
+  for(const line in QUEST_NPC){const c=questOf(line).cur,d=questDone(c),k=SES.pf.name+line;
+    if(d&&_qsSeen[k]===false){UI.toast(QUEST_NPC[line].who+'에게 보고하세요: '+questText(c),3200);sfx('level')}
+    _qsSeen[k]=c?d:undefined;}
+  questMarks();
+}
 function openDaily(tab0){
   let tab=tab0||'daily';
   UI.page('출석 · 일일 퀘스트',()=>{
     const pf=SES.pf,dl=pf.daily||{ready:false,streak:0,day:1},dq=pf.dq||{q:[],b:false};
-    let h='<div class="tabs"><div class="tab '+(tab==='daily'?'on':'')+'" data-a="dtab" data-v="daily">출석 보상'+(dl.ready?' <span class="pdot"></span>':'')+'</div><div class="tab '+(tab==='quest'?'on':'')+'" data-a="dtab" data-v="quest">일일 퀘스트'+(questReady(dq)?' <span class="pdot"></span>':'')+'</div></div>';
-    if(tab==='daily'){
+    let h='<div class="tabs"><div class="tab '+(tab==='daily'?'on':'')+'" data-a="dtab" data-v="daily">출석 보상'+(dl.ready?' <span class="pdot"></span>':'')+'</div><div class="tab '+(tab==='npc'?'on':'')+'" data-a="dtab" data-v="npc">마을 의뢰</div><div class="tab '+(tab==='quest'?'on':'')+'" data-a="dtab" data-v="quest">일일 퀘스트'+(questReady(dq)?' <span class="pdot"></span>':'')+'</div></div>';
+    if(tab==='npc'){
+      h+='<div class="dim" style="margin-bottom:8px">마을의 NPC에게 가서 받고, 끝나면 돌아가 보고합니다.</div><div class="grid">';
+      for(const line in QUEST_NPC){const c=questOf(line).cur;h+='<div class="card"><div class="dim">'+QUEST_NPC[line].who+' · '+QUEST_NPC[line].title+'</div>'+(c?questBar(c)+(questDone(c)?'<div class="grn">돌아가서 보고하세요</div>':''):'<div>'+(questMark(line)?'❗ 새 의뢰가 있습니다':'받은 의뢰가 없습니다')+'</div>')+'</div>'}
+      h+='</div>';
+    }else if(tab==='daily'){
       h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><div><b style="font-size:16px">연속 출석 '+dl.streak+'일</b></div><span class="dim">7일 주기 · 하루 거르면 처음부터</span></div></div><div class="dgrid">';
       for(let d=1;d<=7;d++){
         const done=dl.ready?d<dl.day:d<=dl.day,cur=dl.ready&&d===dl.day;
@@ -44,9 +89,10 @@ function dailyDot(){
 }
 function renderTrack(){
   const el=$('qtrack');if(!el||!SES.pf||!SES.pf.dq)return;const dq=SES.pf.dq;
-  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'done':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('');
+  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'done':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('')
+    +Object.keys(QUEST_NPC).map(l=>{const c=questOf(l).cur;return c?'<div class="'+(questDone(c)?'ok':'')+'"><span>★ '+questText(c)+'</span><em>'+(questDone(c)?'보고':c.p+'/'+c.t)+'</em></div>':''}).join('');
 }
-{const _rh=UI.refreshHud;UI.refreshHud=function(){_rh.apply(this,arguments);try{dailyDot();renderTrack()}catch(e){}}}
+{const _rh=UI.refreshHud;UI.refreshHud=function(){_rh.apply(this,arguments);try{dailyDot();renderTrack();questWatch()}catch(e){}}}
 function dailyOnEnter(){setTimeout(()=>{try{if(SES.pf&&SES.pf.daily&&SES.pf.daily.ready&&!UI.modal&&G.mode==='play')openDaily('daily')}catch(e){}},2200)}
 
 /* ----- combo / events / clock ----- */

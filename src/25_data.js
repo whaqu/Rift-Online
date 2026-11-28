@@ -252,6 +252,37 @@ function runeFx(s){
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
 /* rune effect of an equipped weapon, including the same-region bonus */
 function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null;return o&&runeMatch(w.base,w.rune)?scaleFx(o,RUNE_MATCH):o}
+const xpBase=l=>30+7*l*l;
+/* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
+const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
+/* NPC quests (server: rw_quest). story: 18 one-time chapters (hunt, then dungeon, per region); bounty / herb: 3 a day */
+const QUEST_NPC={story:{who:'길드장 아론',title:'이야기 퀘스트',hi:'리프트가 열린 뒤로 길드는 늘 손이 모자라네. 자네가 맡아 주겠나?'},
+  bounty:{who:'현상금꾼 카일',title:'현상금 의뢰',hi:'목에 값이 붙은 녀석들이 있어. 하루 세 건까지만 줄게.'},
+  herb:{who:'약초꾼 미나',title:'채집 의뢰',hi:'재료가 다 떨어졌어요. 좀 도와주실래요?'}};
+const QUEST_STORY=[['초원에 이상한 균열이 생겼네. 주변 몬스터부터 정리해 주게.','균열의 근원은 초원 동굴이야. 우두머리를 쓰러뜨리게.'],
+  ['망자의 숲에서 죽은 자들이 일어서고 있네.','묘지 깊은 곳에서 그들을 깨우는 자가 있어.'],['황무지의 불길이 마을까지 번질 기세야.','용암 동굴의 불씨를 꺼야 하네.'],
+  ['수정 협곡의 골렘들이 길을 막았네.','협곡 아래의 수정 심장을 부수게.'],['고원의 번개가 그치지 않아.','폭풍을 부르는 존재가 동굴에 있네.'],
+  ['공허가 새어 나오고 있어. 조심하게.','공허의 중심으로 들어가야만 하네.'],['설원의 짐승들이 사나워졌네.','얼음 동굴의 주인을 잠재우게.'],
+  ['사막의 유적이 다시 깨어났어.','왕릉의 주인을 다시 잠들게 하게.'],['마지막일세. 천공의 성역이 우리를 시험하고 있네.','천공 신전에서 모든 것을 끝내 주게.']];
+const QUEST_ZLO=[1,8,16,26,40,60,70,78,88],QUEST_DGLV=[8,14,22,30,48,62,72,80,90],QUEST_GOLD=[500,1000,2000,3000,6000,10000,15000,20000,30000],QUEST_DAY=3;
+/* the offer for a line: n = story chapter index, or quests already finished today */
+function questDef(line,n,lv){
+  if(line==='story'){
+    if(n>=18)return null;
+    const z=(n>>1)+1,boss=n%2===1,req=(boss?QUEST_DGLV:QUEST_ZLO)[z-1];
+    return{k:boss?'dungeon':'zone',z,t:boss?1:25+z*5,p:0,g:QUEST_GOLD[z-1]*(boss?2:1),x:Math.floor(xpNeed(req)*(boss?.6:.3)),pot:boss?'tp':z<=2?'hp1':z<=4?'hp2':'hp3',pn:boss?2:5,req};
+  }
+  if(line==='bounty'){const zmax=QUEST_ZLO.filter(v=>v<=lv).length,e=n%2===1;
+    return{k:e?'elite':'zone',z:e?0:zmax,t:e?3:40,p:0,g:400+lv*60,x:Math.floor((30+7*lv*lv)*.15),pot:'atk',pn:2}}
+  const w=n%2===1;return{k:w?'wood':'weed',z:0,t:w?8:15,p:0,g:300+lv*40,x:Math.floor((30+7*lv*lv)*.1),pot:'def',pn:2};
+}
+function questText(q){
+  if(q.k==='zone')return ZONES[q.z].name+'에서 몬스터 '+q.t+'마리 처치';
+  if(q.k==='dungeon')return ZONES[q.z].name+' 던전 클리어';
+  if(q.k==='elite')return '엘리트 몬스터 '+q.t+'마리 처치';
+  return q.k==='wood'?'나무 '+q.t+'그루 베기':'잡초 '+q.t+'번 베기';
+}
+const questDone=c=>!!c&&c.p>=c.t;
 /* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
 function runeFrom(k){
   if(k==='all')return '합성 전용';
@@ -369,5 +400,5 @@ function itemName(it){
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
+const ERR_KO={QUEST_ACTIVE:'이미 진행 중인 퀘스트입니다.',QUEST_LIMIT:'오늘 받을 수 있는 의뢰를 모두 마쳤습니다.',QUEST_DONE:'모든 이야기를 끝냈습니다.',SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};

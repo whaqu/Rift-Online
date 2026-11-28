@@ -504,7 +504,7 @@ function animHeroFor(o,t,spd,atkP,dashing,sd){
   if(o.orbs)o.orbs.forEach((r,i)=>{const a=t*1.8+i/3*TAU;r.position.set(Math.cos(a)*1.1,1.6+Math.sin(t*2+i)*.2,Math.sin(a)*1.1);r.rotation.y=t*3});
 }
 function makeNPC(kind){
-  const tints={shop:0xc0803a,smith:0x7a4a2a,auction:0x2f8a6a,job:0x7a4ac0};
-  const o=makeHero(kind==='smith'?'warrior':kind==='job'?'mage':'archer',tints[kind]);
+  const tints={shop:0xc0803a,smith:0x7a4a2a,auction:0x2f8a6a,job:0x7a4ac0,story:0xb8923a,bounty:0x6a2830,herb:0x3a7a48};
+  const o=makeHero({smith:'warrior',job:'mage',story:'lancer',bounty:'gunner',herb:'cleric'}[kind]||'archer',tints[kind]);
   return o;
 }

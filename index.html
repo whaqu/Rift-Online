@@ -1207,8 +1207,8 @@ function animHeroFor(o,t,spd,atkP,dashing,sd){
   if(o.orbs)o.orbs.forEach((r,i)=>{const a=t*1.8+i/3*TAU;r.position.set(Math.cos(a)*1.1,1.6+Math.sin(t*2+i)*.2,Math.sin(a)*1.1);r.rotation.y=t*3});
 }
 function makeNPC(kind){
-  const tints={shop:0xc0803a,smith:0x7a4a2a,auction:0x2f8a6a,job:0x7a4ac0};
-  const o=makeHero(kind==='smith'?'warrior':kind==='job'?'mage':'archer',tints[kind]);
+  const tints={shop:0xc0803a,smith:0x7a4a2a,auction:0x2f8a6a,job:0x7a4ac0,story:0xb8923a,bounty:0x6a2830,herb:0x3a7a48};
+  const o=makeHero({smith:'warrior',job:'mage',story:'lancer',bounty:'gunner',herb:'cleric'}[kind]||'archer',tints[kind]);
   return o;
 }
 
@@ -1466,6 +1466,37 @@ function runeFx(s){
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
 /* rune effect of an equipped weapon, including the same-region bonus */
 function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null;return o&&runeMatch(w.base,w.rune)?scaleFx(o,RUNE_MATCH):o}
+const xpBase=l=>30+7*l*l;
+/* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
+const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
+/* NPC quests (server: rw_quest). story: 18 one-time chapters (hunt, then dungeon, per region); bounty / herb: 3 a day */
+const QUEST_NPC={story:{who:'길드장 아론',title:'이야기 퀘스트',hi:'리프트가 열린 뒤로 길드는 늘 손이 모자라네. 자네가 맡아 주겠나?'},
+  bounty:{who:'현상금꾼 카일',title:'현상금 의뢰',hi:'목에 값이 붙은 녀석들이 있어. 하루 세 건까지만 줄게.'},
+  herb:{who:'약초꾼 미나',title:'채집 의뢰',hi:'재료가 다 떨어졌어요. 좀 도와주실래요?'}};
+const QUEST_STORY=[['초원에 이상한 균열이 생겼네. 주변 몬스터부터 정리해 주게.','균열의 근원은 초원 동굴이야. 우두머리를 쓰러뜨리게.'],
+  ['망자의 숲에서 죽은 자들이 일어서고 있네.','묘지 깊은 곳에서 그들을 깨우는 자가 있어.'],['황무지의 불길이 마을까지 번질 기세야.','용암 동굴의 불씨를 꺼야 하네.'],
+  ['수정 협곡의 골렘들이 길을 막았네.','협곡 아래의 수정 심장을 부수게.'],['고원의 번개가 그치지 않아.','폭풍을 부르는 존재가 동굴에 있네.'],
+  ['공허가 새어 나오고 있어. 조심하게.','공허의 중심으로 들어가야만 하네.'],['설원의 짐승들이 사나워졌네.','얼음 동굴의 주인을 잠재우게.'],
+  ['사막의 유적이 다시 깨어났어.','왕릉의 주인을 다시 잠들게 하게.'],['마지막일세. 천공의 성역이 우리를 시험하고 있네.','천공 신전에서 모든 것을 끝내 주게.']];
+const QUEST_ZLO=[1,8,16,26,40,60,70,78,88],QUEST_DGLV=[8,14,22,30,48,62,72,80,90],QUEST_GOLD=[500,1000,2000,3000,6000,10000,15000,20000,30000],QUEST_DAY=3;
+/* the offer for a line: n = story chapter index, or quests already finished today */
+function questDef(line,n,lv){
+  if(line==='story'){
+    if(n>=18)return null;
+    const z=(n>>1)+1,boss=n%2===1,req=(boss?QUEST_DGLV:QUEST_ZLO)[z-1];
+    return{k:boss?'dungeon':'zone',z,t:boss?1:25+z*5,p:0,g:QUEST_GOLD[z-1]*(boss?2:1),x:Math.floor(xpNeed(req)*(boss?.6:.3)),pot:boss?'tp':z<=2?'hp1':z<=4?'hp2':'hp3',pn:boss?2:5,req};
+  }
+  if(line==='bounty'){const zmax=QUEST_ZLO.filter(v=>v<=lv).length,e=n%2===1;
+    return{k:e?'elite':'zone',z:e?0:zmax,t:e?3:40,p:0,g:400+lv*60,x:Math.floor((30+7*lv*lv)*.15),pot:'atk',pn:2}}
+  const w=n%2===1;return{k:w?'wood':'weed',z:0,t:w?8:15,p:0,g:300+lv*40,x:Math.floor((30+7*lv*lv)*.1),pot:'def',pn:2};
+}
+function questText(q){
+  if(q.k==='zone')return ZONES[q.z].name+'에서 몬스터 '+q.t+'마리 처치';
+  if(q.k==='dungeon')return ZONES[q.z].name+' 던전 클리어';
+  if(q.k==='elite')return '엘리트 몬스터 '+q.t+'마리 처치';
+  return q.k==='wood'?'나무 '+q.t+'그루 베기':'잡초 '+q.t+'번 베기';
+}
+const questDone=c=>!!c&&c.p>=c.t;
 /* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
 function runeFrom(k){
   if(k==='all')return '합성 전용';
@@ -1583,7 +1614,7 @@ function itemName(it){
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
+const ERR_KO={QUEST_ACTIVE:'이미 진행 중인 퀘스트입니다.',QUEST_LIMIT:'오늘 받을 수 있는 의뢰를 모두 마쳤습니다.',QUEST_DONE:'모든 이야기를 끝냈습니다.',SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};
 
 /* ---------------- server API ----------------
@@ -1626,9 +1657,6 @@ const LocalAPI=(()=>{
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
   const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
-  const xpBase=l=>30+7*l*l;
-  /* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
-  const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
   const jobOK=id=>JOBS[id];
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const yday=()=>new Date(Date.now()+9*3600e3-864e5).toISOString().slice(0,10);
@@ -1640,12 +1668,18 @@ const LocalAPI=(()=>{
     q.push(Math.floor(h/13)%2===0?{k:'elite',z:0,t:2+Math.floor(h/17)%3,p:0,c:false}:{k:'potion',z:0,t:4+Math.floor(h/17)%4,p:0,c:false});
     return a.dq={d,q,b:false};
   }
-  function dqProg(a,k,z,n){const dq=dqEnsure(a);for(const q of dq.q)if(q.k===k&&(k!=='zone'||q.z===z)&&!q.c)q.p=Math.min(q.t,q.p+n)}
+  function qsEnsure(a){
+    const q=a.quest||(a.quest={story:{i:0,cur:null}}),d=today();
+    for(const l of ['bounty','herb'])if(!q[l]||q[l].d!==d)q[l]={d,n:0,cur:q[l]?q[l].cur:null};
+    return q;
+  }
+  function qsProg(a,k,z,n){const q=qsEnsure(a);for(const l in q){const c=q[l].cur;if(c&&c.k===k&&((k!=='zone'&&k!=='dungeon')||c.z===z)&&n>0)c.p=Math.min(c.t,c.p+n)}}
+  function dqProg(a,k,z,n){qsProg(a,k,z,n);const dq=dqEnsure(a);for(const q of dq.q)if(q.k===k&&(k!=='zone'||q.z===z)&&!q.c)q.p=Math.min(q.t,q.p+n)}
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
       duel:{w:0,l:0,pt:0},
-      semi:a.name===LOCAL_SEMI,admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      quest:JSON.parse(JSON.stringify(qsEnsure(a))),semi:a.name===LOCAL_SEMI,admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
@@ -1697,7 +1731,7 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/(wz>=6?10:1),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
+          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/((wz>=6?10:1)*(wz===7||wz===8?3:1)),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
           if(rr<wr){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
           else if(rr<wr+ar){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
@@ -1708,6 +1742,20 @@ const LocalAPI=(()=>{
       applyXp(a,xx);wr();
       if(n===LOCAL_SEMI)drops.length=0;
       return{gold:gx,xp:xx,n:got,drops,night,profile:pf(a)};
+    },
+    quest(n,t,line,act){
+      rd();const a=auth(n,t),q=qsEnsure(a),s=q[line];if(!s||(act!=='accept'&&act!=='claim'))E('BAD_ARGS');
+      let g=0,x=0;
+      if(act==='accept'){
+        if(s.cur)E('QUEST_ACTIVE');
+        if(line==='story'){const d=questDef(line,s.i,a.level);if(!d)E('QUEST_DONE');if(a.level<d.req)E('LOW_LEVEL');s.cur=d}
+        else{if(s.n>=QUEST_DAY)E('QUEST_LIMIT');s.cur=questDef(line,s.n,a.level)}
+      }else{
+        const c=s.cur;if(!questDone(c))E('NOT_READY');g=c.g;x=c.x;s.cur=null;
+        if(line==='story')s.i++;else s.n++;
+        a.gold+=g;give(n,'potion',c.pot,c.pn);applyXp(a,x);
+      }
+      wr();return{gold:g,xp:x,profile:pf(a)};
     },
     daily(n,t){
       rd();const a=auth(n,t),d=today();if(a.last_daily===d)E('ALREADY');
@@ -1763,12 +1811,13 @@ const LocalAPI=(()=>{
       const rk=clamp(rank|0||5,1,5),[,base,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
-        if(rnd01()<.2){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        if(rnd01()<(DGSRV[dg][2]===7||DGSRV[dg][2]===8?.07:.2)){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
         else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
         if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?zr:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
       }
+      wr();qsProg(a,'dungeon',DGSRV[dg][2],1);
       wr();return{rewards:n===LOCAL_SEMI?rw.filter(x=>x.t==='gold'):rw,rank:rk,profile:pf(a)};
     },
     gather(n,t,weed,wood){
@@ -1777,6 +1826,7 @@ const LocalAPI=(()=>{
       let w=Math.min(tk|0,clamp(weed|0,0,30));tk-=w;let d=Math.min((tk/2)|0,clamp(wood|0,0,30));tk-=d*2;
       let gw=0,gd=0;for(let i=0;i<w;i++)gw+=1+(rnd01()<ch?1:0);for(let i=0;i<d;i++)gd+=1+(rnd01()<ch?1:0);
       a.gat_tk=tk;a.gat_ts=Date.now();a.gat_xp=(a.gat_xp||0)+w+d*5;
+      qsProg(a,'weed',0,w);qsProg(a,'wood',0,d);
       if(n===LOCAL_SEMI)gw=gd=0;
       if(gw>0)give(n,'mat','weed',gw);if(gd>0)give(n,'mat','wood',gd);
       wr();return{weed:gw,wood:gd,up:gatLvOf(a.gat_xp)>lv0,profile:pf(a)};
@@ -1868,14 +1918,14 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
+const NAMES={quest:'rw_quest',duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
   duelLose:a=>({p_winner:a[0],p_id:a[1]}),
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
+  tradeOk:a=>({p_id:a[0]}),quest:a=>({p_line:a[0],p_act:a[1]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
   runeAttach:a=>({p_weapon:a[0],p_rune:a[1]}),runeFuse:a=>({p_mode:a[0],p_base:a[1]||'',p_grade:a[2]||0}),runeBrew:a=>({p_item:a[0]}),dgBegin:a=>a[1]?{p_dg:a[0],p_party:true}:{p_dg:a[0]},dgEnd:a=>({p_dg:a[0],p_rank:a[1]})
 };
 const API={
@@ -2179,7 +2229,11 @@ const NPCS=[
   {kind:'shop',name:'상점',x:-10,z:-7,face:.9},
   {kind:'smith',name:'대장간',x:10,z:-7,face:-.9},
   {kind:'auction',name:'경매장',x:-10,z:8,face:2.2},
-  {kind:'job',name:'전직 교관',x:10,z:8,face:-2.2}
+  {kind:'job',name:'전직 교관',x:10,z:8,face:-2.2},
+  /* quest givers stand in the open, without a stall */
+  {kind:'quest',line:'story',name:'길드장 아론',x:5,z:-11.5,face:-.41},
+  {kind:'quest',line:'bounty',name:'현상금꾼 카일',x:-6,z:13,face:2.7},
+  {kind:'quest',line:'herb',name:'약초꾼 미나',x:6,z:13,face:-2.7}
 ];
 const SPAWN={x:0,z:7};
 function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/WORLD.cell)+','+Math.floor(z/WORLD.cell);(WORLD.grid[k]||(WORLD.grid[k]=[])).push(o);return o}
@@ -2587,6 +2641,17 @@ function buildWorld(){
   WORLD.npcs.length=0;
   const wood=M(0x6b4a2b),cloth={shop:0xc0803a,smith:0x8a4a3a,auction:0x2f8a6a,job:0x6a4ac0};
   for(const n of NPCS){HQ++;try{
+    if(n.kind==='quest'){
+      const g=grp(n.x,0,n.z,worldG);g.rotation.y=n.face;
+      CY(1.1,1.25,.16,M(0x7a6a58),0,.08,0,g,12);
+      CY(.08,.08,2.6,M(0x6b4a2b),-1,1.3,-.3,g,6);BX(.7,.9,.06,M({story:0xd9b05a,bounty:0x9a2f34,herb:0x3f9a52}[n.line]),-.62,2.1,-.3,g);
+      if(n.line==='bounty'){BX(.9,1.1,.1,M(0x6b4a2b),1,1.2,-.3,g);BX(.6,.7,.12,M(0xe6dcc0),1,1.3,-.28,g)}
+      if(n.line==='herb'){CY(.3,.22,.5,M(0xa07a4a),.95,.4,.1,g,8);SP(.25,M(0x5ac060),.95,.8,.1,g,6,5)}
+      const npc=makeNPC(n.line);npc.g.position.set(n.x,.16,n.z);npc.g.rotation.y=n.face;worldG.add(npc.g);
+      addObst(n.x,n.z,.8);
+      WORLD.npcs.push({kind:'quest',line:n.line,name:n.name,x:n.x,z:n.z,model:npc,label:makeLabel(n.name,'st')});
+      continue;
+    }
     const g=grp(n.x,0,n.z,worldG);g.rotation.y=n.face;
     BX(5.4,.3,3.6,M(0x7a6a58),0,.15,0,g);
     for(const sx of[-2.4,2.4])CY(.12,.12,3.2,wood,sx,1.7,-1.4,g,6);
@@ -6249,7 +6314,7 @@ function nearNpc(){
 function interact(){
   if(UI.modal)return;const n=nearNpc();if(!n)return;
   flushKills();flushGather();
-  ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob,portal:()=>openPortal(n),map:openMap})[n.kind]();
+  ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob,portal:()=>openPortal(n),map:openMap,quest:()=>openQuest(n.line)})[n.kind]();
 }
 
 /* ---------- HUD ---------- */
@@ -6451,12 +6516,57 @@ function dqText(q){
   if(q.k==='elite')return '엘리트 몬스터 '+q.t+'마리 처치';
   return '물약 '+q.t+'개 사용';
 }
+/* ---------- NPC quests ---------- */
+const questOf=line=>(SES.pf&&SES.pf.quest&&SES.pf.quest[line])||(line==='story'?{i:0,cur:null}:{n:0,cur:null});
+const questReward=q=>'골드 '+fmtN(q.g)+' · 경험치 '+fmtN(q.x)+' · '+POTIONS[q.pot].name+' ×'+q.pn;
+const questBar=c=>'<div class="row sp"><b>'+questText(c)+'</b><span class="'+(questDone(c)?'grn':'dim')+'">'+c.p+' / '+c.t+'</span></div><div class="qbar"><i style="width:'+Math.min(100,c.p/c.t*100)+'%"></i></div>';
+/* mark over an NPC: ! = something to take, ? = ready to report */
+function questMark(line){
+  const s=questOf(line),lv=SES.pf?SES.pf.level:1;
+  if(s.cur)return questDone(s.cur)?'❓ ':'';
+  const d=line==='story'?questDef(line,s.i,lv):s.n<QUEST_DAY?questDef(line,s.n,lv):null;
+  return d&&(!d.req||lv>=d.req)?'❗ ':'';
+}
+function questMarks(){for(const n of WORLD.npcs)if(n.kind==='quest'){const t=questMark(n.line)+n.name;if(n._t!==t){n._t=t;n.label.el.textContent=t}}}
+function openQuest(line){
+  const info=QUEST_NPC[line];
+  UI.page(info.who,()=>{
+    const s=questOf(line),lv=SES.pf.level,c=s.cur;
+    const d=c||(line==='story'?questDef(line,s.i,lv):s.n<QUEST_DAY?questDef(line,s.n,lv):null);
+    let h='<div class="dim" style="margin-bottom:8px">“'+(line==='story'&&d?QUEST_STORY[d.z-1][d.k==='dungeon'?1:0]:info.hi)+'”</div>';
+    h+='<div class="dim" style="margin-bottom:6px">'+info.title+' · '+(line==='story'?Math.min(18,s.i+1)+' / 18장':'오늘 완료 '+s.n+' / '+QUEST_DAY)+'</div>';
+    if(!d)return h+'<div class="card">'+(line==='story'?'모든 이야기를 끝냈네. 고맙네, 영웅이여.':'오늘 의뢰는 모두 끝났습니다. 내일 다시 오세요.')+'</div>';
+    h+='<div class="card">'+(c?questBar(c):'<b>'+questText(d)+'</b>')+'<div class="dim" style="margin-top:6px">보상: '+questReward(d)+'</div><div style="text-align:right;margin-top:8px">';
+    if(!c)h+=d.req&&lv<d.req?'<span class="red">Lv.'+d.req+'부터 받을 수 있습니다</span>':'<button class="btn" data-a="qsacc">수락</button>';
+    else h+='<button class="btn" data-a="qsend" '+(questDone(c)?'':'disabled')+'>'+(questDone(c)?'보고하고 보상 받기':'진행 중')+'</button>';
+    return h+'</div></div>';
+  });
+  const act=async(a,msg)=>{
+    const lv=SES.pf.level;await flushKills();const r=await guarded(()=>API.call('quest',line,a));if(!r)return;
+    sfx(a==='claim'?'level':'equip');UI.toast(msg);if(r.gold)UI.feedText('+'+fmtN(r.gold)+' G','#ffd24a');
+    if(SES.pf.level>lv&&P)onLevelUp();UI.refreshHud();UI.rerender&&UI.rerender();
+  };
+  UI.handlers.qsacc=()=>act('accept','퀘스트를 받았습니다');
+  UI.handlers.qsend=()=>act('claim','퀘스트 완료!');
+}
+/* tell the player once when a quest becomes ready to report */
+const _qsSeen={};
+function questWatch(){
+  for(const line in QUEST_NPC){const c=questOf(line).cur,d=questDone(c),k=SES.pf.name+line;
+    if(d&&_qsSeen[k]===false){UI.toast(QUEST_NPC[line].who+'에게 보고하세요: '+questText(c),3200);sfx('level')}
+    _qsSeen[k]=c?d:undefined;}
+  questMarks();
+}
 function openDaily(tab0){
   let tab=tab0||'daily';
   UI.page('출석 · 일일 퀘스트',()=>{
     const pf=SES.pf,dl=pf.daily||{ready:false,streak:0,day:1},dq=pf.dq||{q:[],b:false};
-    let h='<div class="tabs"><div class="tab '+(tab==='daily'?'on':'')+'" data-a="dtab" data-v="daily">출석 보상'+(dl.ready?' <span class="pdot"></span>':'')+'</div><div class="tab '+(tab==='quest'?'on':'')+'" data-a="dtab" data-v="quest">일일 퀘스트'+(questReady(dq)?' <span class="pdot"></span>':'')+'</div></div>';
-    if(tab==='daily'){
+    let h='<div class="tabs"><div class="tab '+(tab==='daily'?'on':'')+'" data-a="dtab" data-v="daily">출석 보상'+(dl.ready?' <span class="pdot"></span>':'')+'</div><div class="tab '+(tab==='npc'?'on':'')+'" data-a="dtab" data-v="npc">마을 의뢰</div><div class="tab '+(tab==='quest'?'on':'')+'" data-a="dtab" data-v="quest">일일 퀘스트'+(questReady(dq)?' <span class="pdot"></span>':'')+'</div></div>';
+    if(tab==='npc'){
+      h+='<div class="dim" style="margin-bottom:8px">마을의 NPC에게 가서 받고, 끝나면 돌아가 보고합니다.</div><div class="grid">';
+      for(const line in QUEST_NPC){const c=questOf(line).cur;h+='<div class="card"><div class="dim">'+QUEST_NPC[line].who+' · '+QUEST_NPC[line].title+'</div>'+(c?questBar(c)+(questDone(c)?'<div class="grn">돌아가서 보고하세요</div>':''):'<div>'+(questMark(line)?'❗ 새 의뢰가 있습니다':'받은 의뢰가 없습니다')+'</div>')+'</div>'}
+      h+='</div>';
+    }else if(tab==='daily'){
       h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><div><b style="font-size:16px">연속 출석 '+dl.streak+'일</b></div><span class="dim">7일 주기 · 하루 거르면 처음부터</span></div></div><div class="dgrid">';
       for(let d=1;d<=7;d++){
         const done=dl.ready?d<dl.day:d<=dl.day,cur=dl.ready&&d===dl.day;
@@ -6489,9 +6599,10 @@ function dailyDot(){
 }
 function renderTrack(){
   const el=$('qtrack');if(!el||!SES.pf||!SES.pf.dq)return;const dq=SES.pf.dq;
-  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'done':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('');
+  el.innerHTML='<b>오늘의 퀘스트</b>'+dq.q.map(q=>'<div class="'+(q.c?'done':q.p>=q.t?'ok':'')+'"><span>'+dqText(q)+'</span><em>'+(q.c?'완료':q.p+'/'+q.t)+'</em></div>').join('')
+    +Object.keys(QUEST_NPC).map(l=>{const c=questOf(l).cur;return c?'<div class="'+(questDone(c)?'ok':'')+'"><span>★ '+questText(c)+'</span><em>'+(questDone(c)?'보고':c.p+'/'+c.t)+'</em></div>':''}).join('');
 }
-{const _rh=UI.refreshHud;UI.refreshHud=function(){_rh.apply(this,arguments);try{dailyDot();renderTrack()}catch(e){}}}
+{const _rh=UI.refreshHud;UI.refreshHud=function(){_rh.apply(this,arguments);try{dailyDot();renderTrack();questWatch()}catch(e){}}}
 function dailyOnEnter(){setTimeout(()=>{try{if(SES.pf&&SES.pf.daily&&SES.pf.daily.ready&&!UI.modal&&G.mode==='play')openDaily('daily')}catch(e){}},2200)}
 
 /* ----- combo / events / clock ----- */
@@ -7072,7 +7183,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

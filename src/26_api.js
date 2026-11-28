@@ -38,9 +38,6 @@ const LocalAPI=(()=>{
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
   const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
-  const xpBase=l=>30+7*l*l;
-  /* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
-  const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
   const jobOK=id=>JOBS[id];
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const yday=()=>new Date(Date.now()+9*3600e3-864e5).toISOString().slice(0,10);
@@ -52,12 +49,18 @@ const LocalAPI=(()=>{
     q.push(Math.floor(h/13)%2===0?{k:'elite',z:0,t:2+Math.floor(h/17)%3,p:0,c:false}:{k:'potion',z:0,t:4+Math.floor(h/17)%4,p:0,c:false});
     return a.dq={d,q,b:false};
   }
-  function dqProg(a,k,z,n){const dq=dqEnsure(a);for(const q of dq.q)if(q.k===k&&(k!=='zone'||q.z===z)&&!q.c)q.p=Math.min(q.t,q.p+n)}
+  function qsEnsure(a){
+    const q=a.quest||(a.quest={story:{i:0,cur:null}}),d=today();
+    for(const l of ['bounty','herb'])if(!q[l]||q[l].d!==d)q[l]={d,n:0,cur:q[l]?q[l].cur:null};
+    return q;
+  }
+  function qsProg(a,k,z,n){const q=qsEnsure(a);for(const l in q){const c=q[l].cur;if(c&&c.k===k&&((k!=='zone'&&k!=='dungeon')||c.z===z)&&n>0)c.p=Math.min(c.t,c.p+n)}}
+  function dqProg(a,k,z,n){qsProg(a,k,z,n);const dq=dqEnsure(a);for(const q of dq.q)if(q.k===k&&(k!=='zone'||q.z===z)&&!q.c)q.p=Math.min(q.t,q.p+n)}
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
       duel:{w:0,l:0,pt:0},
-      semi:a.name===LOCAL_SEMI,admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      quest:JSON.parse(JSON.stringify(qsEnsure(a))),semi:a.name===LOCAL_SEMI,admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
@@ -109,7 +112,7 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/(wz>=6?10:1),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
+          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/((wz>=6?10:1)*(wz===7||wz===8?3:1)),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
           if(rr<wr){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
           else if(rr<wr+ar){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
@@ -120,6 +123,20 @@ const LocalAPI=(()=>{
       applyXp(a,xx);wr();
       if(n===LOCAL_SEMI)drops.length=0;
       return{gold:gx,xp:xx,n:got,drops,night,profile:pf(a)};
+    },
+    quest(n,t,line,act){
+      rd();const a=auth(n,t),q=qsEnsure(a),s=q[line];if(!s||(act!=='accept'&&act!=='claim'))E('BAD_ARGS');
+      let g=0,x=0;
+      if(act==='accept'){
+        if(s.cur)E('QUEST_ACTIVE');
+        if(line==='story'){const d=questDef(line,s.i,a.level);if(!d)E('QUEST_DONE');if(a.level<d.req)E('LOW_LEVEL');s.cur=d}
+        else{if(s.n>=QUEST_DAY)E('QUEST_LIMIT');s.cur=questDef(line,s.n,a.level)}
+      }else{
+        const c=s.cur;if(!questDone(c))E('NOT_READY');g=c.g;x=c.x;s.cur=null;
+        if(line==='story')s.i++;else s.n++;
+        a.gold+=g;give(n,'potion',c.pot,c.pn);applyXp(a,x);
+      }
+      wr();return{gold:g,xp:x,profile:pf(a)};
     },
     daily(n,t){
       rd();const a=auth(n,t),d=today();if(a.last_daily===d)E('ALREADY');
@@ -175,12 +192,13 @@ const LocalAPI=(()=>{
       const rk=clamp(rank|0||5,1,5),[,base,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
-        if(rnd01()<.2){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
+        if(rnd01()<(DGSRV[dg][2]===7||DGSRV[dg][2]===8?.07:.2)){const wt=rnd01()<.5?0:rnd01()<.5?1:2,pb=a.cls+'_'+zid+(wt?'_'+wt:'');give(n,'weapon',pb,1);rw.push({t:'weapon',base:pb})}
         else{const g=rnd01()<.85?2:3,er=els[Math.floor(rnd01()*2)];give(n,'rune',zr,1,g);give(n,'rune',er,2,1);rw.push({t:'rune',base:zr,g,n:1},{t:'rune',base:er,g:1,n:2})}
       }else{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
         if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?zr:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
       }
+      wr();qsProg(a,'dungeon',DGSRV[dg][2],1);
       wr();return{rewards:n===LOCAL_SEMI?rw.filter(x=>x.t==='gold'):rw,rank:rk,profile:pf(a)};
     },
     gather(n,t,weed,wood){
@@ -189,6 +207,7 @@ const LocalAPI=(()=>{
       let w=Math.min(tk|0,clamp(weed|0,0,30));tk-=w;let d=Math.min((tk/2)|0,clamp(wood|0,0,30));tk-=d*2;
       let gw=0,gd=0;for(let i=0;i<w;i++)gw+=1+(rnd01()<ch?1:0);for(let i=0;i<d;i++)gd+=1+(rnd01()<ch?1:0);
       a.gat_tk=tk;a.gat_ts=Date.now();a.gat_xp=(a.gat_xp||0)+w+d*5;
+      qsProg(a,'weed',0,w);qsProg(a,'wood',0,d);
       if(n===LOCAL_SEMI)gw=gd=0;
       if(gw>0)give(n,'mat','weed',gw);if(gd>0)give(n,'mat','wood',gd);
       wr();return{weed:gw,wood:gd,up:gatLvOf(a.gat_xp)>lv0,profile:pf(a)};
@@ -280,14 +299,14 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
+const NAMES={quest:'rw_quest',duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
   duelLose:a=>({p_winner:a[0],p_id:a[1]}),
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
-  tradeOk:a=>({p_id:a[0]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
+  tradeOk:a=>({p_id:a[0]}),quest:a=>({p_line:a[0],p_act:a[1]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
   runeAttach:a=>({p_weapon:a[0],p_rune:a[1]}),runeFuse:a=>({p_mode:a[0],p_base:a[1]||'',p_grade:a[2]||0}),runeBrew:a=>({p_item:a[0]}),dgBegin:a=>a[1]?{p_dg:a[0],p_party:true}:{p_dg:a[0]},dgEnd:a=>({p_dg:a[0],p_rank:a[1]})
 };
 const API={

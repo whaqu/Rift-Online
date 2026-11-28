@@ -5,7 +5,11 @@ const NPCS=[
   {kind:'shop',name:'상점',x:-10,z:-7,face:.9},
   {kind:'smith',name:'대장간',x:10,z:-7,face:-.9},
   {kind:'auction',name:'경매장',x:-10,z:8,face:2.2},
-  {kind:'job',name:'전직 교관',x:10,z:8,face:-2.2}
+  {kind:'job',name:'전직 교관',x:10,z:8,face:-2.2},
+  /* quest givers stand in the open, without a stall */
+  {kind:'quest',line:'story',name:'길드장 아론',x:5,z:-11.5,face:-.41},
+  {kind:'quest',line:'bounty',name:'현상금꾼 카일',x:-6,z:13,face:2.7},
+  {kind:'quest',line:'herb',name:'약초꾼 미나',x:6,z:13,face:-2.7}
 ];
 const SPAWN={x:0,z:7};
 function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/WORLD.cell)+','+Math.floor(z/WORLD.cell);(WORLD.grid[k]||(WORLD.grid[k]=[])).push(o);return o}
@@ -413,6 +417,17 @@ function buildWorld(){
   WORLD.npcs.length=0;
   const wood=M(0x6b4a2b),cloth={shop:0xc0803a,smith:0x8a4a3a,auction:0x2f8a6a,job:0x6a4ac0};
   for(const n of NPCS){HQ++;try{
+    if(n.kind==='quest'){
+      const g=grp(n.x,0,n.z,worldG);g.rotation.y=n.face;
+      CY(1.1,1.25,.16,M(0x7a6a58),0,.08,0,g,12);
+      CY(.08,.08,2.6,M(0x6b4a2b),-1,1.3,-.3,g,6);BX(.7,.9,.06,M({story:0xd9b05a,bounty:0x9a2f34,herb:0x3f9a52}[n.line]),-.62,2.1,-.3,g);
+      if(n.line==='bounty'){BX(.9,1.1,.1,M(0x6b4a2b),1,1.2,-.3,g);BX(.6,.7,.12,M(0xe6dcc0),1,1.3,-.28,g)}
+      if(n.line==='herb'){CY(.3,.22,.5,M(0xa07a4a),.95,.4,.1,g,8);SP(.25,M(0x5ac060),.95,.8,.1,g,6,5)}
+      const npc=makeNPC(n.line);npc.g.position.set(n.x,.16,n.z);npc.g.rotation.y=n.face;worldG.add(npc.g);
+      addObst(n.x,n.z,.8);
+      WORLD.npcs.push({kind:'quest',line:n.line,name:n.name,x:n.x,z:n.z,model:npc,label:makeLabel(n.name,'st')});
+      continue;
+    }
     const g=grp(n.x,0,n.z,worldG);g.rotation.y=n.face;
     BX(5.4,.3,3.6,M(0x7a6a58),0,.15,0,g);
     for(const sx of[-2.4,2.4])CY(.12,.12,3.2,wood,sx,1.7,-1.4,g,6);

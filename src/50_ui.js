@@ -393,7 +393,7 @@ function nearNpc(){
 function interact(){
   if(UI.modal)return;const n=nearNpc();if(!n)return;
   flushKills();flushGather();
-  ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob,portal:()=>openPortal(n),map:openMap})[n.kind]();
+  ({shop:openShop,smith:openSmith,auction:()=>openAuction('list'),job:openJob,portal:()=>openPortal(n),map:openMap,quest:()=>openQuest(n.line)})[n.kind]();
 }
 
 /* ---------- HUD ---------- */
