@@ -15,11 +15,11 @@ function derive(){
     cls:pf.cls,job:curJob(pf),hidden:hid,atkCls:hid&&w?styleCls(w.base):pf.cls,level:L,
     maxHp:Math.round(((hid?HIDDEN_HP:(c.hp+L*c.hpLv)*(m.hp||1))+ab.hp)*(1+ab.hpPct+(rf?rf.hp:0))*(1+PERK.h.per*pk.h)),
     atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk)*(1+PERK.a.per*pk.a),wa,cdr:Math.min(.4,PERK.c.per*pk.c),
-    aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
+    aps:(hid?HID_APS:c.aps)*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
     spd:c.spd*(m.spd||1)*(1+ab.spd),
     crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
     armor:1-(1-(m.armor||0))*(1-dr)*(1-(en.armor||0)*.04),
-    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'&&!hid?ROGUE_VAMP:0),burnLv,
+    grace:m.grace||0,vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'&&!hid?ROGUE_VAMP:0),burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
     regen:(m.regen||0)+(rf?rf.rg:0),runeAura:!!(rf&&rf.aura),berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
@@ -306,12 +306,12 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz,pure){   /* pure: ignores armor (meteor); buffs, shields and guard skills still apply */
   if(!P||P.dead||P.iframes>0||qAloft()||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),dgHitFloor(dmg)))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.hGuard>0?.4:1)*(P.dkGuard>0?.6:1)));
+  dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),S.hidden?0:dgHitFloor(dmg)))*(pure&&S.hidden?HID_PURE:1)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.hGuard>0?.4:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
-  P.iframes=.5;P.lastHurt=G.t;
+  P.iframes=S.hidden?.8:.5;P.lastHurt=G.t;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
-  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);hitStop(.06);
-    if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
+  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,S.hidden?.2:.6);if(!S.hidden)hitStop(.06);
+    if(sx!=null&&!S.hidden){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
   burst(P.x,1.2,P.z,10,0xff5a6a,6,.4,10);
   if(P.hp<=0){if(P.reviveT>G.t){P.reviveT=0;P.hp=Math.round(S.maxHp*.3);P.iframes=2;dmgNum(P.x,3.6,P.z,'구원','info');pillar(P.x,P.z,0xfff4c2,16,.8);sfx('level')}else playerDown()}
   return true;

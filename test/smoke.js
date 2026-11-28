@@ -347,7 +347,12 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset();g.P.buff=null;
       }
     }
-    {g.derive();T(g.S.hidden&&g.S.maxHp>=7000&&g.S.maxHp<20000,'hidden class has a 7000 base hp ('+g.S.maxHp+')')}
+    {g.derive();T(g.S.hidden&&g.S.maxHp>=30000&&g.S.aps>=4,'hidden class: 30000 base hp, fast attacks ('+g.S.maxHp+', '+g.S.aps.toFixed(1)+')');
+      g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.hp=g.S.maxHp;g.P.shield=0;g.P.iframes=0;g.P.vx=g.P.vz=0;g.P.hGuard=0;g.hurtPlayer(5000,60,3,true);
+      T(g.P.hp>g.S.maxHp-1600&&g.P.vx===0&&g.P.vz===0,'hidden class resists a fixed hit and is not knocked back');g.P.hp=g.S.maxHp;g.P.iframes=0}
+    {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.hp=g.S.maxHp*.2;g.P.graceT=null;
+      const m=g.makeMobObj(88200,'slime',60,3,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;const h0=g.P.hp;g.P.autoAim=m;g.P.atkCd=0;g.doAttack();g.P.autoAim=null;
+      T(g.S.grace>0&&g.P.hp>h0,'가호 restores hp on hit');g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset()}
     /* basic attack is a wing sweep with any weapon */
     {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.face=0;g.P.atkCd=0;g.P.atkAnim=-1;g.derive();g.buildPlayerModel();
       const mk=(id,z)=>{const m=g.makeMobObj(id,'slime',60,z,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;m.x=60;m.z=z;return m};

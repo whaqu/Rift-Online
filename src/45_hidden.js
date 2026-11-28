@@ -4,19 +4,21 @@
    Story: 천사 is the messenger of heaven; 대천사 and 타락천사 were once brothers in arms and are now rivals (equal strength). */
 const HIDDEN_LV=99,HIDDEN_DROP=.0005,HIDDEN_DG='sky',ARCH_SYN={atk:1.3,cd:.85,ult:4};
 /* a hidden class has its own base hp (gear, runes and perks add on top), stronger skills and shorter cooldowns */
-const HIDDEN_HP=7000,HID_SKILL=2,HID_CD=.75;
+const HIDDEN_HP=30000,HID_SKILL=2,HID_CD=.75,HID_APS=3;
+/* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits and duel hits are cut down */
+const HID_PURE=.3,HID_DUEL={dmg:.3,cap:.04};
 const HIDDEN={
   angel:{name:'천사',item:'hc_angel',itemName:'천사의 서사',col:'#fff4c2',size:1.22,
     story:'천상의 전령. 두 강자의 싸움 사이에서 다친 이들을 돌봅니다.',
-    m:{atk:4.5,armor:.35,regen:.06,aps:1.5,crit:.2,vamp:.08,spd:1.25},
+    m:{atk:7,armor:.6,regen:.1,aps:1.5,crit:.3,grace:.018,spd:1.25},
     skills:[sd('h_an_q','성광의 파문',5,0xfff4c2,'h_halo','빛의 고리를 사방으로 퍼뜨립니다. 맞힌 수만큼 회복합니다.'),
-      sd('h_an_e','가호',16,0x9fd0ff,'h_shield','자신과 주변 파티원에게 큰 보호막을 줍니다.'),
+      sd('h_an_e','수호의 빛',16,0x9fd0ff,'h_shield','자신과 주변 파티원에게 큰 보호막을 줍니다.'),
       sd('h_an_r','비상',10,0xfff2a0,'h_wing','날아올라 지정한 곳에 내려앉으며 빛기둥을 일으킵니다.'),
       sd('h_an_f','구원의 종',55,0xffe9a0,'h_bell','6초간 자신과 파티원을 크게 회복하고 적을 묶습니다. 10초 안에 쓰러지면 한 번 버팁니다.')],
     pal:{main:0xf6f4ff,dark:0x8fa6d8,trim:0xf2d27a,face:0xffe9d8,eye:0x7fd6ff},wing:{a:0xffffff,b:0xdceaff,bone:0xf2d27a,glow:0xdfeeff,pairs:1,size:1.3}},
   fallen:{name:'타락천사',item:'hc_fallen',itemName:'타락천사의 금서',col:'#c23aff',size:1.3,
     story:'하늘을 등진 검. 한때의 전우였던 대천사와 맞서며, 상대의 피로 힘을 얻습니다.',
-    m:{atk:6.5,armor:.35,regen:.02,crit:.4,aps:1.8,vamp:.2,spd:1.3},
+    m:{atk:10,armor:.6,regen:.05,crit:.5,aps:1.8,vamp:.25,spd:1.3},
     skills:[sd('h_fa_q','나락의 초승달',4,0xb23aff,'h_moon','거대한 검은 초승달 세 개를 날려 꿰뚫고, 맞힌 만큼 흡혈합니다.'),
       sd('h_fa_e','타락의 낙인',10,0xff2a6a,'h_brand','적 무리에 낙인을 새겨 받는 피해를 50% 늘립니다. 낙인 찍힌 적이 쓰러지면 주변에 번집니다.'),
       sd('h_fa_r','검은 깃 폭우',11,0x7a2fd0,'h_feather','지정한 넓은 곳에 3초 동안 검은 깃을 쏟아붓습니다.'),
@@ -24,7 +26,7 @@ const HIDDEN={
     pal:{main:0x1c1226,dark:0x0b0710,trim:0x8a1236,face:0xcdbfd4,eye:0xff1f4a},wing:{a:0x15091f,b:0x2a0f3a,bone:0xb0143c,glow:0x7a1fb0,pairs:1,broken:1,size:1.35}},
   arch:{name:'대천사',item:'hc_arch',itemName:'대천사의 주문서',col:'#ffd24a',size:1.38,
     story:'하늘의 군단장. 등을 돌린 타락천사를 막아서는 심판자입니다.',
-    m:{atk:6,armor:.45,regen:.04,aps:1.7,crit:.3,vamp:.1,spd:1.25},
+    m:{atk:9,armor:.7,regen:.08,aps:1.7,crit:.4,grace:.015,spd:1.25},
     skills:[sd('h_ar_q','천벌 탄막',4.5,0xffd24a,'h_nova','빛의 탄막을 두 번 사방으로 터뜨립니다.'),
       sd('h_ar_e','심판의 연격',10,0xffe9a0,'h_quake','전방으로 폭발이 줄지어 터집니다. 보호막과 짧은 피해 감소를 얻습니다.'),
       sd('h_ar_r','천공 유성우',11,0xff8a2a,'h_meteor','주변 적과 지정한 곳에 유성을 쏟아붓습니다.'),
@@ -87,14 +89,17 @@ function hidWings(o,w,k){
     const gl=glow(w.glow,2.4,.26);gl.position.set(sd*.8,.1,-.06);arm.add(gl);
     all.push({root,arm,tip,sd,n});
   }});
-  /* k: attack swing (-.35 wound back .. 1 wrapped forward); the wing on the `lead` side reaches further */
-  return(t,k,lead)=>{k=k||0;const w=1-Math.min(1,Math.abs(k));
-    for(const p of all){const u=t*2.6-p.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=p.n?.7:1,th=k*(p.sd===lead?2.1:1.7)*(p.n?.82:1);
-      p.arm.rotation.z=p.sd*((beat*.3*k2+.03)*w-k*.28);p.arm.rotation.y=p.sd*((.24-beat*.2)*w-th*.75);
-      p.tip.rotation.z=p.sd*lag*.42*k2*w;p.tip.rotation.y=p.sd*((.1-lag*.26)*w-th*.45)}};
+  /* attack (p = 0..1): the wing on the `lead` side slashes alone, its pairs and tips following one after another;
+     on the heavy third hit the other wing follows right behind it */
+  return(t,p,lead,big)=>{
+    for(const q of all){const u=t*2.6-q.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=q.n?.7:1;
+      const d=(q.sd===lead?0:big?.22:null),on=p>=0&&d!=null,k=on?hidSwing(p-d-q.n*.04):0,kt=on?hidSwing(p-d-q.n*.04-.08):0,
+        w=1-Math.min(1,Math.abs(k)),th=k*2.5*(q.n?.85:1);
+      q.arm.rotation.z=q.sd*((beat*.3*k2+.03)*w-k*.3+q.n*k*.12);q.arm.rotation.y=q.sd*((.24-beat*.2)*w-th*.75);
+      q.tip.rotation.z=q.sd*lag*.42*k2*w;q.tip.rotation.y=q.sd*((.1-lag*.26)*w-kt*1.25)}};
 }
-/* attack progress 0..1 -> wing swing: a quick forward sweep, a short hold, then back */
-const hidSwing=p=>p<0?0:p<.3?-.35+1.35*(1-(1-p/.3)**2):p<.55?1:Math.max(0,1-(p-.55)/.45);
+/* attack progress 0..1 -> wing swing: a quick forward slash, a short hold, then back */
+const hidSwing=p=>p<=0?0:p<.25?-.35+1.35*(1-(1-p/.25)**2):p<.4?1:p<.65?1-(p-.4)/.25:0;
 /* a hidden class covers the whole body with a floating, boss-sized figure (like the sky temple's fallen archangel).
    The weapon class's rig is kept only for its animation: every part of it, the weapon too, is made invisible. */
 const HID_HOVER=.85;
@@ -185,12 +190,13 @@ function makeHidden(cls,id){
     if(on){const g=grp(0,1.7,-.7,o.body);for(const[r,op]of[[8,.34],[3.8,.5]]){const s=glow(0xffd24a,r,op);g.add(s)}ring(1.55,.035,aumat(0xffe27a,.9),0,0,-.1,g);o.synGlow=g}
     else{o.body.remove(o.synGlow);o.synGlow=null}};
   o.hw=(t,atkP,sd)=>{
-    const k=atkP>=0?hidSwing(atkP):0;
+    const lead=sd||1,k=atkP>=0?hidSwing(atkP):0,k2=atkP>=0&&o.atkBig?hidSwing(atkP-.22):0,ka=lead>0?k2:k,kb=lead>0?k:k2;   // ka: left side, kb: right side
+    o.body.rotation.y=(ka-kb)*.45;
     o.body.position.y=HID_HOVER+Math.sin(t*2.2)*.14;
     /* no weapon in hand: arms held a little open, the wings do the striking */
-    o.armL.rotation.set(.12-k*.5,0,-.3-k*.35);o.armR.rotation.set(.12-k*.5,0,.3+k*.35);o.torso.rotation.y=0;
-    if(k>0)o.body.rotation.x+=k*.26;
-    beat(t,k,sd||1);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
+    o.armL.rotation.set(.12-ka*.7,0,-.3-ka*.35);o.armR.rotation.set(.12-kb*.7,0,.3+kb*.35);o.torso.rotation.y=0;
+    if(k>0)o.body.rotation.x+=k*.2;
+    beat(t,atkP>=0?atkP:-1,lead,o.atkBig);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
     ribbons.forEach((g,i)=>{g.rotation.x=Math.cos(i*TAU/8+.39)*-.12+Math.sin(t*3+i*1.3)*.14;g.rotation.z=Math.sin(i*TAU/8+.39)*.12+Math.cos(t*2.6+i)*.12});
     orbs.forEach((g,i)=>{const a=t*.9+i*TAU/N;g.position.set(Math.cos(a)*1.45,Math.sin(t*1.8+i*1.7)*.18,Math.sin(a)*1.45);g.rotation.y=-a+Math.PI/2});
     if(o.synGlow)o.synGlow.rotation.z=t*.5};
@@ -307,29 +313,45 @@ Object.assign(SK,{
   }
 });
 
-/* ---------- basic attack: the wings, whatever weapon is held (its stats and enchants still apply) ---------- */
-const HID_REACH=11;
-let HID_ARC=null;
+/* ---------- basic attack: the wings, one at a time, whatever weapon is held (its stats and enchants still apply) ---------- */
+const HID_REACH=11,HID_FN=7;
+let HID_FG=null;
+/* a wing slash: feathers are flung one after another, sweeping from the `side` wing across the front */
+function hidFeathers(x,z,f,side,range,reach,arc,col,delay,onFeather){
+  if(!HID_FG)HID_FG=new THREE.ConeGeometry(.17,1.5,4);
+  const root=grp(0,0,0),list=[],fly=.2,step=.022;
+  for(let i=0;i<HID_FN;i++){
+    const a=f+side*arc*(.5-i/(HID_FN-1)),g=grp(x,1.25,z,root),m=new THREE.Mesh(HID_FG,EM(i%2?0xffffff:col,1.3));
+    m.rotation.x=Math.PI/2;m.scale.z=.25;g.add(m);g.rotation.y=a;g.visible=false;list.push({g,a,at:delay+i*step,i})}
+  act(delay+HID_FN*step+fly,t=>{for(const q of list){const u=(t-q.at)/fly;q.g.visible=u>=0&&u<1;if(u<0||q.done)continue;
+    const r=1.2+(reach-1.2)*Math.min(1,u),px=x+Math.sin(q.a)*r,pz=z+Math.cos(q.a)*r,h=1.25+Math.sin(Math.min(1,u)*Math.PI)*.35;
+    q.g.position.set(px,h,pz);emit(px,h,pz,0,0,0,.18,col,0);
+    if(onFeather)onFeather(px,pz,r);if(u>=1)q.done=true}},null,root);
+  for(let i=0;i<2;i++){const a=f+side*arc*(i?-.18:.26);later(delay+i*.07,()=>slashArc(x,z,a,range*(i?.9:1),arc*.55,i?0xffffff:col,.22))}
+}
 function hidAttack(a,f,atk){
-  P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;P.atkDur=Math.min(.42,P.atkCd*.95);
-  const big=step===2,col=parseInt(HIDDEN[S.hidden].col.slice(1),16),range=4.8*S.rangeMul*(big?1.25:1),arc=big?3.8:2.8,dmg=atk*(big?1.8:1),
+  P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;P.atkDur=Math.min(.46,P.atkCd*.98);
+  const side=P.swing,big=step===2,col=parseInt(HIDDEN[S.hidden].col.slice(1),16),range=4.8*S.rangeMul*(big?1.25:1),arc=big?3.4:2.7,dmg=atk*(big?1.8:1),
     x0=P.x,z0=P.z,reach=Math.max(HID_REACH*S.rangeMul,range+3);
-  const inArc=(e,r,w)=>{const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz);return d<=r+e.r&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<=w/2+Math.atan2(e.r,Math.max(d,.1))};
-  const done=new Set(MOBS.filter(e=>!e.dead&&!e.spawning&&inArc(e,range,arc)));
+  if(PM)PM.atkBig=big;
+  const inArc=e=>{const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz);return d<=range+e.r&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<=arc/2+Math.atan2(e.r,Math.max(d,.1))};
+  const done=new Set(MOBS.filter(e=>!e.dead&&!e.spawning&&inArc(e)));
   P.vx+=a.x*(big?5:2.5);P.vz+=a.z*(big?5:2.5);
-  slashArc(x0+a.x*.4,z0+a.z*.4,f,range,arc,col,.28);slashArc(x0+a.x*.4,z0+a.z*.4,f,range*.7,arc*.75,0xffffff,.2);
-  for(const s of[-1,1])for(let i=0;i<3;i++){const g=f+s*(arc/2)*(.35+i*.28);emit(x0+Math.sin(g)*2.2,1.4+i*.35,z0+Math.cos(g)*2.2,Math.sin(f)*7,rnd(-.5,.8),Math.cos(f)*7,.4,col,0)}
-  if(big)ringBurst(x0+a.x*range*.7,.9,z0+a.z*range*.7,12,col,6,.4);
-  sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
+  const gust=(px,pz)=>{for(const e of mobsIn(px,pz,1.2))if(!done.has(e)){done.add(e);const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz)||1;dealMob(e,dmg*.8,{kx:dx/d,kz:dz/d,kb:4})}};
+  hidFeathers(x0,z0,f,side,range,reach,arc*.85,col,0,gust);
+  if(big){hidFeathers(x0,z0,f,-side,range,reach,arc*.85,col,.1,gust);ringBurst(x0+a.x*range*.7,.9,z0+a.z*range*.7,12,col,6,.4)}
+  sfx('slash');later(big?.1:.06,()=>sfx('slash',.7));cam.shake=Math.max(cam.shake,big?.35:.12);
   hitArc(f,range,arc,dmg,big?11:6,{big});gatherArc(f,range,arc,big?1.5:1);
-  for(const b of EB){if(inArc({x:b.x,z:b.z,r:.5},range,arc)){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3)}}
-  /* the gust thrown by the wings carries the hit further out */
-  if(!HID_ARC)HID_ARC=new THREE.TorusGeometry(1,.07,4,20,1.9);
-  const g=grp(x0,1.2,z0),m=new THREE.Mesh(HID_ARC,EM(col,1.4));m.rotation.x=Math.PI/2;m.rotation.z=Math.PI/2-.95;g.add(m);g.rotation.y=f;
-  act(.24,t=>{const r=range*.7+(reach-range*.7)*Math.min(1,t/.24),sc=Math.min(r,5.5);m.scale.set(sc,sc,sc);g.position.set(x0+a.x*(r-sc),1.2,z0+a.z*(r-sc));
-    for(const e of MOBS){if(e.dead||e.spawning||done.has(e)||!inArc(e,r,1.2))continue;done.add(e);const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz)||1;dealMob(e,dmg*.8,{kx:dx/d,kz:dz/d,kb:4})}
-  },null,g);
-  netFx('wing',{x:x0+a.x*.4,z:z0+a.z*.4,f,r:range,a:arc,c:col});
+  for(const b of EB){if(inArc({x:b.x,z:b.z,r:.5})){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3)}}
+  netFx('wing',{x:x0,z:z0,f,r:range,a:arc,c:col,s:side,b:big?1:0,l:+reach.toFixed(1)});
+}
+
+/* 가호 (천사·대천사): every blow struck restores a little hp (at most 10 a second) */
+function hidGrace(k){
+  if(G.t-(P.graceT!=null?P.graceT:-9)<.1)return;P.graceT=G.t;
+  const before=P.hp;P.hp=Math.min(S.maxHp,P.hp+S.maxHp*S.grace*k);P.graceSum=(P.graceSum||0)+P.hp-before;
+  if(P.graceSum>=1&&G.t-(P.graceShow!=null?P.graceShow:-9)>=.5){P.graceShow=G.t;dmgNum(P.x,3.4,P.z,'가호 +'+fmtN(Math.round(P.graceSum)),'heal');P.graceSum=0;
+    for(let i=0;i<8;i++)emit(P.x+rnd(-.8,.8),rnd(.6,2.4),P.z+rnd(-.8,.8),0,rnd(1,2),0,.7,i%2?0xffe27a:0xffffff,0)}
 }
 
 /* ---------- actions & window ---------- */
@@ -349,7 +371,7 @@ function openHidden(){
     let s='<div class="card"><div class="row sp"><b style="font-size:18px;color:'+h.col+'">'+h.name+'</b><span class="dim">'+(on?'사용 중':'원래 직업 사용 중')+'</span></div><div class="dim" style="margin:4px 0">'+h.story+'</div><div style="font-size:12px">'
       +['Q','E','R','F'].map((k,i)=>'<div><b class="gold">'+k+' '+h.skills[i].name+'</b> — '+h.skills[i].desc+'</div>').join('')+'</div>'
       +(pf.hidden==='arch'?'<div class="gold" style="margin-top:6px;font-size:12px">대천사 축복의 룬을 장착하면: 스킬 피해 +30%, 쿨타임 -15%, 최후의 심판 +4초</div>':'')
-      +'<div class="dim" style="margin-top:6px;font-size:12px">기본 체력 '+fmtN(HIDDEN_HP)+'. 히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
+      +'<div class="dim" style="margin-top:6px;font-size:12px">기본 체력 '+fmtN(HIDDEN_HP)+'. 맞아도 밀리거나 기절하지 않습니다. '+(HIDDEN[pf.hidden].m.grace?'가호: 적을 때릴 때마다 체력이 찹니다. ':'흡혈: 준 피해만큼 체력을 빨아들입니다. ')+'히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
     s+='<div class="row sp" style="margin-top:10px;gap:8px"><button class="btn" data-a="hswap">'+(on?JOBS[pf.job].name+'(으)로 돌아가기':h.name+'(으)로 바꾸기')+'</button><button class="btn sm sec" data-a="hdrop">히든 클래스 포기</button></div>';
     return s;
   });
