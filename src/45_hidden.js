@@ -85,11 +85,16 @@ function hidWings(o,w,k){
     const gl=glow(w.glow,2.4,.26);gl.position.set(sd*.8,.1,-.06);arm.add(gl);
     all.push({root,arm,tip,sd,n});
   }});
-  return t=>{for(const p of all){const u=t*2.6-p.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=p.n?.7:1;
-    p.arm.rotation.z=p.sd*(beat*.3*k2+.03);p.arm.rotation.y=p.sd*(.24-beat*.2);p.tip.rotation.z=p.sd*lag*.42*k2;p.tip.rotation.y=p.sd*(.1-lag*.26)}};
+  /* k: attack swing (-.35 wound back .. 1 wrapped forward); the wing on the `lead` side reaches further */
+  return(t,k,lead)=>{k=k||0;const w=1-Math.min(1,Math.abs(k));
+    for(const p of all){const u=t*2.6-p.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=p.n?.7:1,th=k*(p.sd===lead?2.1:1.7)*(p.n?.82:1);
+      p.arm.rotation.z=p.sd*((beat*.3*k2+.03)*w-k*.28);p.arm.rotation.y=p.sd*((.24-beat*.2)*w-th*.75);
+      p.tip.rotation.z=p.sd*lag*.42*k2*w;p.tip.rotation.y=p.sd*((.1-lag*.26)*w-th*.45)}};
 }
+/* attack progress 0..1 -> wing swing: a quick forward sweep, a short hold, then back */
+const hidSwing=p=>p<0?0:p<.3?-.35+1.35*(1-(1-p/.3)**2):p<.55?1:Math.max(0,1-(p-.55)/.45);
 /* a hidden class covers the whole body with a floating, boss-sized figure (like the sky temple's fallen archangel).
-   The weapon class's rig is kept only for its animation and weapon: every other part of it is made invisible. */
+   The weapon class's rig is kept only for its animation: every part of it, the weapon too, is made invisible. */
 const HID_HOVER=.85;
 let HID_INV=null;
 function hidBlank(root,keep){
@@ -99,7 +104,7 @@ function hidBlank(root,keep){
 }
 function makeHidden(cls,id){
   const h=HIDDEN[id],o=makeHero(cls,h.pal.main),pal=h.pal,colN=parseInt(h.col.slice(1),16);
-  hidBlank(o.body,new Set([o.weapon,o.weapon2,o.orb].filter(Boolean)));
+  hidBlank(o.body,new Set());o.orb=null;o.orbGlow=null;
   const main=M(pal.main,{roughness:.5,emissive:pal.main,emissiveIntensity:id==='fallen'?.1:.14}),dark=M(pal.dark,{roughness:.6}),
     trim=M(pal.trim,{metalness:.7,roughness:.3,emissive:pal.trim,emissiveIntensity:.25}),face=M(pal.face),lit=EM(pal.eye,1.7),
     edge=EM(id==='fallen'?0xff1f4a:0xffe27a,1.4);
@@ -176,9 +181,13 @@ function makeHidden(cls,id){
   o.hidSyn=on=>{if(!!on===!!o.synGlow)return;
     if(on){const g=grp(0,1.7,-.7,o.body);for(const[r,op]of[[8,.34],[3.8,.5]]){const s=glow(0xffd24a,r,op);g.add(s)}ring(1.55,.035,aumat(0xffe27a,.9),0,0,-.1,g);o.synGlow=g}
     else{o.body.remove(o.synGlow);o.synGlow=null}};
-  o.hw=t=>{
+  o.hw=(t,atkP,sd)=>{
+    const k=atkP>=0?hidSwing(atkP):0;
     o.body.position.y=HID_HOVER+Math.sin(t*2.2)*.14;
-    beat(t);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
+    /* no weapon in hand: arms held a little open, the wings do the striking */
+    o.armL.rotation.set(.12-k*.5,0,-.3-k*.35);o.armR.rotation.set(.12-k*.5,0,.3+k*.35);o.torso.rotation.y=0;
+    if(k>0)o.body.rotation.x+=k*.26;
+    beat(t,k,sd||1);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
     ribbons.forEach((g,i)=>{g.rotation.x=Math.cos(i*TAU/8+.39)*-.12+Math.sin(t*3+i*1.3)*.14;g.rotation.z=Math.sin(i*TAU/8+.39)*.12+Math.cos(t*2.6+i)*.12});
     orbs.forEach((g,i)=>{const a=t*.9+i*TAU/N;g.position.set(Math.cos(a)*1.45,Math.sin(t*1.8+i*1.7)*.18,Math.sin(a)*1.45);g.rotation.y=-a+Math.PI/2});
     if(o.synGlow)o.synGlow.rotation.z=t*.5};
@@ -295,6 +304,31 @@ Object.assign(SK,{
   }
 });
 
+/* ---------- basic attack: the wings, whatever weapon is held (its stats and enchants still apply) ---------- */
+const HID_REACH=11;
+let HID_ARC=null;
+function hidAttack(a,f,atk){
+  P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;P.atkDur=Math.min(.42,P.atkCd*.95);
+  const big=step===2,col=parseInt(HIDDEN[S.hidden].col.slice(1),16),range=4.8*S.rangeMul*(big?1.25:1),arc=big?3.8:2.8,dmg=atk*(big?1.8:1),
+    x0=P.x,z0=P.z,reach=Math.max(HID_REACH*S.rangeMul,range+3);
+  const inArc=(e,r,w)=>{const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz);return d<=r+e.r&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<=w/2+Math.atan2(e.r,Math.max(d,.1))};
+  const done=new Set(MOBS.filter(e=>!e.dead&&!e.spawning&&inArc(e,range,arc)));
+  P.vx+=a.x*(big?5:2.5);P.vz+=a.z*(big?5:2.5);
+  slashArc(x0+a.x*.4,z0+a.z*.4,f,range,arc,col,.28);slashArc(x0+a.x*.4,z0+a.z*.4,f,range*.7,arc*.75,0xffffff,.2);
+  for(const s of[-1,1])for(let i=0;i<3;i++){const g=f+s*(arc/2)*(.35+i*.28);emit(x0+Math.sin(g)*2.2,1.4+i*.35,z0+Math.cos(g)*2.2,Math.sin(f)*7,rnd(-.5,.8),Math.cos(f)*7,.4,col,0)}
+  if(big)ringBurst(x0+a.x*range*.7,.9,z0+a.z*range*.7,12,col,6,.4);
+  sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
+  hitArc(f,range,arc,dmg,big?11:6,{big});gatherArc(f,range,arc,big?1.5:1);
+  for(const b of EB){if(inArc({x:b.x,z:b.z,r:.5},range,arc)){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3)}}
+  /* the gust thrown by the wings carries the hit further out */
+  if(!HID_ARC)HID_ARC=new THREE.TorusGeometry(1,.07,4,20,1.9);
+  const g=grp(x0,1.2,z0),m=new THREE.Mesh(HID_ARC,EM(col,1.4));m.rotation.x=Math.PI/2;m.rotation.z=Math.PI/2-.95;g.add(m);g.rotation.y=f;
+  act(.24,t=>{const r=range*.7+(reach-range*.7)*Math.min(1,t/.24),sc=Math.min(r,5.5);m.scale.set(sc,sc,sc);g.position.set(x0+a.x*(r-sc),1.2,z0+a.z*(r-sc));
+    for(const e of MOBS){if(e.dead||e.spawning||done.has(e)||!inArc(e,r,1.2))continue;done.add(e);const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz)||1;dealMob(e,dmg*.8,{kx:dx/d,kz:dz/d,kb:4})}
+  },null,g);
+  netFx('wing',{x:x0+a.x*.4,z:z0+a.z*.4,f,r:range,a:arc,c:col});
+}
+
 /* ---------- actions & window ---------- */
 const hidBusy=()=>DU.on||skBusy()||P.dead||G.t-(P.lastHurt||-99)<5;
 function hidRefresh(){derive();buildPlayerModel();P.hp=Math.min(P.hp,S.maxHp);P.buff=null;skReset();netPresence();UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch()}
@@ -312,7 +346,7 @@ function openHidden(){
     let s='<div class="card"><div class="row sp"><b style="font-size:18px;color:'+h.col+'">'+h.name+'</b><span class="dim">'+(on?'사용 중':'원래 직업 사용 중')+'</span></div><div class="dim" style="margin:4px 0">'+h.story+'</div><div style="font-size:12px">'
       +['Q','E','R','F'].map((k,i)=>'<div><b class="gold">'+k+' '+h.skills[i].name+'</b> — '+h.skills[i].desc+'</div>').join('')+'</div>'
       +(pf.hidden==='arch'?'<div class="gold" style="margin-top:6px;font-size:12px">대천사 축복의 룬을 장착하면: 스킬 피해 +30%, 쿨타임 -15%, 최후의 심판 +4초</div>':'')
-      +'<div class="dim" style="margin-top:6px;font-size:12px">히든 상태에서는 모든 무기를 들 수 있고, 든 무기 방식으로 기본 공격합니다.</div></div>';
+      +'<div class="dim" style="margin-top:6px;font-size:12px">히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
     s+='<div class="row sp" style="margin-top:10px;gap:8px"><button class="btn" data-a="hswap">'+(on?JOBS[pf.job].name+'(으)로 돌아가기':h.name+'(으)로 바꾸기')+'</button><button class="btn sm sec" data-a="hdrop">히든 클래스 포기</button></div>';
     return s;
   });

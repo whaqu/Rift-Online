@@ -1202,7 +1202,7 @@ function makeHeroFor0(cls,job,tint){
 }
 function animHeroFor(o,t,spd,atkP,dashing,sd){
   animHero(o,t,spd,atkP,dashing,sd);
-  if(o.hw)o.hw(t);
+  if(o.hw)o.hw(t,atkP,sd);
   if(o.scarf)o.scarf.forEach((b,i)=>{b.rotation.x=.35+i*.15+Math.sin(t*5.5+i*1.3)*.13;b.rotation.y=Math.sin(t*3.7+i)*.15});
   if(o.wfx)for(const f of o.wfx){const n=f.list.length;f.list.forEach((r,i)=>{const a=t*f.sp+i/n*TAU,k=1+.15*Math.sin(t*2+i);r.position.set(f.x+Math.cos(a)*f.r*k,f.y+Math.sin(t*1.7+i*1.9)*f.h,f.z+Math.sin(a)*f.r*k);r.rotation.y=-a})}
   if(o.wau)o.wau.anim(t);
@@ -2633,7 +2633,7 @@ function wOmniLook(o,b){
   else if(c==='monk'){const a=grp(0,0,0,o.weapon);wOmniFist(o,a,-1);wOmniFist(o,wsecond(o),1)}
 }
 function applyWeaponLook0(o,base){
-  if(!o||!o.weapon||!o.cls)return;
+  if(!o||!o.weapon||!o.cls||o.hid)return;   // hidden classes carry no weapon
   const fn=WLOOK[o.cls];if(!fn)return;
   let b=typeof base==='string'&&/^[a-z]+_([1-9]|10)(_\d+)?$/.test(base)&&wCan(base,o.cls)?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);
@@ -3649,7 +3649,7 @@ function updatePlayerModel(dt){
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
   if(PM.omni&&PM.omni.kind===2&&PM.g.visible&&Math.random()<dt*(balOn()?2:7)){const s=Math.random()<.5?-1:1,r=rnd(.5,2.2);emit(P.x+Math.cos(PM.g.rotation.y)*s*r,PM.g.position.y+rnd(1.2,2.6),P.z-Math.sin(PM.g.rotation.y)*s*r,0,rnd(-.5,.2),0,rnd(.5,.9),Math.random()<.5?0xffffff:0xffe08a,0)}
   if(PM.omni&&PM.omni.kind===1&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
-  if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
+  if(PM.enh>=7&&!PM.hid&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
@@ -3677,7 +3677,7 @@ function tryAttackInput(){
   const want=mouse.down||keys.j||mv.atk;
   let auto=null;
   // auto attack never breaks stealth; on desktop it unlocks at AUTO_LV
-  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.atkCls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
+  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.atkCls].sty,reach=S.hidden?9:sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
   P.autoT=auto;
   if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy()){P.autoAim=auto;doAttack();P.autoAim=null}
 }
@@ -3699,7 +3699,8 @@ function doAttack(){
   P.atkCd=1/effAps();P.atkAnim=0;P.atkDur=Math.min(.34,P.atkCd*.92);
   const atk=effAtk()*(ambush?2.5:1);
   const sty=CLS[S.atkCls].sty;
-  if(sty.t==='melee'){
+  if(S.hidden)hidAttack(a,f,atk);
+  else if(sty.t==='melee'){
     P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;
     const big=step===2,range=sty.range*S.rangeMul*(big?1.28:1),arc=big?sty.big:sty.arc,dmg=atk*(big?sty.bigMul:1);
     P.vx+=a.x*(big?sty.lunge*1.8:sty.lunge);P.vz+=a.z*(big?sty.lunge*1.8:sty.lunge);
@@ -5450,11 +5451,16 @@ function hidWings(o,w,k){
     const gl=glow(w.glow,2.4,.26);gl.position.set(sd*.8,.1,-.06);arm.add(gl);
     all.push({root,arm,tip,sd,n});
   }});
-  return t=>{for(const p of all){const u=t*2.6-p.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=p.n?.7:1;
-    p.arm.rotation.z=p.sd*(beat*.3*k2+.03);p.arm.rotation.y=p.sd*(.24-beat*.2);p.tip.rotation.z=p.sd*lag*.42*k2;p.tip.rotation.y=p.sd*(.1-lag*.26)}};
+  /* k: attack swing (-.35 wound back .. 1 wrapped forward); the wing on the `lead` side reaches further */
+  return(t,k,lead)=>{k=k||0;const w=1-Math.min(1,Math.abs(k));
+    for(const p of all){const u=t*2.6-p.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=p.n?.7:1,th=k*(p.sd===lead?2.1:1.7)*(p.n?.82:1);
+      p.arm.rotation.z=p.sd*((beat*.3*k2+.03)*w-k*.28);p.arm.rotation.y=p.sd*((.24-beat*.2)*w-th*.75);
+      p.tip.rotation.z=p.sd*lag*.42*k2*w;p.tip.rotation.y=p.sd*((.1-lag*.26)*w-th*.45)}};
 }
+/* attack progress 0..1 -> wing swing: a quick forward sweep, a short hold, then back */
+const hidSwing=p=>p<0?0:p<.3?-.35+1.35*(1-(1-p/.3)**2):p<.55?1:Math.max(0,1-(p-.55)/.45);
 /* a hidden class covers the whole body with a floating, boss-sized figure (like the sky temple's fallen archangel).
-   The weapon class's rig is kept only for its animation and weapon: every other part of it is made invisible. */
+   The weapon class's rig is kept only for its animation: every part of it, the weapon too, is made invisible. */
 const HID_HOVER=.85;
 let HID_INV=null;
 function hidBlank(root,keep){
@@ -5464,7 +5470,7 @@ function hidBlank(root,keep){
 }
 function makeHidden(cls,id){
   const h=HIDDEN[id],o=makeHero(cls,h.pal.main),pal=h.pal,colN=parseInt(h.col.slice(1),16);
-  hidBlank(o.body,new Set([o.weapon,o.weapon2,o.orb].filter(Boolean)));
+  hidBlank(o.body,new Set());o.orb=null;o.orbGlow=null;
   const main=M(pal.main,{roughness:.5,emissive:pal.main,emissiveIntensity:id==='fallen'?.1:.14}),dark=M(pal.dark,{roughness:.6}),
     trim=M(pal.trim,{metalness:.7,roughness:.3,emissive:pal.trim,emissiveIntensity:.25}),face=M(pal.face),lit=EM(pal.eye,1.7),
     edge=EM(id==='fallen'?0xff1f4a:0xffe27a,1.4);
@@ -5541,9 +5547,13 @@ function makeHidden(cls,id){
   o.hidSyn=on=>{if(!!on===!!o.synGlow)return;
     if(on){const g=grp(0,1.7,-.7,o.body);for(const[r,op]of[[8,.34],[3.8,.5]]){const s=glow(0xffd24a,r,op);g.add(s)}ring(1.55,.035,aumat(0xffe27a,.9),0,0,-.1,g);o.synGlow=g}
     else{o.body.remove(o.synGlow);o.synGlow=null}};
-  o.hw=t=>{
+  o.hw=(t,atkP,sd)=>{
+    const k=atkP>=0?hidSwing(atkP):0;
     o.body.position.y=HID_HOVER+Math.sin(t*2.2)*.14;
-    beat(t);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
+    /* no weapon in hand: arms held a little open, the wings do the striking */
+    o.armL.rotation.set(.12-k*.5,0,-.3-k*.35);o.armR.rotation.set(.12-k*.5,0,.3+k*.35);o.torso.rotation.y=0;
+    if(k>0)o.body.rotation.x+=k*.26;
+    beat(t,k,sd||1);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
     ribbons.forEach((g,i)=>{g.rotation.x=Math.cos(i*TAU/8+.39)*-.12+Math.sin(t*3+i*1.3)*.14;g.rotation.z=Math.sin(i*TAU/8+.39)*.12+Math.cos(t*2.6+i)*.12});
     orbs.forEach((g,i)=>{const a=t*.9+i*TAU/N;g.position.set(Math.cos(a)*1.45,Math.sin(t*1.8+i*1.7)*.18,Math.sin(a)*1.45);g.rotation.y=-a+Math.PI/2});
     if(o.synGlow)o.synGlow.rotation.z=t*.5};
@@ -5660,6 +5670,31 @@ Object.assign(SK,{
   }
 });
 
+/* ---------- basic attack: the wings, whatever weapon is held (its stats and enchants still apply) ---------- */
+const HID_REACH=11;
+let HID_ARC=null;
+function hidAttack(a,f,atk){
+  P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;P.atkDur=Math.min(.42,P.atkCd*.95);
+  const big=step===2,col=parseInt(HIDDEN[S.hidden].col.slice(1),16),range=4.8*S.rangeMul*(big?1.25:1),arc=big?3.8:2.8,dmg=atk*(big?1.8:1),
+    x0=P.x,z0=P.z,reach=Math.max(HID_REACH*S.rangeMul,range+3);
+  const inArc=(e,r,w)=>{const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz);return d<=r+e.r&&Math.abs(angDiff(f,Math.atan2(dx,dz)))<=w/2+Math.atan2(e.r,Math.max(d,.1))};
+  const done=new Set(MOBS.filter(e=>!e.dead&&!e.spawning&&inArc(e,range,arc)));
+  P.vx+=a.x*(big?5:2.5);P.vz+=a.z*(big?5:2.5);
+  slashArc(x0+a.x*.4,z0+a.z*.4,f,range,arc,col,.28);slashArc(x0+a.x*.4,z0+a.z*.4,f,range*.7,arc*.75,0xffffff,.2);
+  for(const s of[-1,1])for(let i=0;i<3;i++){const g=f+s*(arc/2)*(.35+i*.28);emit(x0+Math.sin(g)*2.2,1.4+i*.35,z0+Math.cos(g)*2.2,Math.sin(f)*7,rnd(-.5,.8),Math.cos(f)*7,.4,col,0)}
+  if(big)ringBurst(x0+a.x*range*.7,.9,z0+a.z*range*.7,12,col,6,.4);
+  sfx('slash');cam.shake=Math.max(cam.shake,big?.35:.12);
+  hitArc(f,range,arc,dmg,big?11:6,{big});gatherArc(f,range,arc,big?1.5:1);
+  for(const b of EB){if(inArc({x:b.x,z:b.z,r:.5},range,arc)){b.life=0;burst(b.x,1,b.z,5,0xffffff,5,.3)}}
+  /* the gust thrown by the wings carries the hit further out */
+  if(!HID_ARC)HID_ARC=new THREE.TorusGeometry(1,.07,4,20,1.9);
+  const g=grp(x0,1.2,z0),m=new THREE.Mesh(HID_ARC,EM(col,1.4));m.rotation.x=Math.PI/2;m.rotation.z=Math.PI/2-.95;g.add(m);g.rotation.y=f;
+  act(.24,t=>{const r=range*.7+(reach-range*.7)*Math.min(1,t/.24),sc=Math.min(r,5.5);m.scale.set(sc,sc,sc);g.position.set(x0+a.x*(r-sc),1.2,z0+a.z*(r-sc));
+    for(const e of MOBS){if(e.dead||e.spawning||done.has(e)||!inArc(e,r,1.2))continue;done.add(e);const dx=e.x-x0,dz=e.z-z0,d=Math.hypot(dx,dz)||1;dealMob(e,dmg*.8,{kx:dx/d,kz:dz/d,kb:4})}
+  },null,g);
+  netFx('wing',{x:x0+a.x*.4,z:z0+a.z*.4,f,r:range,a:arc,c:col});
+}
+
 /* ---------- actions & window ---------- */
 const hidBusy=()=>DU.on||skBusy()||P.dead||G.t-(P.lastHurt||-99)<5;
 function hidRefresh(){derive();buildPlayerModel();P.hp=Math.min(P.hp,S.maxHp);P.buff=null;skReset();netPresence();UI.refreshHud();if(UI.refreshTouch)UI.refreshTouch()}
@@ -5677,7 +5712,7 @@ function openHidden(){
     let s='<div class="card"><div class="row sp"><b style="font-size:18px;color:'+h.col+'">'+h.name+'</b><span class="dim">'+(on?'사용 중':'원래 직업 사용 중')+'</span></div><div class="dim" style="margin:4px 0">'+h.story+'</div><div style="font-size:12px">'
       +['Q','E','R','F'].map((k,i)=>'<div><b class="gold">'+k+' '+h.skills[i].name+'</b> — '+h.skills[i].desc+'</div>').join('')+'</div>'
       +(pf.hidden==='arch'?'<div class="gold" style="margin-top:6px;font-size:12px">대천사 축복의 룬을 장착하면: 스킬 피해 +30%, 쿨타임 -15%, 최후의 심판 +4초</div>':'')
-      +'<div class="dim" style="margin-top:6px;font-size:12px">히든 상태에서는 모든 무기를 들 수 있고, 든 무기 방식으로 기본 공격합니다.</div></div>';
+      +'<div class="dim" style="margin-top:6px;font-size:12px">히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
     s+='<div class="row sp" style="margin-top:10px;gap:8px"><button class="btn" data-a="hswap">'+(on?JOBS[pf.job].name+'(으)로 돌아가기':h.name+'(으)로 바꾸기')+'</button><button class="btn sm sec" data-a="hdrop">히든 클래스 포기</button></div>';
     return s;
   });
@@ -7777,7 +7812,8 @@ function onPos(d){
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
   if(!d||!NET.peers[d.n]||!isFinite(+d.x)||!isFinite(+d.z))return;const col=+d.c||FXCOL[d.c]||0xffffff;
-  if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
+  if(d.k==='wing'){const p=NET.peers[d.n],r=clamp(+d.r||5,1,10),a=clamp(+d.a||2.8,.5,6.3),ff=+d.f||0;p.atkT=0;p.atkS=-(p.atkS||1);slashArc(+d.x,+d.z,ff,r,a,col,.28);slashArc(+d.x,+d.z,ff,r*.7,a*.75,0xffffff,.2)}
+  else if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
   else if(d.k==='shot'){const vx=+d.vx||0,vz=+d.vz||0;const g=grp(+d.x,1.3,+d.z);g.add(glowS(+d.c||(d.v==='orb'?0x5ee7ff:0x6bffb0),d.v==='orb'?2.8:1.6,.8));entG.add(g);let t=0,x=+d.x,z=+d.z;addFx(.8,(k,dt)=>{x+=vx*dt;z+=vz*dt;g.position.x=x;g.position.z=z;emit(x,1.3,z,0,0,0,.2,0x9fe8ff,0)},()=>entG.remove(g))}
   else if(d.k==='nova'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,12),+d.c||0xffffff,.45)}
   else if(d.k==='ground'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,10),+d.c||0xffffff,.6)}
@@ -7894,7 +7930,8 @@ function netUpdate(dt){
     p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     omniApply(p.model,p.om);
     const fly=peerAir(p,dt);
-    animHeroFor(p.model,p.anim,!fly&&Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
+    if(p.atkT!=null){p.atkT+=dt/.42;if(p.atkT>=1)p.atkT=null}
+    animHeroFor(p.model,p.anim,!fly&&Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,p.atkT!=null?p.atkT:-1,false,p.atkS||1);
     peerAirPose(p,fly,show&&!p.dead);
     if(show)p.label.pos(p.x,3.3+(p.y||0)+(p.model.hid?1.7:0),p.z);else if(p.label.el)p.label.el.style.display='none';
     peerGolems(p,dt,duelShows(k));

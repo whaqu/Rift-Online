@@ -544,7 +544,7 @@ function wOmniLook(o,b){
   else if(c==='monk'){const a=grp(0,0,0,o.weapon);wOmniFist(o,a,-1);wOmniFist(o,wsecond(o),1)}
 }
 function applyWeaponLook0(o,base){
-  if(!o||!o.weapon||!o.cls)return;
+  if(!o||!o.weapon||!o.cls||o.hid)return;   // hidden classes carry no weapon
   const fn=WLOOK[o.cls];if(!fn)return;
   let b=typeof base==='string'&&/^[a-z]+_([1-9]|10)(_\d+)?$/.test(base)&&wCan(base,o.cls)?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);

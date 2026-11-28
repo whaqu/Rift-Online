@@ -347,6 +347,13 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset();g.P.buff=null;
       }
     }
+    /* basic attack is a wing sweep with any weapon */
+    {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.face=0;g.P.atkCd=0;g.P.atkAnim=-1;g.derive();g.buildPlayerModel();
+      const mk=(id,z)=>{const m=g.makeMobObj(id,'slime',60,z,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;m.x=60;m.z=z;return m};
+      const near=mk(88100,3),far=mk(88101,9);let okw2=true;
+      try{g.P.autoAim=near;g.doAttack();g.P.autoAim=null;for(let i=0;i<40;i++){g.P.iframes=1;step(1)}}catch(e){okw2=false;console.log(e.stack)}
+      T(okw2&&near.hp<near.maxHp&&far.hp<far.maxHp,'wing attack hits near and, with its gust, further enemies');
+      g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset()}
     {const w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);await up(d=>{d.acc[me].hidden='arch';d.items.find(i=>i.id===w.id).rune='angel:1'});g.derive();g.buildPlayerModel();T(g.archSyn(),'archangel + angel rune synergy');
       await up(d=>{d.acc[me].hidden='fallen'});g.derive();T(!g.archSyn(),'no synergy for other hidden classes')}
     let okw=true;try{g.openHidden();g.UI.close()}catch(e){okw=false}T(okw,'hidden window opens');

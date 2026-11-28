@@ -136,7 +136,8 @@ function onPos(d){
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
   if(!d||!NET.peers[d.n]||!isFinite(+d.x)||!isFinite(+d.z))return;const col=+d.c||FXCOL[d.c]||0xffffff;
-  if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
+  if(d.k==='wing'){const p=NET.peers[d.n],r=clamp(+d.r||5,1,10),a=clamp(+d.a||2.8,.5,6.3),ff=+d.f||0;p.atkT=0;p.atkS=-(p.atkS||1);slashArc(+d.x,+d.z,ff,r,a,col,.28);slashArc(+d.x,+d.z,ff,r*.7,a*.75,0xffffff,.2)}
+  else if(d.k==='slash')slashArc(+d.x,+d.z,+d.f||0,clamp(+d.r||3,1,8),clamp(+d.a||2,.5,6.3),d.c===1?0xffd24a:0xbfe4ff,.25);
   else if(d.k==='shot'){const vx=+d.vx||0,vz=+d.vz||0;const g=grp(+d.x,1.3,+d.z);g.add(glowS(+d.c||(d.v==='orb'?0x5ee7ff:0x6bffb0),d.v==='orb'?2.8:1.6,.8));entG.add(g);let t=0,x=+d.x,z=+d.z;addFx(.8,(k,dt)=>{x+=vx*dt;z+=vz*dt;g.position.x=x;g.position.z=z;emit(x,1.3,z,0,0,0,.2,0x9fe8ff,0)},()=>entG.remove(g))}
   else if(d.k==='nova'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,12),+d.c||0xffffff,.45)}
   else if(d.k==='ground'){shockRing(+d.x,+d.z,clamp(+d.r||4,1,10),+d.c||0xffffff,.6)}
@@ -253,7 +254,8 @@ function netUpdate(dt){
     p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     omniApply(p.model,p.om);
     const fly=peerAir(p,dt);
-    animHeroFor(p.model,p.anim,!fly&&Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
+    if(p.atkT!=null){p.atkT+=dt/.42;if(p.atkT>=1)p.atkT=null}
+    animHeroFor(p.model,p.anim,!fly&&Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,p.atkT!=null?p.atkT:-1,false,p.atkS||1);
     peerAirPose(p,fly,show&&!p.dead);
     if(show)p.label.pos(p.x,3.3+(p.y||0)+(p.model.hid?1.7:0),p.z);else if(p.label.el)p.label.el.style.display='none';
     peerGolems(p,dt,duelShows(k));

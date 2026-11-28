@@ -130,7 +130,7 @@ function updatePlayerModel(dt){
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
   if(PM.omni&&PM.omni.kind===2&&PM.g.visible&&Math.random()<dt*(balOn()?2:7)){const s=Math.random()<.5?-1:1,r=rnd(.5,2.2);emit(P.x+Math.cos(PM.g.rotation.y)*s*r,PM.g.position.y+rnd(1.2,2.6),P.z-Math.sin(PM.g.rotation.y)*s*r,0,rnd(-.5,.2),0,rnd(.5,.9),Math.random()<.5?0xffffff:0xffe08a,0)}
   if(PM.omni&&PM.omni.kind===1&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
-  if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
+  if(PM.enh>=7&&!PM.hid&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
@@ -158,7 +158,7 @@ function tryAttackInput(){
   const want=mouse.down||keys.j||mv.atk;
   let auto=null;
   // auto attack never breaks stealth; on desktop it unlocks at AUTO_LV
-  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.atkCls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
+  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.atkCls].sty,reach=S.hidden?9:sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
   P.autoT=auto;
   if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy()){P.autoAim=auto;doAttack();P.autoAim=null}
 }
@@ -180,7 +180,8 @@ function doAttack(){
   P.atkCd=1/effAps();P.atkAnim=0;P.atkDur=Math.min(.34,P.atkCd*.92);
   const atk=effAtk()*(ambush?2.5:1);
   const sty=CLS[S.atkCls].sty;
-  if(sty.t==='melee'){
+  if(S.hidden)hidAttack(a,f,atk);
+  else if(sty.t==='melee'){
     P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;
     const big=step===2,range=sty.range*S.rangeMul*(big?1.28:1),arc=big?sty.big:sty.arc,dmg=atk*(big?sty.bigMul:1);
     P.vx+=a.x*(big?sty.lunge*1.8:sty.lunge);P.vz+=a.z*(big?sty.lunge*1.8:sty.lunge);
