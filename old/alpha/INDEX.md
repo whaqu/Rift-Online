@@ -60,3 +60,4 @@
 - a58_assassin-q-hop-cooldown: 암살자 Q의 적 이동 공격 사이 0.5초 대기
 - a59_assassin-q-feel: 암살자 Q 타격감(두 번 베기 박자·마무리 베기 효과), 대기 중 대상 주위를 도는 움직임
 - a60_assassin-q-vault: 암살자 Q가 두 번 벤 뒤 상대를 뛰어넘어 뒤에 착지
+- a61_assassin-q-line-leap: 암살자 Q를 8m까지 접근 → 16m 도약 베기로 변경, 도약 한가운데일수록 높은 피해

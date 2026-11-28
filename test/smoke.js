@@ -714,13 +714,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     { const keep=g.MOBS.splice(0);const mm=g.makeMobObj(99001,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(mm))g.MOBS.push(mm);mm.spawning=false;mm.hp=mm.maxHp=1e12;
       g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;T(g.P.qGuard>0,'assassin Q gives damage reduction');mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
       g.P.leap=null;mm.dead=false;mm.executed=false;mm.hp=1e12;
-      {const x0=g.P.x,z0=g.P.z;mm.x=x0+6;mm.z=z0;g.keys.q=false;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(g.P.x===x0&&g.P.leap&&mm.hp===1e12,'assassin Q glides instead of blinking');
-        for(let i=0;i<4;i++)g.movePlayer(.05);const h1=mm.hp;for(let i=0;i<4;i++)g.movePlayer(.05);const h2=mm.hp;for(let i=0;i<8;i++)g.movePlayer(.05);
-        T(h1<1e12&&h2<h1&&mm.hp===h2&&!g.P.leap&&!g.P.qRun&&Math.hypot(g.P.x-x0,g.P.z-z0)>4,'assassin Q cuts twice and stays');}
+      {g.keys.q=false;g.P.qNext=0;const x0=g.P.x,z0=g.P.z;mm.x=x0+11;mm.z=z0;
+        g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(g.P.x===x0&&g.P.leap&&g.P.leap.h===0&&Math.abs(g.P.leap.x1-(x0+3))<.01&&mm.hp===1e12,'assassin Q runs up to 8m first');
+        let n=0;while(g.P.leap&&n++<100)g.movePlayer(.02);
+        T(mm.hp<1e12&&Math.abs(g.P.x-(x0+19))<1.5&&!g.P.qRun,'then leaps 16m through the enemy '+(g.P.x-x0).toFixed(1));
+        const r=g.SK.r_q({atk:100,a:{x:-1,z:0},col:0,m:1,sk:{}});T(r===false&&!g.P.leap,'assassin Q waits between dashes');g.P.qNext=0;
+        const mid=g.qLineMult(0),end=g.qLineMult(8);T(mid===2&&end===.5&&g.qLineMult(-8)===.5&&g.qLineMult(4)>end&&g.qLineMult(4)<mid,'damage peaks in the middle of the leap');}
       {g.P.leap=null;g.keys.q=true;const px=g.P.x,pz=g.P.z;const other=g.makeMobObj(99003,'slime',px-3.5,pz,1,false,false,false);if(!g.MOBS.includes(other))g.MOBS.push(other);other.spawning=false;other.hp=other.maxHp=1e12;
-        mm.x=px+3.5;mm.z=pz;mm.hp=1e12;mm.qT=other.qT=0;for(let k=0;k<4;k++){g.P.qChain=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});g.P.qChain=false;for(let i=0;i<18;i++){g.P.qRun=false;g.movePlayer(.05)}}
-        {g.P.qNext=g.P.qClock+.5;const r=g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(r===false&&!g.P.leap,'assassin Q waits between dashes');g.P.qNext=0;}
-        T(mm.hp<1e12&&other.hp<1e12&&mm.qT>0&&other.qT>0&&Math.abs(mm.qT-other.qT)===1,'held assassin Q weaves between enemies');g.keys.q=false;g.P.leap=null;g.P.qRun=false;}
+        mm.x=px+3.5;mm.z=pz;mm.hp=1e12;mm.qT=other.qT=0;for(let k=0;k<4;k++){g.P.x=px;g.P.z=pz;g.P.qNext=0;g.P.leap=null;g.P.qChain=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});g.P.qChain=false;for(let i=0;i<18;i++){g.P.qRun=false;g.movePlayer(.05)}}
+        T(mm.hp<1e12&&other.hp<1e12&&mm.qT>0&&other.qT>0&&Math.abs(mm.qT-other.qT)===1,'held assassin Q weaves between enemies');g.keys.q=false;g.P.leap=null;g.P.qRun=false;g.P.qNext=0;g.P.x=px;g.P.z=pz;}
       {g.MOBS.splice(0);g.P.leap=null;g.P.stunT=0;g.keys.q=true;g.P.qArm=g.P.qClock||0;const x1=g.P.x,z1=g.P.z;g.P.z=z1+40;const z2=g.P.z;for(let i=0;i<10;i++)g.movePlayer(.05);
         const up=g.P.glide&&g.P.glide.h>2,moved=Math.hypot(g.P.x-x1,g.P.z-z2);T(up&&moved>2,'double tap and hold glides '+moved.toFixed(1));
         const v=g.makeMobObj(99004,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(v))g.MOBS.push(v);v.spawning=false;v.hp=v.maxHp=1e12;g.qPlunge({col:0});for(let i=0;i<6;i++)g.movePlayer(.05);

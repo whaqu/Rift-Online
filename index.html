@@ -4460,7 +4460,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적에게 파고드는 공격 사이 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적에게 파고들어 두 번 베고 뒤로 넘어갑니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적에게 파고드는 공격 사이 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적에게 8m까지 달려가 16m를 도약하며 경로의 적을 모두 벱니다(도약 한가운데일수록 강함). 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -4579,7 +4579,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.qNext=0;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.qNext=0;P.qSlide=null;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.glide||P.hidden||P.chan>0||P.stunT>0);
@@ -4722,7 +4722,7 @@ const SK={
     pillar(P.x,P.z,c.col,24,.6);shockRing(P.x,P.z,16,c.col,.7);
   },
   /* 암살자 */
-  r_q(c){   // glide to an enemy and cut twice. Held: keep gliding between enemies; no enemy: glide around
+  r_q(c){   // run up to Q_NEAR from an enemy, then leap Q_LEN through it, cutting everything on the way. Held: repeat; no enemy: glide around
     const chain=!!P.qChain;let m=aimMob(12);
     if(chain){   // visit the enemy cut longest ago, so a held Q weaves through a crowd
       const l=mobsIn(P.x,P.z,12).filter(alive).sort((a,b)=>(a.qT||0)-(b.qT||0)||d2(a.x,a.z,P.x,P.z)-d2(b.x,b.z,P.x,P.z));if(l.length)m=l[0]}
@@ -4730,21 +4730,37 @@ const SK={
     if(qHopWait()){if(qHeld())P.qRun=true;return false}   // still catching breath between enemies
     P.qRun=false;m.qT=P.qSeq=(P.qSeq||0)+1;
     const ch=c.charge==null?1:c.charge,amb=P.stealth>0,mult=(amb?6.25:2.65)*qPower(ch);
-    // dash to the near side, cut twice, then vault over the target and land behind it
-    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1,ux=dx/d,uz=dz/d,bx=m.x-ux*(m.r+1),bz=m.z-uz*(m.r+1);
     P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
-    const cut=(kb,side)=>{if(!alive(m))return;P.face=Math.atan2(m.x-P.x,m.z-P.z);
-      const fin=side<0;   // light first cut, heavy second: freeze, shake, white cross and a ring
-      sHit(c,m,mult,{kb,crit:true,big:true});slashArc(m.x,m.z,P.face+side,fin?3.8:3,fin?2.6:2,c.col,fin?.3:.2);sfx('slash',fin?1:.7);
-      burst(m.x,1.2,m.z,fin?18:8,fin?0xffd0e8:c.col,fin?11:7,.3,6);cam.shake=Math.max(cam.shake,fin?.32:.12);
-      if(fin){slashArc(m.x,m.z,P.face-side*.5,3.2,1.5,0xffffff,.16);shockRing(m.x,m.z,2.6,c.col,.22);hitStop(.07)}
-      netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0})};
-    const glide=(x,z,dur,done)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
-    act(.3,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});sfx('dash');
-    glide(bx,bz,.17,()=>{cut(0,1.6);glide(P.x,P.z,.08,()=>{cut(2,-1.6);P.qNext=(P.qClock||0)+Q_HOP;P.qMob=m;
-      const ox=m.x+ux*(m.r+2.2),oz=m.z+uz*(m.r+2.2);sfx('dash',.6);
-      P.leap={t:0,dur:.2,x0:P.x,z0:P.z,x1:ox,z1:oz,h:2.4,done:()=>{if(alive(m))P.face=Math.atan2(m.x-P.x,m.z-P.z);burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4);if(qHeld())P.qRun=true}}})});
-    act(1.8,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
+    const strike=()=>{   // the leap starts here, aimed at where the enemy is now
+      const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz),ux=d>.01?dx/d:Math.sin(P.face),uz=d>.01?dz/d:Math.cos(P.face),x0=P.x,z0=P.z;
+      let x1=x0+ux*Q_LEN,z1=z0+uz*Q_LEN;const R=Math.hypot(x1,z1);if(!DG.on&&!DU.on&&R>WORLD_R-2){x1*=(WORLD_R-2)/R;z1*=(WORLD_R-2)/R}
+      const done=new Set(),killed=new Set([m]),half=Q_LEN/2;   // killed: whose death refills the gauge
+      /* the path is a number line from -8 to +8: the closer to 0, the harder the cut */
+      const sweep=upto=>{
+        for(const e of mobsIn(x0+ux*half,z0+uz*half,half+4)){
+          if(done.has(e)||!alive(e))continue;
+          const rx=e.x-x0,rz=e.z-z0,t=rx*ux+rz*uz,side=Math.abs(rx*uz-rz*ux);
+          if(side>e.r+Q_WIDE||t<-e.r||t>Q_LEN+e.r||t>upto)continue;
+          done.add(e);const k=1-Math.min(1,Math.abs(t-half)/half),big=k>.6,face=Math.atan2(ux,uz);
+          sHit(c,e,mult*qLineMult(t-half),{kb:big?2:0,crit:true,big});
+          slashArc(e.x,e.z,face+Math.PI/2,2.4+1.6*k,2.2,c.col,.2+.12*k);burst(e.x,1.2,e.z,6+Math.round(14*k),big?0xffd0e8:c.col,6+6*k,.3,6);
+          sfx('slash',.6+.4*k);cam.shake=Math.max(cam.shake,.1+.25*k);
+          if(big){slashArc(e.x,e.z,face,3.2,1.5,0xffffff,.16);shockRing(e.x,e.z,2.6,c.col,.22);hitStop(.06)}
+          netFx('slash',{x:e.x,z:e.z,f:face+Math.PI/2,r:3,a:2,c:0});
+          killed.add(e);
+        }};
+      sfx('dash');P.face=Math.atan2(ux,uz);
+      const leap={t:0,dur:.24,x0,z0,x1,z1,h:1.6,done:()=>{
+        sweep(Q_LEN+4);P.qNext=(P.qClock||0)+Q_HOP;P.qSlide={x:ux,z:uz};
+        burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4);if(qHeld())P.qRun=true}};
+      P.leap=leap;
+      act(.3,()=>{if(P.leap===leap)sweep((P.x-x0)*ux+(P.z-z0)*uz);emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});
+      act(1.8,()=>{for(const e of killed)if(e.dead&&!e.executed){e.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info')}});
+    };
+    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz);P.face=Math.atan2(dx,dz);sfx('dash',.6);
+    if(d<=Q_NEAR+.05){strike();return}
+    const run=d-Q_NEAR;P.spdN=1.2;
+    P.leap={t:0,dur:run/(effSpd()*2.2),x0:P.x,z0:P.z,x1:P.x+dx/d*run,z1:P.z+dz/d*run,h:0,done:strike};
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
     act(5,()=>{if(!(P.stealth>0))return true;P.slow=1.35},()=>{P.slow=1})},
@@ -5233,19 +5249,21 @@ function qPlunge(sk){
 }
 /* pause between two dashes at enemies, counted from the end of the last one */
 const Q_HOP=.5;
+/* Q shape: leap start distance, leap length, half width of the cut, damage on the number line (s: -Q_LEN/2 .. Q_LEN/2) */
+const Q_NEAR=8,Q_LEN=16,Q_WIDE=1.8;
+const qLineMult=s=>.5+1.5*(1-Math.min(1,Math.abs(s)/(Q_LEN/2)));
 const qHopWait=()=>(P.qNext||0)>(P.qClock||0);
-function qCircle(dt){
-  const m=P.qMob;if(!m||m.dead||d2(m.x,m.z,P.x,P.z)>64)return;
-  const dx=P.x-m.x,dz=P.z-m.z,side=(P.qSeq||0)%2?1:-1,a=Math.atan2(dx,dz)+side*1.4*dt,r=lerp(Math.hypot(dx,dz),m.r+1.8,1-Math.exp(-dt*8));
-  blinkTo(m.x+Math.sin(a)*r,m.z+Math.cos(a)*r);P.face=Math.atan2(m.x-P.x,m.z-P.z);
-  emit(P.x,.9,P.z,0,.4,0,.3,0xff4a7a,0);
+/* while waiting for the next dash, keep sliding on from the leap, slowing down */
+function qCoast(dt){
+  const d=P.qSlide,k=clamp(((P.qNext||0)-(P.qClock||0))/Q_HOP,0,1);if(!d||!k)return;
+  blinkTo(P.x+d.x*9*k*dt,P.z+d.z*9*k*dt);emit(P.x,.5,P.z,0,.4,0,.25,0x8a6ad0,0);
 }
 /* hold-to-glide movement; turns into an attack as soon as an enemy is in reach */
 function qRunStep(dt){
   if(!qHeld()||P.dead||P.stunT>0||P.hidden||P.dashT>0){P.qRun=false;return false}
   if(aimMob(12)){
     if(!qHopWait()){P.qRun=false;P.qChain=true;trySkill('q');P.qChain=false;return true}
-    if(!P.ix&&!P.iz){qCircle(dt);return true}   // waiting for the next dash: prowl around the last target
+    if(!P.ix&&!P.iz){qCoast(dt);return true}   // waiting for the next dash
   }
   const dr=qDir();if(!dr)return true;const dx=dr.x,dz=dr.z;
   const step=effSpd()*1.6*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
@@ -7679,7 +7697,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={RECIPES,craftMatch,recipeCells,craftHtml,openSmith,applyWeaponLook,makeHeroFor,wCan,wName,craftable,balEntities,openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={qLineMult,RECIPES,craftMatch,recipeCells,craftHtml,openSmith,applyWeaponLook,makeHeroFor,wCan,wName,craftable,balEntities,openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>
