@@ -213,13 +213,26 @@ function dgMeteor(m,def){
   for(const t of targets().filter(t=>!t.pull).slice(0,4)){drop(t.x,t.z);for(let k=0;k<n;k++){const a=rnd(0,TAU),r=rnd(5,11);drop(t.x+Math.cos(a)*r,t.z+Math.sin(a)*r)}}
   emitEvent({t:'v',x:m.x,z:m.z,n:'growl'});
 }
+/* judgement: the whole hall is struck except one small green circle */
+function dgJudge(m,def,w){
+  const c=def.judge,T=targets().filter(t=>!t.pull),t=T.length?pick(T):m,hx=DG.cx,hz=DG.cz+DG_HALL_Z,a=rnd(0,TAU),r=rnd(8,12);
+  let x=t.x+Math.cos(a)*r,z=t.z+Math.sin(a)*r;const l=Math.hypot(x-hx,z-hz),max=DGL.hallR-7;
+  if(l>max){x=hx+(x-hx)/l*max;z=hz+(z-hz)/l*max}
+  emitEvent({t:'safe',x,z,r:c.r,w,d:c.d,hx,hz,hr:DGL.hallR});emitEvent({t:'v',x:m.x,z:m.z,n:'growl'});
+}
 function dgBossAI(m,dt,dx,dz,d){
   const bk=m.bk,def=DGDEF[bk],enr=m.hp<m.maxHp*.35,en=enr?1.2:1,cdm=(enr?.7:1)*(def&&def.cdm||1)*(m.p2?def.p2.cdm:1);
   if(m.pi===undefined){m.pi=0;m.state='chase';m.cd=2}
-  if(def&&def.p2&&!m.p2&&m.hp<=m.maxHp*def.p2.at){m.p2=true;m.pi=0;m.warn=false;m.state='rec';m.st=2;m.cd=1.5;m.mt=0;emitEvent({t:'f',x:m.x,z:m.z,c:0xff3a2a,n:'boom'})}
+  if(def&&def.p2&&!m.p2&&m.hp<=m.maxHp*def.p2.at){m.p2=true;m.pi=0;m.warn=false;m.state='rec';m.st=2;m.cd=1.5;m.mt=0;m.jt=7;emitEvent({t:'f',x:m.x,z:m.z,c:0xff3a2a,n:'boom'})}
   if(def&&def.meteor){
     if(m.mt===undefined)m.mt=def.meteor.first;m.mt-=dt;
-    if(m.mt<=0&&m.state==='chase'){m.mt=def.meteor.every[m.p2?1:0];m.cd=Math.max(m.cd,def.meteor.w+.8);dgMeteor(m,def)}
+    if(m.mt<=0&&m.state==='chase'){m.mt=def.meteor.every[m.p2?1:0];m.cd=Math.max(m.cd,def.meteor.w+.8);if(def.judge)m.jt=Math.max(m.jt||0,def.meteor.w+1.5);dgMeteor(m,def)}
+  }
+  if(def&&def.judge){
+    const c=def.judge;if(m.jt===undefined)m.jt=c.first;m.jt-=dt;
+    if(m.jt<=0&&m.state==='chase'){
+      const second=m.jn>0,w=second?c.w2:c.w;m.jn=second?0:m.p2?1:0;   /* phase 2: two in a row */
+      m.jt=m.jn?w+.3:c.every[m.p2?1:0];m.cd=Math.max(m.cd,w+.8);m.mt=Math.max(m.mt||0,w+1.8);dgJudge(m,def,w)}
   }
   if(m.state==='chase'){
     faceM(m,dx,dz,dt,6);
@@ -337,7 +350,7 @@ function dgSpawnWave(){
 function dgSpawnBoss(){
   const def=DGDEF[DG.id],pc=Math.max(1,dgPlayers().length);
   DG.mkBk=DG.id;const m=makeMobObj(mobSeq++,'dgboss',DG.cx,DG.cz+DG_HALL_Z-4,def.ml,false,false,false);
-  dgBossSetup(m,DG.id);m.maxHp=m.hp=Math.round(mobHp(def.ml)*def.hpM*(1+.9*(pc-1)));
+  dgBossSetup(m,DG.id);m.maxHp=m.hp=def.hpFix?def.hpFix[0]+def.hpFix[1]:Math.round(mobHp(def.ml)*def.hpM*(1+.9*(pc-1)));   /* hpFix: [phase 1, phase 2], same for any party size */
   DG.boss=m;sfx('boom');cam.shake=Math.max(cam.shake,.8);
   shockRing(m.x,m.z,10,def.ring,.8);
 }

@@ -81,7 +81,7 @@ for(const pid in RDEF){
   for(const id of[pid,...Object.keys(JOBS).filter(k=>JOBS[k].parent===pid&&JOBS[k].tier===2)]){
     const j=JOBS[id],el=j.el||null,pre=el?j.name.split(' ')[0]+' ':'';
     j.r={id:id+'_r',fx:pid,type:'x',name:pre+name,cd,col:j.r.col,icon,desc,el};
-    if(el&&(pid==='priest'||pid==='crusader'))j.r=Object.assign(j.r,{fx:'moly',name:'홀리 몰리',cd:42,icon:'star',desc:'파티원 모두(자신 포함)에게 강력한 축복. 이동·공격 속도, 쿨타임 회복, 자연 치유가 크게 오르고 성광 효과가 함께 깃듭니다.'});
+    if(el&&(pid==='priest'||pid==='crusader'))j.r=Object.assign(j.r,{fx:'moly',name:'홀리 몰리',cd:42,icon:'star',desc:'파티원 모두(자신 포함)에게 강력한 축복. 이동·공격 속도, 쿨타임 회복, 자연 치유가 크게 오르고 성광 효과가 함께 깃듭니다. 지속 중에는 빛기둥이 주변 적 3명을 계속 공격합니다.'});
     if(!el)j.desc=j.desc.split('. ')[0].replace(/\.$/,'')+'. R: '+desc;
   }
 }
@@ -529,7 +529,14 @@ const SK={
   },
   priest(c){holyBuff('wp',22,c.col,'홀리 웨폰')},
   crusader(c){holyBuff('wp',22,c.col,'홀리 웨폰')},
-  moly(c){holyBuff('my',16,0xfff2a0,'홀리 몰리')},
+  moly(c){
+    holyBuff('my',16,0xfff2a0,'홀리 몰리');
+    let acc=.6;   /* while it lasts, holy light also strikes up to 3 nearby enemies */
+    act(16,(t,dt)=>{acc+=dt;if(acc<.8)return;acc-=.8;
+      const l=mobsIn(P.x,P.z,11).sort((a,b)=>d2(a.x,a.z,P.x,P.z)-d2(b.x,b.z,P.x,P.z)).slice(0,3);
+      for(const m of l){pillar(m.x,m.z,0xfff2a0,9,.35);flashDisc(m.x,m.z,2,0xffe27a,.3);sHit(c,m,1.6,{noProc:true})}
+      if(l.length)sfx('hit_metal',.4)});
+  },
   dragoon(c){
     P.hidden=true;P.iframes=Math.max(P.iframes,1.6);burst(P.x,1,P.z,30,c.col,8,.5,0);pillar(P.x,P.z,c.col,24,.4);sfx('dash');
     const pt=aimPoint(16);telegraph(pt.x,pt.z,5.5,1.1,()=>{},c.col);

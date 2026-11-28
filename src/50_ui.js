@@ -498,7 +498,7 @@ function drawMini(){
 const LG={mode:'in',cls:'warrior'};
 function initLogin(){
   const desc=()=>{const d=$('clsdesc'),c=CLS[LG.cls];if(d)d.innerHTML='<b>'+c.name+'</b> — '+c.blurb+'<br>Q '+c.q.name+' · E '+c.e.name+' · 만렙 F '+ULT[LG.cls].name};
-  $('clsgrid').innerHTML=CLASSES.map(k=>'<div class="c'+(k===LG.cls?' on':'')+'" data-k="'+k+'">'+ic(WICON[k],'#d2a84a',24)+'<b>'+CLS[k].name+'</b></div>').join('');
+  $('clsgrid').innerHTML=CLASSES.map(k=>'<div class="c'+(k===LG.cls?' on':'')+(k==='cleric'?' rec':'')+'" data-k="'+k+'">'+ic(WICON[k],'#d2a84a',24)+'<b>'+CLS[k].name+'</b></div>').join('');
   $('clsgrid').onclick=e=>{const t=e.target.closest('.c');if(!t)return;LG.cls=t.dataset.k;loginPick(LG.cls);desc();for(const c of $('clsgrid').children)c.classList.toggle('on',c===t)};
   desc();
   const setMode=m=>{LG.mode=m;$('tab-in').classList.toggle('on',m==='in');$('tab-up').classList.toggle('on',m==='up');$('clswrap').classList.toggle('hidden',m==='in');loginPick(m==='in'?'warrior':LG.cls);$('lgo').textContent=m==='in'?'접속':'캐릭터 생성';$('lmsg').textContent=''};

@@ -106,6 +106,13 @@ function runEnemyEvent(ev){
     if(d<ev.r+.5&&Math.abs(angDiff(ev.f,Math.atan2(dx,dz)))<ev.a/2+.2)hurtPlayer(ev.d,ev.x,ev.z);
   }else if(ev.t==='v'){sfxAt(ev.n||'growl',ev.x,ev.z);
   }else if(ev.t==='f'){burst(ev.x,1.2,ev.z,16,ev.c||0xff3dd0,6,.5,2);shockRing(ev.x,ev.z,2,ev.c||0xff3dd0,.3);if(ev.n)sfxAt(ev.n,ev.x,ev.z);
+  }else if(ev.t==='safe'){
+    const hall=new THREE.Mesh(shared.discG,flatMat(0xff2a2a,.2));hall.rotation.x=-Math.PI/2;hall.position.set(ev.hx,.08,ev.hz);hall.scale.set(ev.hr,ev.hr,ev.hr);entG.add(hall);
+    UI.toast('천상의 심판! 초록 원 안으로 피하세요',ev.w*1000);pillar(ev.x,ev.z,0x4aff7a,14,ev.w);
+    telegraph(ev.x,ev.z,ev.r,ev.w,()=>{
+      entG.remove(hall);hall.material.dispose();sfx('boom');cam.shake=Math.max(cam.shake,.9);shockRing(ev.hx,ev.hz,ev.hr,0xffe27a,.6);
+      if(P&&!P.dead&&P.x>600&&d2(ev.x,ev.z,P.x,P.z)>ev.r*ev.r)hurtPlayer(ev.d,ev.x,ev.z,true);
+    },0x4aff7a);
   }else if(ev.t==='x'){
     if(ev.met){const g=grp(ev.x,26,ev.z,entG);g.add(glow(0xff6a1a,5.5,.9));part(g,'box',0xffb04a,1.3,1.3,1.3,0,0,0,1.6);
       addFx(ev.w,k=>{g.position.y=26*(1-k*k)+.6;g.rotation.x=k*7},()=>entG.remove(g))}

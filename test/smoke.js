@@ -518,6 +518,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T(bare>.8&&buffed<.65&&buffed>.5,'sky boss slam is near lethal without holy armor ('+bare.toFixed(2)+'/'+buffed.toFixed(2)+')');
       const lost=hb=>{const mh=g.S.maxHp,arm=g.S.armor;g.S.maxHp=9000;g.S.armor=.64;P.dead=false;P.iframes=0;P.shield=0;P.hb=hb;P.hp=9000;g.hurtPlayer(5000,P.x,P.z,true);const v=9000-P.hp;g.S.maxHp=mh;g.S.armor=arm;P.hb=null;P.hp=mh;return v};
       T(lost(null)===5000&&lost({ar:{t:20,pw:1}})===3600,'meteor is 5000 through armor, holy armor still helps');
+      {const b0=g.MOBS.find(m=>m.type==='dgboss');T(b0.maxHp===3000000,'sky boss has 1M + 2M hp '+b0.maxHp)}
+      {const was={mh:g.S.maxHp,x:P.x,z:P.z},safe=(inside)=>{g.S.maxHp=9000;P.dead=false;P.iframes=0;P.shield=0;P.hb=null;P.hp=9000;g.runEnemyEvent({t:'safe',x:P.x+(inside?0:10),z:P.z,r:4.5,w:.05,d:5000,hx:P.x,hz:P.z,hr:30});for(let i=0;i<8;i++){if(i<7)P.iframes=0;step(1)}return 9000-P.hp};
+        const inn=safe(true),out=safe(false);g.S.maxHp=was.mh;P.hp=was.mh;T(inn<5000&&out>=5000,'judgement spares only the green circle ('+inn+'/'+out+')')}
       {const b=g.MOBS.find(m=>m.type==='dgboss');b.hp=b.maxHp*.4;let h=0;for(let i=0;i<500;i++){P.iframes=1e9;P.dead=false;step(1);if(D.p2)h++}
         T(b.p2===true&&D.p2===true&&b.mt>0,'sky boss enters phase 2 and casts meteors ('+b.p2+' '+D.p2+' '+b.mt+')');P.iframes=0}
     }
