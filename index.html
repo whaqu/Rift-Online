@@ -276,15 +276,15 @@ body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
 <div id="toast"></div>
 
 <div id="loading" class="cover" role="status">
-  <div class="eyebrow">RIFT ONLINE</div><h1>리프트 온라인</h1><div class="ldbar"><i></i></div><div id="ldtx">불러오는 중…</div>
+  <div class="eyebrow">RIFT ONLINE · BETA</div><h1>리프트 온라인</h1><div class="ldbar"><i></i></div><div id="ldtx">불러오는 중…</div>
 </div>
 <div id="start" class="cover hidden">
-  <div class="eyebrow">RIFT ONLINE</div><h1>리프트 온라인</h1><div class="sub">오픈 필드 파티 사냥 RPG</div><button class="btn" id="stgo">게임 시작</button><div id="stsub"></div>
+  <div class="eyebrow">RIFT ONLINE · BETA</div><h1>리프트 온라인</h1><div class="sub">오픈 필드 파티 사냥 RPG</div><button class="btn" id="stgo">게임 시작</button><div id="stsub"></div>
 </div>
 
 <div id="login" class="hidden">
   <div class="box">
-    <div class="eyebrow">RIFT ONLINE</div>
+    <div class="eyebrow">RIFT ONLINE · BETA</div>
     <h1>리프트 온라인</h1>
     <div class="st" id="lstat">서버 확인 중…</div>
     <div class="orn"></div>
@@ -3990,7 +3990,7 @@ function dealMob(m,base,o){
   if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28);hitStop(.04)}else cam.shake=Math.max(cam.shake,heavy?.2:.06);
   if(heavy)hitStop(.055);
   const kk={kx:o.kx||0,kz:o.kz||0,kb:o.noKb?0:(o.kb||0)};
-  if(S.grace)hidGrace(m.duel?.3:1);
+  if(S.grace)hidGrace(1);
   if(m.duel){duelHitOut(m,d);if(kk.kb)duelPushOut(kk.kx,kk.kz,kk.kb*.22);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
@@ -5380,8 +5380,8 @@ function castFx(sk){
 const HIDDEN_LV=99,HIDDEN_DROP=.0005,HIDDEN_DG='sky',ARCH_SYN={atk:1.3,cd:.85,ult:4};
 /* a hidden class has its own base hp (gear, runes and perks add on top), stronger skills and shorter cooldowns */
 const HIDDEN_HP=30000,HID_SKILL=2,HID_CD=.75,HID_APS=3,HID_F_CD=5;
-/* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits and duel hits are cut down */
-const HID_PURE=.3,HID_DUEL={dmg:.3,cap:.04};
+/* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits are cut down (duels use no class corrections) */
+const HID_PURE=.3;
 const HIDDEN={
   angel:{name:'천사',item:'hc_angel',itemName:'천사의 서사',col:'#fff4c2',size:1.22,
     story:'천상의 전령. 두 강자의 싸움 사이에서 다친 이들을 돌봅니다.',
@@ -6592,7 +6592,7 @@ const DGTHEME={
 /* ---------------- duels: request / accept / fight / spectate ----------------
    Each fighter owns his own HP. The opponent is represented locally by an invisible proxy "mob", so every attack and skill works
    unchanged; hitting the proxy sends the damage to the opponent. Only the loser reports the result to the server. */
-const DUEL_K=.25,DUEL_TIME=120,DUEL_POINT=300;
+const DUEL_HP=10,DUEL_TIME=120,DUEL_POINT=300;
 const DU={on:false,role:null,id:null,a:null,b:null,opp:null,x:1300,z:0,R:13,ph:'idle',t:0,pt:0,prox:null,out:0,flush:0,back:null,pend:null,ask:null,arena:null,hud:null,seen:0};
 const DUATMO={bg:0x8ab8e6,sky:0xdcecff,gr:0x6a7a58,hi:.72,sun:.72,sc:0xfff2d6,rc:0x9ab8ff,ri:.4,fd:.0034};
 const duFree=()=>!DU.on&&!DG.on&&!NET.party&&P&&!P.dead;
@@ -6745,17 +6745,19 @@ function onDuelRecorded(d){
   API.resume(SES.name,SES.token).then(p=>{if(p&&p.items){const r=p.duel;if(r)UI.toast('전적 '+r.w+'승 '+r.l+'패 · 결투 포인트 '+fmtG(r.pt),3200)}}).catch(()=>{});
 }
 
-/* ---------- damage ---------- */
+/* ---------- damage ----------
+   Both fighters have their own max HP x DUEL_HP. Hits arrive at full strength with no duel-only caps or class corrections.
+   P.hp/S.maxHp stays the shared fraction, so an incoming hit is divided by DUEL_HP and % heals / shields grow along with the bar. */
 function duelHitOut(m,d){
   if(DU.ph!=='fight')return;
   DU.out+=d;
-  if(S.vamp){P.vampAcc+=d*DUEL_K*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+  if(S.vamp){P.vampAcc+=d*S.vamp/DUEL_HP;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
 }
 function onDuelHit(d){
   if(!d||!DU.on||DU.role!=='fight'||DU.ph!=='fight'||d.id!==DU.id||d.t!==SES.name||d.f!==DU.opp)return;
   if(P.dead||P.iframes>0||P.dashT>0||P.hidden||qAloft())return;
   duelFxIn(d);
-  const raw=Math.min(Math.max(0,+d.d||0)*DUEL_K*(S.hidden?HID_DUEL.dmg:1),S.maxHp*(S.hidden?HID_DUEL.cap:.3));
+  const raw=Math.max(0,+d.d||0);
   if(raw>0){burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);duelHurt(raw)}
 }
 
@@ -6772,25 +6774,25 @@ function duelMoveOut(x,z){if(DU.ph==='fight')duelFxOut().to=[+x.toFixed(2),+z.to
 function duelFxIn(d){
   if(+d.bn>0){DU.burnT=3;DU.burnD=Math.max(DU.burnD||0,Math.min(+d.bn,S.maxHp*2))}
   /* stun is halved and capped, then there is a short immunity so that ice hits cannot lock someone forever */
-  if(+d.fz>0&&!S.hidden&&!(P.stunT>0)&&!(P.stunImm>0)){P.stunT=Math.min(1.5,d.fz*.6);P.stunImm=P.stunT+1.5;P.vx=P.vz=0;dmgNum(P.x,3.6,P.z,'기절!','info')}
+  if(+d.fz>0&&!(P.stunT>0)&&!(P.stunImm>0)){P.stunT=Math.min(1.5,d.fz*.6);P.stunImm=P.stunT+1.5;P.vx=P.vz=0;dmgNum(P.x,3.6,P.z,'기절!','info')}
   const V=a=>Array.isArray(a)&&isFinite(a[0])&&isFinite(a[1]);
   let dx=0,dz=0;
   if(V(d.to)){const e={x:+d.to[0],z:+d.to[1]};duelClampXZ(e);dx=e.x-P.x;dz=e.z-P.z}
   else if(V(d.mv)){dx=+d.mv[0];dz=+d.mv[1];const l=Math.hypot(dx,dz);if(l>9){dx*=9/l;dz*=9/l}}
-  if((dx||dz)&&!S.hidden){DU.kn={vx:dx/.18,vz:dz/.18,t:.18};if(P.recall>0)cancelRecall('')}
+  if(dx||dz){DU.kn={vx:dx/.18,vz:dz/.18,t:.18};if(P.recall>0)cancelRecall('')}
 }
 function duelHurt(raw){
   if(qAloft())return;
-  let dmg=Math.max(1,Math.round(raw*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  let dmg=Math.max(1,Math.round(raw*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)/DUEL_HP));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab}
-  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(.6);cam.shake=Math.max(cam.shake,.25)}
+  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg*DUEL_HP,'hurt');sfx('hurt');vignette(.6);cam.shake=Math.max(cam.shake,.25)}
   if(P.hp<=0){P.hp=1;duelLose()}
 }
 function duelTickFx(dt){
   if(P.stunImm>0)P.stunImm-=dt;
   if(P.stunT>0){P.stunT-=dt;if(Math.random()<dt*14)emit(P.x+rnd(-.6,.6),rnd(1.6,2.8),P.z+rnd(-.6,.6),0,.5,0,.4,0xffe27a,0)}
   if(DU.kn){const k=DU.kn,s=Math.min(dt,k.t);P.x+=k.vx*s;P.z+=k.vz*s;pushOut(P,P.r);k.t-=dt;if(k.t<=0)DU.kn=null}
-  if(DU.burnT>0){DU.burnT-=dt;DU.burnC=(DU.burnC||0)-dt;if(DU.burnC<=0){DU.burnC=.5;burst(P.x,1.2,P.z,6,0xff7a2a,3,.4,-2);duelHurt(Math.min(DU.burnD*.5*DUEL_K*(S.hidden?HID_DUEL.dmg:1),S.maxHp*(S.hidden?.01:.04)))}if(DU.burnT<=0)DU.burnD=0}
+  if(DU.burnT>0){DU.burnT-=dt;DU.burnC=(DU.burnC||0)-dt;if(DU.burnC<=0){DU.burnC=.5;burst(P.x,1.2,P.z,6,0xff7a2a,3,.4,-2);duelHurt(DU.burnD*.5)}if(DU.burnT<=0)DU.burnD=0}
 }
 function duelClearFx(){DU.fx=null;DU.kn=null;DU.burnT=0;DU.burnD=0;DU.burnC=0;DU.out=0;if(P){P.stunT=0;P.stunImm=0}}
 
@@ -7403,7 +7405,7 @@ const domW=(el,v)=>{if(el._w!==v){el._w=v;el.style.width=v}},domT=(el,v)=>{if(el
 const domQ=(el,sel)=>el['_q'+sel]||(el['_q'+sel]=el.querySelector(sel));
 UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
-  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');domT($('hptxt'),Math.ceil(hp)+' / '+S.maxHp);
+  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');const hk=DU.on&&DU.role==='fight'?DUEL_HP:1;domT($('hptxt'),Math.ceil(hp*hk)+' / '+S.maxHp*hk);
   domW($('shfill'),Math.min(100,P.shield/S.maxHp*100).toFixed(1)+'%');
   for(const k of['dash','q','e','r','f']){
     const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1,sy='scaleY('+clamp(cd/mx,0,1).toFixed(3)+')';

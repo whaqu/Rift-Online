@@ -855,6 +855,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     for(let i=0;i<35;i++)g.duelUpdate(.1);T(g.DU.ph==='fight'&&!!g.DU.prox,'duel fight phase');
     g.dealMob(g.DU.prox,100,{crit:false});g.duelUpdate(.2);T(sent.some(o=>o.event==='dh'&&o.payload.d>0&&o.payload.t==='상대'),'hit sent to opponent');
     const hp=g.P.hp;g.P.iframes=0;g.P.dashT=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:200});T(g.P.hp<hp,'duel damage taken');
+    {g.P.hp=g.S.maxHp;g.P.shield=0;g.P.hb=null;g.P.qGuard=g.P.golemGuard=g.P.dkGuard=0;const raw=g.S.maxHp*2;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:raw});const lost=g.S.maxHp-g.P.hp,want=raw*(1-g.S.armor)/10;T(Math.abs(lost-want)<=1,'duel hit is full strength against max HP x10 '+lost+'/'+want)}
     g.P.iframes=0;g.P.stunT=0;g.P.stunImm=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:0,fz:2,mv:[3,0],bn:50});
     T(g.P.stunT>0&&g.P.stunT<=1.5&&g.skBusy(),'duel stun applies');const kx=g.P.x,bh=g.P.hp;for(let i=0;i<25;i++)g.duelUpdate(.1);T(g.P.x>kx+2&&g.P.hp<bh&&!(g.P.stunT>0),'duel knockback and burn apply, stun ends');
     g.P.hp=g.S.maxHp;

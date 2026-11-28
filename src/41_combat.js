@@ -45,7 +45,7 @@ function dealMob(m,base,o){
   if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28);hitStop(.04)}else cam.shake=Math.max(cam.shake,heavy?.2:.06);
   if(heavy)hitStop(.055);
   const kk={kx:o.kx||0,kz:o.kz||0,kb:o.noKb?0:(o.kb||0)};
-  if(S.grace)hidGrace(m.duel?.3:1);
+  if(S.grace)hidGrace(1);
   if(m.duel){duelHitOut(m,d);if(kk.kb)duelPushOut(kk.kx,kk.kz,kk.kb*.22);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);

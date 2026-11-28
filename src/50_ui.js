@@ -547,7 +547,7 @@ const domW=(el,v)=>{if(el._w!==v){el._w=v;el.style.width=v}},domT=(el,v)=>{if(el
 const domQ=(el,sel)=>el['_q'+sel]||(el['_q'+sel]=el.querySelector(sel));
 UI.hudTick=function(dt){
   if(!P||!SES.pf)return;
-  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');domT($('hptxt'),Math.ceil(hp)+' / '+S.maxHp);
+  const hp=Math.max(0,P.hp);domW($('hpfill'),(hp/S.maxHp*100).toFixed(1)+'%');const hk=DU.on&&DU.role==='fight'?DUEL_HP:1;domT($('hptxt'),Math.ceil(hp*hk)+' / '+S.maxHp*hk);
   domW($('shfill'),Math.min(100,P.shield/S.maxHp*100).toFixed(1)+'%');
   for(const k of['dash','q','e','r','f']){
     const el=$('sk-'+k);if(!el)continue;const cd=k==='dash'?P.dashCd:P.cd[k],mx=k==='dash'?2.8:P.cdMax[k]||1,sy='scaleY('+clamp(cd/mx,0,1).toFixed(3)+')';

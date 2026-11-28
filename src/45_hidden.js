@@ -5,8 +5,8 @@
 const HIDDEN_LV=99,HIDDEN_DROP=.0005,HIDDEN_DG='sky',ARCH_SYN={atk:1.3,cd:.85,ult:4};
 /* a hidden class has its own base hp (gear, runes and perks add on top), stronger skills and shorter cooldowns */
 const HIDDEN_HP=30000,HID_SKILL=2,HID_CD=.75,HID_APS=3,HID_F_CD=5;
-/* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits and duel hits are cut down */
-const HID_PURE=.3,HID_DUEL={dmg:.3,cap:.04};
+/* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits are cut down (duels use no class corrections) */
+const HID_PURE=.3;
 const HIDDEN={
   angel:{name:'천사',item:'hc_angel',itemName:'천사의 서사',col:'#fff4c2',size:1.22,
     story:'천상의 전령. 두 강자의 싸움 사이에서 다친 이들을 돌봅니다.',
