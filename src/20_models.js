@@ -192,10 +192,10 @@ function makeHero0(cls,tint){
     const bw=grp(0,-.76,0,armL);const geo=new THREE.TorusGeometry(.85,.055,6,20,Math.PI);geo.rotateZ(Math.PI/2);geo.rotateY(Math.PI/2);
     const bm=mesh(geo,M(0x7a4b25),0,0,0,bw);BX(.015,1.7,.015,M(0xeeeeee),0,0,0,bw);o.weapon=bw;
   }else if(cls==='rogue'){
-    /* hooded swordsman: deep green hood with a fully shadowed face, ragged mantle, slim dark coat, tan edge light, one long straight blade */
-    const cloth=M(0x142824,{roughness:.9}),cloth2=M(0x142824,{side:THREE.DoubleSide,roughness:.9}),deep=M(0x091413,{roughness:.9}),deep2=M(0x091413,{side:THREE.DoubleSide,roughness:.9}),
-      tan=M(0x9a7c42,{roughness:.6,emissive:0x5a4520,emissiveIntensity:.25}),voidM=M(0x020405,{roughness:1}),lea=M(0x0a0d0e),acc=M(tint||0x7a3f9a),
-      blade=M(0xdfe9ea,{metalness:.7,roughness:.22,emissive:0x2f5a58,emissiveIntensity:.35}),spine=M(0x35605c,{metalness:.6,roughness:.35});
+    /* hooded swordsman: black hood with a fully shadowed face, ragged mantle, slim dark coat, tan edge light, one long straight blade */
+    const cloth=M(0x121217,{roughness:.9}),cloth2=M(0x121217,{side:THREE.DoubleSide,roughness:.9}),deep=M(0x070709,{roughness:.9}),deep2=M(0x070709,{side:THREE.DoubleSide,roughness:.9}),
+      tan=M(0x4c4a55,{roughness:.6,emissive:0x14121c,emissiveIntensity:.25}),voidM=M(0x020405,{roughness:1}),lea=M(0x0a0d0e),acc=M(tint||0x7a3f9a),
+      blade=M(0xdfe9ea,{metalness:.7,roughness:.22,emissive:0x3a3a48,emissiveIntensity:.35}),spine=M(0x3c3c46,{metalness:.6,roughness:.35});
     for(const lg of[legL,legR]){CY(.145,.11,.8,deep,0,-.4,0,lg);for(let i=0;i<3;i++)CY(.13,.13,.05,lea,0,-.5-i*.1,0,lg,10);BX(.22,.17,.4,lea,0,-.8,.06,lg)}
     BX(.72,.92,.42,deep,0,0,0,torso);
     {const c=BX(.13,.82,.05,cloth,-.04,.08,.22,torso);c.rotation.z=-.55;const e=BX(.025,.82,.055,tan,.045,.14,.225,torso);e.rotation.z=-.55}
@@ -283,7 +283,7 @@ function makeHero0(cls,tint){
     const sw=grp(0,-.76,0,armR);BX(.3,2.1,.07,steel,0,1.1,0,sw);BX(.05,2.0,.08,edge,0,1.1,0,sw);BX(.62,.12,.2,blk,0,.12,0,sw);CY(.06,.06,.4,M(0x1a1420),0,-.12,0,sw);
     sw.rotation.x=.9;o.weapon=sw;
   }
-  heroLimbs(o,cls==='rogue'?M(0x091413):skin);
+  heroLimbs(o,cls==='rogue'?M(0x070709):skin);
   o.ak=({warrior:'m',rogue:'m',lancer:'m',monk:'m',darknight:'m',mage:'c',cleric:'c',summoner:'c'})[cls]||'a';
   g.traverse(m=>{if(m.isMesh)m.castShadow=true});
   addOutline(g,18,.04);g.add(blob(.85));

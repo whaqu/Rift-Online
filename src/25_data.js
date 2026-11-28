@@ -1,6 +1,6 @@
 /* ---------------- game data ---------------- */
 const CLS={
-  warrior:{name:'전사',hp:150,hpLv:14,atk:5,atkLv:2.1,aps:2.2,spd:6.8,crit:.05,range:3.4,col:0x2f56c8,
+  warrior:{name:'전사',hp:172,hpLv:16,atk:5.8,atkLv:2.4,aps:2.2,spd:6.8,crit:.05,range:3.4,col:0x2f56c8,
     q:{id:'w_q',name:'회전 베기',type:'nova',cd:7,rad:4.9,dmg:2.4,kb:14,col:0xffd24a},
     e:{id:'w_e',name:'방어 태세',type:'buff',cd:14,dur:5,shield:.35,spd:1.25,col:0x6aa8ff}},
   mage:{name:'마법사',hp:100,hpLv:9,atk:6,atkLv:2.4,aps:1.9,spd:6.6,crit:.08,range:0,col:0x6a3fc8,
@@ -10,12 +10,13 @@ const CLS={
     q:{id:'a_q',name:'화살비',type:'rain',cd:10,rad:4.8,dmg:1.15,dur:1.8,range:14,col:0x6bffb0},
     e:{id:'a_e',name:'후퇴 사격',type:'volley',cd:7,n:5,spread:.2,dmg:1.5,pierce:3,back:1,col:0x6bffb0}}
 };
+const ROGUE_VAMP=.08;   // assassin innate lifesteal
 const CLASSES=['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight'];
 Object.assign(CLS.warrior,{blurb:'단단한 근접 전사. 균형 잡힌 입문 직업',sty:{t:'melee',range:3.4,arc:2.15,big:2.8,bigMul:1.7,col:0xbfe4ff,bigCol:0xffd24a,lunge:5,kb:6,kbBig:11}});
 Object.assign(CLS.mage,{blurb:'강력한 마법 폭격. 체력은 낮습니다',sty:{t:'proj',kind:'orb',spd:25,r:.55,life:1.3,splash:2.3,col:0x5ee7ff}});
 Object.assign(CLS.archer,{blurb:'멀리서 빠르게 쏘는 원거리 딜러',sty:{t:'proj',kind:'arrow',spd:46,r:.4,life:.85,pierce:1,col:0x6bffb0}});
 Object.assign(CLS,{
-  rogue:{name:'도적',blurb:'치명타와 기동성. 빠른 단검 연타',hp:100,hpLv:9.5,atk:4.4,atkLv:2.1,aps:3.3,spd:8.0,crit:.2,range:2.5,col:0x7a3f9a,
+  rogue:{name:'도적',blurb:'치명타와 흡혈, 기동성. 빠른 연타',hp:100,hpLv:9.5,atk:4.4,atkLv:2.1,aps:3.3,spd:8.0,crit:.2,range:2.5,col:0x7a3f9a,
     sty:{t:'melee',range:2.5,arc:1.9,big:2.6,bigMul:1.5,col:0xd0b0ff,bigCol:0xff6bd6,lunge:7,kb:3,kbBig:6},
     q:{id:'r_q',name:'연막탄',type:'nova',cd:8,rad:5,dmg:1.7,kb:6,freeze:1.2,col:0xb08aff},
     e:{id:'r_e',name:'그림자 걸음',type:'buff',cd:12,dur:5,aps:1.35,spd:1.4,col:0xa07aff}},
@@ -39,7 +40,7 @@ Object.assign(CLS,{
     sty:{t:'proj',kind:'orb',spd:20,r:.6,life:1.5,splash:2.6,col:0x6bffd0},
     q:{id:'s_q',name:'정령 폭발',type:'ground',cd:9,rad:4.6,dmg:3.6,delay:.7,range:14,col:0x6bffd0},
     e:{id:'s_e',name:'정령 소나기',type:'rain',cd:12,rad:4.5,dmg:1.0,dur:2.2,range:12,col:0x9fffe8}},
-  darknight:{name:'암흑기사',blurb:'어둠의 대검. 피를 흡수하며 싸움',hp:155,hpLv:14,atk:5.3,atkLv:2.1,aps:2.1,spd:6.7,crit:.07,range:3.6,col:0x4a2a6a,
+  darknight:{name:'암흑기사',blurb:'어둠의 대검. 피를 흡수하며 싸움',hp:178,hpLv:16,atk:6.1,atkLv:2.4,aps:2.1,spd:6.7,crit:.07,range:3.6,col:0x4a2a6a,
     sty:{t:'melee',range:3.6,arc:2.3,big:3.0,bigMul:1.75,col:0xb08aff,bigCol:0xff3a6a,lunge:5,kb:6,kbBig:11},
     q:{id:'d_q',name:'암흑 베기',type:'nova',cd:8,rad:5.2,dmg:2.5,kb:12,heal:.1,col:0xa070ff},
     e:{id:'d_e',name:'피의 서약',type:'buff',cd:15,dur:6,atk:1.35,shield:.25,col:0xff3a6a}}

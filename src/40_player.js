@@ -19,7 +19,7 @@ function derive(){
     spd:c.spd*(m.spd||1)*(1+ab.spd),
     crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
     armor:1-(1-(m.armor||0))*(1-dr)*(1-(en.armor||0)*.04),
-    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03,burnLv,
+    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'?ROGUE_VAMP:0),burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
     regen:(m.regen||0)+(rf?rf.rg:0),runeAura:!!(rf&&rf.aura),berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt

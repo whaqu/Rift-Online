@@ -560,7 +560,8 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
   { // minor updates: assassin Q reset on a late kill, gunner nerf, value sort, golem
     g.P.cd.q=4;const m={x:g.P.x+2,z:g.P.z,r:1,face:0,hp:1,dead:true,def:{}};
     T(g.golemBuild().legs.length===2&&g.golemBuild(true).arms.length===2,'golem model builds');
-    T(g.golemCount(9)===1&&g.golemCount(10)===2&&g.golemCount(35)===4,'golems per 10 levels');
+    T(g.ROGUE_VAMP===.08&&g.CLS.warrior.atk===5.8&&g.CLS.darknight.atk===6.1,'assassin vamp, warrior/darknight buff');
+    T(g.golemCount(9)===1&&g.golemCount(10)===2&&g.golemCount(35)===4&&g.golemCount(99)===5,'golems per 10 levels');
     { const lv=g.SES.pf.level,n0=g.DECOYS.length;g.SES.pf.level=35;g.P.golemGuard=0;g.SK.s_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});
       T(g.DECOYS.length===n0+4&&g.P.golemGuard>0,'Lv35 summons 4 armored golems');for(let i=0;i<130;i++)g.tickSkills(.1);T(g.DECOYS.length===n0,'golems expire');g.SES.pf.level=lv;g.P.golemGuard=0; }
     { const keep=g.MOBS.splice(0);const mm=g.makeMobObj(99001,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(mm))g.MOBS.push(mm);mm.spawning=false;mm.hp=mm.maxHp=1e12;

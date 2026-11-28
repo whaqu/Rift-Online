@@ -871,10 +871,10 @@ function makeHero0(cls,tint){
     const bw=grp(0,-.76,0,armL);const geo=new THREE.TorusGeometry(.85,.055,6,20,Math.PI);geo.rotateZ(Math.PI/2);geo.rotateY(Math.PI/2);
     const bm=mesh(geo,M(0x7a4b25),0,0,0,bw);BX(.015,1.7,.015,M(0xeeeeee),0,0,0,bw);o.weapon=bw;
   }else if(cls==='rogue'){
-    /* hooded swordsman: deep green hood with a fully shadowed face, ragged mantle, slim dark coat, tan edge light, one long straight blade */
-    const cloth=M(0x142824,{roughness:.9}),cloth2=M(0x142824,{side:THREE.DoubleSide,roughness:.9}),deep=M(0x091413,{roughness:.9}),deep2=M(0x091413,{side:THREE.DoubleSide,roughness:.9}),
-      tan=M(0x9a7c42,{roughness:.6,emissive:0x5a4520,emissiveIntensity:.25}),voidM=M(0x020405,{roughness:1}),lea=M(0x0a0d0e),acc=M(tint||0x7a3f9a),
-      blade=M(0xdfe9ea,{metalness:.7,roughness:.22,emissive:0x2f5a58,emissiveIntensity:.35}),spine=M(0x35605c,{metalness:.6,roughness:.35});
+    /* hooded swordsman: black hood with a fully shadowed face, ragged mantle, slim dark coat, tan edge light, one long straight blade */
+    const cloth=M(0x121217,{roughness:.9}),cloth2=M(0x121217,{side:THREE.DoubleSide,roughness:.9}),deep=M(0x070709,{roughness:.9}),deep2=M(0x070709,{side:THREE.DoubleSide,roughness:.9}),
+      tan=M(0x4c4a55,{roughness:.6,emissive:0x14121c,emissiveIntensity:.25}),voidM=M(0x020405,{roughness:1}),lea=M(0x0a0d0e),acc=M(tint||0x7a3f9a),
+      blade=M(0xdfe9ea,{metalness:.7,roughness:.22,emissive:0x3a3a48,emissiveIntensity:.35}),spine=M(0x3c3c46,{metalness:.6,roughness:.35});
     for(const lg of[legL,legR]){CY(.145,.11,.8,deep,0,-.4,0,lg);for(let i=0;i<3;i++)CY(.13,.13,.05,lea,0,-.5-i*.1,0,lg,10);BX(.22,.17,.4,lea,0,-.8,.06,lg)}
     BX(.72,.92,.42,deep,0,0,0,torso);
     {const c=BX(.13,.82,.05,cloth,-.04,.08,.22,torso);c.rotation.z=-.55;const e=BX(.025,.82,.055,tan,.045,.14,.225,torso);e.rotation.z=-.55}
@@ -962,7 +962,7 @@ function makeHero0(cls,tint){
     const sw=grp(0,-.76,0,armR);BX(.3,2.1,.07,steel,0,1.1,0,sw);BX(.05,2.0,.08,edge,0,1.1,0,sw);BX(.62,.12,.2,blk,0,.12,0,sw);CY(.06,.06,.4,M(0x1a1420),0,-.12,0,sw);
     sw.rotation.x=.9;o.weapon=sw;
   }
-  heroLimbs(o,cls==='rogue'?M(0x091413):skin);
+  heroLimbs(o,cls==='rogue'?M(0x070709):skin);
   o.ak=({warrior:'m',rogue:'m',lancer:'m',monk:'m',darknight:'m',mage:'c',cleric:'c',summoner:'c'})[cls]||'a';
   g.traverse(m=>{if(m.isMesh)m.castShadow=true});
   addOutline(g,18,.04);g.add(blob(.85));
@@ -1190,7 +1190,7 @@ function makeNPC(kind){
 
 /* ---------------- game data ---------------- */
 const CLS={
-  warrior:{name:'전사',hp:150,hpLv:14,atk:5,atkLv:2.1,aps:2.2,spd:6.8,crit:.05,range:3.4,col:0x2f56c8,
+  warrior:{name:'전사',hp:172,hpLv:16,atk:5.8,atkLv:2.4,aps:2.2,spd:6.8,crit:.05,range:3.4,col:0x2f56c8,
     q:{id:'w_q',name:'회전 베기',type:'nova',cd:7,rad:4.9,dmg:2.4,kb:14,col:0xffd24a},
     e:{id:'w_e',name:'방어 태세',type:'buff',cd:14,dur:5,shield:.35,spd:1.25,col:0x6aa8ff}},
   mage:{name:'마법사',hp:100,hpLv:9,atk:6,atkLv:2.4,aps:1.9,spd:6.6,crit:.08,range:0,col:0x6a3fc8,
@@ -1200,12 +1200,13 @@ const CLS={
     q:{id:'a_q',name:'화살비',type:'rain',cd:10,rad:4.8,dmg:1.15,dur:1.8,range:14,col:0x6bffb0},
     e:{id:'a_e',name:'후퇴 사격',type:'volley',cd:7,n:5,spread:.2,dmg:1.5,pierce:3,back:1,col:0x6bffb0}}
 };
+const ROGUE_VAMP=.08;   // assassin innate lifesteal
 const CLASSES=['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight'];
 Object.assign(CLS.warrior,{blurb:'단단한 근접 전사. 균형 잡힌 입문 직업',sty:{t:'melee',range:3.4,arc:2.15,big:2.8,bigMul:1.7,col:0xbfe4ff,bigCol:0xffd24a,lunge:5,kb:6,kbBig:11}});
 Object.assign(CLS.mage,{blurb:'강력한 마법 폭격. 체력은 낮습니다',sty:{t:'proj',kind:'orb',spd:25,r:.55,life:1.3,splash:2.3,col:0x5ee7ff}});
 Object.assign(CLS.archer,{blurb:'멀리서 빠르게 쏘는 원거리 딜러',sty:{t:'proj',kind:'arrow',spd:46,r:.4,life:.85,pierce:1,col:0x6bffb0}});
 Object.assign(CLS,{
-  rogue:{name:'도적',blurb:'치명타와 기동성. 빠른 단검 연타',hp:100,hpLv:9.5,atk:4.4,atkLv:2.1,aps:3.3,spd:8.0,crit:.2,range:2.5,col:0x7a3f9a,
+  rogue:{name:'도적',blurb:'치명타와 흡혈, 기동성. 빠른 연타',hp:100,hpLv:9.5,atk:4.4,atkLv:2.1,aps:3.3,spd:8.0,crit:.2,range:2.5,col:0x7a3f9a,
     sty:{t:'melee',range:2.5,arc:1.9,big:2.6,bigMul:1.5,col:0xd0b0ff,bigCol:0xff6bd6,lunge:7,kb:3,kbBig:6},
     q:{id:'r_q',name:'연막탄',type:'nova',cd:8,rad:5,dmg:1.7,kb:6,freeze:1.2,col:0xb08aff},
     e:{id:'r_e',name:'그림자 걸음',type:'buff',cd:12,dur:5,aps:1.35,spd:1.4,col:0xa07aff}},
@@ -1229,7 +1230,7 @@ Object.assign(CLS,{
     sty:{t:'proj',kind:'orb',spd:20,r:.6,life:1.5,splash:2.6,col:0x6bffd0},
     q:{id:'s_q',name:'정령 폭발',type:'ground',cd:9,rad:4.6,dmg:3.6,delay:.7,range:14,col:0x6bffd0},
     e:{id:'s_e',name:'정령 소나기',type:'rain',cd:12,rad:4.5,dmg:1.0,dur:2.2,range:12,col:0x9fffe8}},
-  darknight:{name:'암흑기사',blurb:'어둠의 대검. 피를 흡수하며 싸움',hp:155,hpLv:14,atk:5.3,atkLv:2.1,aps:2.1,spd:6.7,crit:.07,range:3.6,col:0x4a2a6a,
+  darknight:{name:'암흑기사',blurb:'어둠의 대검. 피를 흡수하며 싸움',hp:178,hpLv:16,atk:6.1,atkLv:2.4,aps:2.1,spd:6.7,crit:.07,range:3.6,col:0x4a2a6a,
     sty:{t:'melee',range:3.6,arc:2.3,big:3.0,bigMul:1.75,col:0xb08aff,bigCol:0xff3a6a,lunge:5,kb:6,kbBig:11},
     q:{id:'d_q',name:'암흑 베기',type:'nova',cd:8,rad:5.2,dmg:2.5,kb:12,heal:.1,col:0xa070ff},
     e:{id:'d_e',name:'피의 서약',type:'buff',cd:15,dur:6,atk:1.35,shield:.25,col:0xff3a6a}}
@@ -2967,7 +2968,7 @@ function derive(){
     spd:c.spd*(m.spd||1)*(1+ab.spd),
     crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
     armor:1-(1-(m.armor||0))*(1-dr)*(1-(en.armor||0)*.04),
-    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03,burnLv,
+    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'?ROGUE_VAMP:0),burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
     regen:(m.regen||0)+(rf?rf.rg:0),runeAura:!!(rf&&rf.aura),berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
@@ -3907,7 +3908,7 @@ const KITDEF={
   gunner:[sd('g_q','자동 포탑',14,0xffd24a,'gun','알아서 사격하는 포탑을 설치합니다.'),
     sd('g_e','화염 방사',10,0xff7a2a,'flame','조준 방향으로 불길을 2초간 뿜습니다.'),
     sd('g_f','위성 광선',60,0x7fd6ff,'bolt','조준을 따라다니는 광선을 4초간 내리쏩니다.')],
-  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1. 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
+  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1(최대 5). 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
     sd('s_e','정령 벌떼',9,0x6bffd0,'star','적을 쫓아가는 도깨비불 14개를 풉니다.'),
     sd('s_f','고대 거신',70,0x9fffe8,'burst','거신이 나타나 적진을 네 번 짓밟습니다.')],
   darknight:[sd('d_q','피의 낫',8,0xff3a6a,'swap','돌아오는 거대한 낫을 던져 맞힌 만큼 회복합니다.'),
@@ -3973,7 +3974,7 @@ function part(g,k,hex,sx,sy,sz,x,y,z,em){const m=new THREE.Mesh(geo(k),em?EM(hex
 function flatRing(g,r,hex,op,y){const m=new THREE.Mesh(shared.ringG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.13;m.scale.set(r,r,r);g.add(m);return m}
 function flatDisc(g,r,hex,op,y){const m=new THREE.Mesh(shared.discG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.11;m.scale.set(r,r,r);g.add(m);return m}
 /* summoned stone golem: faceted rocks with joints that overlap (no floating limbs), glowing eyes and core, mossy shoulders */
-const golemCount=lv=>1+Math.floor((lv||1)/10);
+const golemCount=lv=>Math.min(5,1+Math.floor((lv||1)/10));
 function golemBuild(armored){
   const g=grp(),stone=M(0x8f8268),dark=M(0x675c48),light=M(0xab9d7e),moss=M(0x5f8a4a),glowM=EM(0x6bffd0,1.4);
   const rock=(p,mat,sx,sy,sz,x,y,z)=>{const m=mesh(shared.golemRock||(shared.golemRock=new THREE.DodecahedronGeometry(.5,0)),mat,x,y,z,p,false);m.scale.set(sx,sy,sz);return m};
@@ -6466,7 +6467,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

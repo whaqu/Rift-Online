@@ -31,7 +31,7 @@ const KITDEF={
   gunner:[sd('g_q','자동 포탑',14,0xffd24a,'gun','알아서 사격하는 포탑을 설치합니다.'),
     sd('g_e','화염 방사',10,0xff7a2a,'flame','조준 방향으로 불길을 2초간 뿜습니다.'),
     sd('g_f','위성 광선',60,0x7fd6ff,'bolt','조준을 따라다니는 광선을 4초간 내리쏩니다.')],
-  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1. 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
+  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1(최대 5). 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
     sd('s_e','정령 벌떼',9,0x6bffd0,'star','적을 쫓아가는 도깨비불 14개를 풉니다.'),
     sd('s_f','고대 거신',70,0x9fffe8,'burst','거신이 나타나 적진을 네 번 짓밟습니다.')],
   darknight:[sd('d_q','피의 낫',8,0xff3a6a,'swap','돌아오는 거대한 낫을 던져 맞힌 만큼 회복합니다.'),
@@ -97,7 +97,7 @@ function part(g,k,hex,sx,sy,sz,x,y,z,em){const m=new THREE.Mesh(geo(k),em?EM(hex
 function flatRing(g,r,hex,op,y){const m=new THREE.Mesh(shared.ringG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.13;m.scale.set(r,r,r);g.add(m);return m}
 function flatDisc(g,r,hex,op,y){const m=new THREE.Mesh(shared.discG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.11;m.scale.set(r,r,r);g.add(m);return m}
 /* summoned stone golem: faceted rocks with joints that overlap (no floating limbs), glowing eyes and core, mossy shoulders */
-const golemCount=lv=>1+Math.floor((lv||1)/10);
+const golemCount=lv=>Math.min(5,1+Math.floor((lv||1)/10));
 function golemBuild(armored){
   const g=grp(),stone=M(0x8f8268),dark=M(0x675c48),light=M(0xab9d7e),moss=M(0x5f8a4a),glowM=EM(0x6bffd0,1.4);
   const rock=(p,mat,sx,sy,sz,x,y,z)=>{const m=mesh(shared.golemRock||(shared.golemRock=new THREE.DodecahedronGeometry(.5,0)),mat,x,y,z,p,false);m.scale.set(sx,sy,sz);return m};
