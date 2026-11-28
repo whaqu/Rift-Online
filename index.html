@@ -4736,7 +4736,7 @@ const SK={
       sHit(c,m,mult,{kb,crit:true,big:true});slashArc(m.x,m.z,P.face+side,3,2,c.col,.25);sfx('slash');if(!chain)hitStop(.05);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0})};
     const glide=(x,z,dur,done)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
     act(.3,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});sfx('dash');
-    glide(bx,bz,.13,()=>{cut(0,1.6);glide(P.x,P.z,.07,()=>{cut(2,-1.6);if(qHeld())P.qRun=true})});
+    glide(bx,bz,.17,()=>{cut(0,1.6);glide(P.x,P.z,.03,()=>{cut(2,-1.6);if(qHeld())P.qRun=true})});
     act(1.8,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
@@ -5229,7 +5229,7 @@ function qRunStep(dt){
   if(!qHeld()||P.dead||P.stunT>0||P.hidden||P.dashT>0){P.qRun=false;return false}
   if(aimMob(12)){P.qRun=false;P.qChain=true;trySkill('q');P.qChain=false;return true}
   const dr=qDir();if(!dr)return true;const dx=dr.x,dz=dr.z;
-  const step=effSpd()*2.2*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
+  const step=effSpd()*1.6*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
   emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0);return true;
 }
 /* assassin Q is a charge gauge: usable at any charge (spammable), power grows with the charge, a full gauge gets a bonus */
