@@ -89,7 +89,7 @@ function movePlayer(dt){
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   if(P.leap){   // fly along an arc, no steering
-    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
+    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur),k=L.smooth?u*u*(3-2*u):u;P.x=lerp(L.x0,L.x1,k);P.z=lerp(L.z0,L.z1,k);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
   if(P.dashT>0){
@@ -121,7 +121,7 @@ function updatePlayerModel(dt){
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
   const cdk=P.hb&&hbOn('my')?1.4:1;
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.qDash>0)P.qDash-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
   for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}

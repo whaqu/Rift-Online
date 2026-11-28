@@ -507,7 +507,6 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(Array.isArray(g.tpPlayers()),'teleport map lists players');
     g.openInventory();for(const t of g.INV_TABS){g.UI.handlers.itab(t[0]);T(g.UI.modal==='가방'&&g.UI.invTab===t[0],'bag tab '+t[0])}
     T(g.INV_TABS.map(t=>t[1]).join()==='전체,방어구,무기,룬,아이템','bag tab names');g.UI.close();
-    T(g.rqRange(1)===12&&g.rqRange(10)===13.5&&g.rqRange(99)===25.5,'assassin Q dash distance grows per 10 levels');
     {const lvNeed=async l=>{edit(a=>{a.level=l;a.xp=0});await g.API.resume(me,g.SES.token);return g.SES.pf.need};
       const n24=await lvNeed(24),n25=await lvNeed(25),n50=await lvNeed(50);T(n24===30+7*576&&n25===(30+7*625)*3&&n50===(30+7*2500)*6,'harder xp from lv25 '+[n24,n25,n50]);}
   }
@@ -606,10 +605,12 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T(g.DECOYS.length===n0+4&&g.P.golemGuard>0,'Lv35 summons 4 armored golems');for(let i=0;i<130;i++)g.tickSkills(.1);T(g.DECOYS.length===n0,'golems expire');g.SES.pf.level=lv;g.P.golemGuard=0; }
     { const keep=g.MOBS.splice(0);const mm=g.makeMobObj(99001,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(mm))g.MOBS.push(mm);mm.spawning=false;mm.hp=mm.maxHp=1e12;
       g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;T(g.P.qGuard>0,'assassin Q gives damage reduction');mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
-      g.MOBS.splice(0);const far=g.makeMobObj(99002,'slime',g.P.x+50,g.P.z,1,false,false,false);if(!g.MOBS.includes(far))g.MOBS.push(far);far.spawning=false;
-      const x0=g.P.x,z0=g.P.z,hp0=far.hp;const used=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});const moved=Math.hypot(g.P.x-x0,g.P.z-z0);
-      T(used!==false&&moved>5&&far.hp===hp0,'assassin Q dashes when nothing is in range '+moved.toFixed(1));
-      {const x1=g.P.x,z1=g.P.z;far.x=x1+50;far.z=z1;T(g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}})===false&&g.P.x===x1&&g.P.qDash===1,'assassin dash has a short cooldown');g.P.qDash=0;}
+      g.P.leap=null;mm.dead=false;mm.executed=false;mm.hp=1e12;
+      {const x0=g.P.x,z0=g.P.z;mm.x=x0+6;mm.z=z0;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(g.P.x===x0&&g.P.leap&&mm.hp===1e12,'assassin Q glides instead of blinking');
+        for(let i=0;i<5;i++)g.movePlayer(.05);const h1=mm.hp,far=Math.hypot(g.P.x-x0,g.P.z-z0);for(let i=0;i<6;i++)g.movePlayer(.05);
+        T(h1<1e12&&mm.hp<h1&&far>4&&Math.hypot(g.P.x-x0,g.P.z-z0)<1.5,'assassin Q cuts twice on a round trip '+far.toFixed(1));}
+      g.P.leap=null;g.MOBS.splice(0);const far=g.makeMobObj(99002,'slime',g.P.x+50,g.P.z,1,false,false,false);if(!g.MOBS.includes(far))g.MOBS.push(far);far.spawning=false;
+      {const x1=g.P.x;T(g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}})===false&&g.P.x===x1&&!g.P.leap,'assassin Q does nothing without a target');}
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
