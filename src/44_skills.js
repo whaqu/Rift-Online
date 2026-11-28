@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 베고, 제자리로 돌아오며 한 번 더 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 벱니다. 계속 누르고 있으면 제자리로 돌아오며 한 번 더 베고, 바로 떼면 그 자리에 남습니다. 적이 없을 때 누르고 있으면 미끄러지듯 달립니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -134,7 +134,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.hidden||P.chan>0||P.stunT>0);
@@ -277,15 +277,17 @@ const SK={
     pillar(P.x,P.z,c.col,24,.6);shockRing(P.x,P.z,16,c.col,.7);
   },
   /* 암살자 */
-  r_q(c){   // glide through the target, cut, glide back, cut again
-    const ch=c.charge==null?1:c.charge,m=aimMob(12);if(!m){UI.toast('가까운 대상이 없습니다');return false}
+  r_q(c){   // tap: glide in and cut. Still held: glide back and cut again. No target: hold to glide around
+    const ch=c.charge==null?1:c.charge,m=aimMob(12);if(!m){if(qHeld())P.qRun=true;return false}   // running costs no charge
+    P.qRun=false;
     const bx=m.x-Math.sin(m.face||0)*(m.r+1),bz=m.z-Math.cos(m.face||0)*(m.r+1),amb=P.stealth>0,x0=P.x,z0=P.z,mult=(amb?6.25:2.65)*qPower(ch);
     P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
     const cut=(kb,side)=>{if(!alive(m))return;P.face=Math.atan2(m.x-P.x,m.z-P.z);
       sHit(c,m,mult,{kb,crit:true,big:true});slashArc(m.x,m.z,P.face+side,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0})};
-    const glide=(x,z,done)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur:.22,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
+    const glide=(x,z,done,dur=.13)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
     act(.5,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});sfx('dash');
-    glide(bx,bz,()=>{cut(0,1.6);glide(x0,z0,()=>cut(4,-1.6))});
+    glide(bx,bz,()=>{cut(0,1.6);
+      glide(P.x,P.z,()=>{if(qHeld())glide(x0,z0,()=>cut(4,-1.6))},.08)});   // a beat to let go and stay
     act(1.8,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
@@ -692,6 +694,18 @@ function holyProc(m,base){
     if(Math.random()<.3*k){for(const q of MOBS){if(q===m||q.dead||q.spawning)continue;if(d2(q.x,q.z,m.x,m.z)<3.2*3.2)dealMob(q,base*.4*k*pw,{noProc:true,noKb:true})}
       shockRing(m.x,m.z,3.4,0xffe27a,.3);flashDisc(m.x,m.z,2.6,0xfff2a0,.3);burst(m.x,1.2,m.z,10,0xffe27a,6,.4,6)}}
   if(ar){const k=hbOn('ar')?1:.7;P.shield=Math.min(S.maxHp*.4,P.shield+S.maxHp*.012*k*pw);if(Math.random()<.25)shockRing(P.x,P.z,2.2,0x9fd0ff,.3)}
+}
+/* assassin Q reacts to the button being held: keyboard, touch button or the skill icon */
+const qHeld=()=>!!(keys.q||mv.q);
+/* hold-to-glide movement; turns into an attack as soon as an enemy is in reach */
+function qRunStep(dt){
+  if(!qHeld()||P.dead||P.stunT>0||P.hidden||P.dashT>0){P.qRun=false;return false}
+  if(aimMob(12)){P.qRun=false;trySkill('q');return true}
+  let dx,dz;
+  if(IS_TOUCH||mv.on){const l=mv.on?Math.hypot(mv.x,mv.z):0;if(l>.2){dx=mv.x/l;dz=mv.z/l}else{dx=Math.sin(P.face);dz=Math.cos(P.face)}}
+  else{const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);if(l<1)return true;dx=mx/l;dz=mz/l}
+  const step=effSpd()*2.2*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
+  emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0);return true;
 }
 /* assassin Q is a charge gauge: usable at any charge (spammable), power grows with the charge, a full gauge gets a bonus */
 const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;

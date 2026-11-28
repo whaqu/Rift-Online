@@ -22,7 +22,7 @@ function initTouch(){
     if(hold){const up=e=>{e.preventDefault();fn(false)};el.addEventListener('touchend',up);el.addEventListener('touchcancel',up)}
   };
   press('tb-atk',on=>{mv.atk=on},true);
-  press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
+  press('tb-q',on=>{mv.q=on;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
   press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});
@@ -37,7 +37,7 @@ function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
 function setTouchMode(on){
   if(on===IS_TOUCH)return;
   IS_TOUCH=on;document.body.classList.toggle('touch',on);
-  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;
+  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;mv.q=false;
   if(on)initTouch();
   if(!save.custom){save.auto=on;writeSave()}
   if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}

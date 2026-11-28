@@ -3054,6 +3054,7 @@ function movePlayer(dt){
     const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur),k=L.smooth?u*u*(3-2*u):u;P.x=lerp(L.x0,L.x1,k);P.z=lerp(L.z0,L.z1,k);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
+  if(P.qRun&&qRunStep(dt)){P.vx=P.vz=0;return}
   if(P.dashT>0){
     P.dashT-=dt;P.vx=P.dashDX*(P.dashSp||38);P.vz=P.dashDZ*(P.dashSp||38);
     emit(P.x,1,P.z,rnd(-1,1),rnd(0,1.5),rnd(-1,1),.35,JOB_COL[SES.pf.job]||CLS[S.cls].col,0);
@@ -3969,7 +3970,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 베고, 제자리로 돌아오며 한 번 더 벱니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 벱니다. 계속 누르고 있으면 제자리로 돌아오며 한 번 더 베고, 바로 떼면 그 자리에 남습니다. 적이 없을 때 누르고 있으면 미끄러지듯 달립니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -4087,7 +4088,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.hidden||P.chan>0||P.stunT>0);
@@ -4230,15 +4231,17 @@ const SK={
     pillar(P.x,P.z,c.col,24,.6);shockRing(P.x,P.z,16,c.col,.7);
   },
   /* 암살자 */
-  r_q(c){   // glide through the target, cut, glide back, cut again
-    const ch=c.charge==null?1:c.charge,m=aimMob(12);if(!m){UI.toast('가까운 대상이 없습니다');return false}
+  r_q(c){   // tap: glide in and cut. Still held: glide back and cut again. No target: hold to glide around
+    const ch=c.charge==null?1:c.charge,m=aimMob(12);if(!m){if(qHeld())P.qRun=true;return false}   // running costs no charge
+    P.qRun=false;
     const bx=m.x-Math.sin(m.face||0)*(m.r+1),bz=m.z-Math.cos(m.face||0)*(m.r+1),amb=P.stealth>0,x0=P.x,z0=P.z,mult=(amb?6.25:2.65)*qPower(ch);
     P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
     const cut=(kb,side)=>{if(!alive(m))return;P.face=Math.atan2(m.x-P.x,m.z-P.z);
       sHit(c,m,mult,{kb,crit:true,big:true});slashArc(m.x,m.z,P.face+side,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0})};
-    const glide=(x,z,done)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur:.22,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
+    const glide=(x,z,done,dur=.13)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
     act(.5,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});sfx('dash');
-    glide(bx,bz,()=>{cut(0,1.6);glide(x0,z0,()=>cut(4,-1.6))});
+    glide(bx,bz,()=>{cut(0,1.6);
+      glide(P.x,P.z,()=>{if(qHeld())glide(x0,z0,()=>cut(4,-1.6))},.08)});   // a beat to let go and stay
     act(1.8,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
@@ -4645,6 +4648,18 @@ function holyProc(m,base){
     if(Math.random()<.3*k){for(const q of MOBS){if(q===m||q.dead||q.spawning)continue;if(d2(q.x,q.z,m.x,m.z)<3.2*3.2)dealMob(q,base*.4*k*pw,{noProc:true,noKb:true})}
       shockRing(m.x,m.z,3.4,0xffe27a,.3);flashDisc(m.x,m.z,2.6,0xfff2a0,.3);burst(m.x,1.2,m.z,10,0xffe27a,6,.4,6)}}
   if(ar){const k=hbOn('ar')?1:.7;P.shield=Math.min(S.maxHp*.4,P.shield+S.maxHp*.012*k*pw);if(Math.random()<.25)shockRing(P.x,P.z,2.2,0x9fd0ff,.3)}
+}
+/* assassin Q reacts to the button being held: keyboard, touch button or the skill icon */
+const qHeld=()=>!!(keys.q||mv.q);
+/* hold-to-glide movement; turns into an attack as soon as an enemy is in reach */
+function qRunStep(dt){
+  if(!qHeld()||P.dead||P.stunT>0||P.hidden||P.dashT>0){P.qRun=false;return false}
+  if(aimMob(12)){P.qRun=false;trySkill('q');return true}
+  let dx,dz;
+  if(IS_TOUCH||mv.on){const l=mv.on?Math.hypot(mv.x,mv.z):0;if(l>.2){dx=mv.x/l;dz=mv.z/l}else{dx=Math.sin(P.face);dz=Math.cos(P.face)}}
+  else{const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);if(l<1)return true;dx=mx/l;dz=mz/l}
+  const step=effSpd()*2.2*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
+  emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0);return true;
 }
 /* assassin Q is a charge gauge: usable at any charge (spammable), power grows with the charge, a full gauge gets a bonus */
 const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;
@@ -6107,7 +6122,10 @@ function buildHud(){
   $('quick').innerHTML=POTION_ORDER.map((b,i)=>'<div class="qs" data-b="'+b+'" style="border-color:'+POTIONS[b].col+'55">'+ic('potion',POTIONS[b].col,26)+'<span class="kk">'+(i+1)+'</span><span class="ct"></span><div class="cdm"></div></div>').join('');
   $('quick').onclick=e=>{const t=e.target.closest('.qs');if(t)usePotionKey(t.dataset.b)};
   $('skills').innerHTML=['dash','q','e','r','f'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R',f:'F'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
-  $('skills').onclick=e=>{const t=e.target.closest('.sk');if(!t)return;const k=t.dataset.k;if(k==='dash')doDash();else trySkill(k)};
+  $('skills').onclick=e=>{const t=e.target.closest('.sk');if(!t)return;const k=t.dataset.k;if(k==='dash')doDash();else if(k!=='q')trySkill(k)};
+  /* Q reacts to holding, so it fires on press instead of on click */
+  $('skills').onpointerdown=e=>{const t=e.target.closest('.sk');if(t&&t.dataset.k==='q'){mv.q=true;trySkill('q')}};
+  for(const n of['pointerup','pointercancel','blur'])addEventListener(n,()=>{mv.q=false});
   $('prompt').onclick=()=>interact();
   const ci=$('chatin');
   ci.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){let t=ci.value.trim(),ch='all';if(t.startsWith('/p ')){ch='party';t=t.slice(3)}if(t){if(ch==='party'&&!NET.party)UI.toast('파티가 없습니다');else netChatSend(ch,t)}ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}else if(e.key==='Escape'){ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}};
@@ -6247,7 +6265,7 @@ function initTouch(){
     if(hold){const up=e=>{e.preventDefault();fn(false)};el.addEventListener('touchend',up);el.addEventListener('touchcancel',up)}
   };
   press('tb-atk',on=>{mv.atk=on},true);
-  press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
+  press('tb-q',on=>{mv.q=on;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
   press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});
@@ -6262,7 +6280,7 @@ function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
 function setTouchMode(on){
   if(on===IS_TOUCH)return;
   IS_TOUCH=on;document.body.classList.toggle('touch',on);
-  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;
+  for(const k in keys)keys[k]=false;mv.on=false;mv.x=mv.z=0;mv.atk=false;mv.q=false;
   if(on)initTouch();
   if(!save.custom){save.auto=on;writeSave()}
   if(typeof UI!=='undefined'){UI.toast(on?'터치 조작으로 전환했습니다':'키보드·마우스 조작으로 전환했습니다');if(UI.refreshTouch)UI.refreshTouch();if(UI.rerender&&UI.modal)UI.rerender()}
@@ -6911,7 +6929,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

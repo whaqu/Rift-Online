@@ -92,6 +92,7 @@ function movePlayer(dt){
     const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur),k=L.smooth?u*u*(3-2*u):u;P.x=lerp(L.x0,L.x1,k);P.z=lerp(L.z0,L.z1,k);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
+  if(P.qRun&&qRunStep(dt)){P.vx=P.vz=0;return}
   if(P.dashT>0){
     P.dashT-=dt;P.vx=P.dashDX*(P.dashSp||38);P.vz=P.dashDZ*(P.dashSp||38);
     emit(P.x,1,P.z,rnd(-1,1),rnd(0,1.5),rnd(-1,1),.35,JOB_COL[SES.pf.job]||CLS[S.cls].col,0);

@@ -606,11 +606,14 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     { const keep=g.MOBS.splice(0);const mm=g.makeMobObj(99001,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(mm))g.MOBS.push(mm);mm.spawning=false;mm.hp=mm.maxHp=1e12;
       g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;T(g.P.qGuard>0,'assassin Q gives damage reduction');mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
       g.P.leap=null;mm.dead=false;mm.executed=false;mm.hp=1e12;
-      {const x0=g.P.x,z0=g.P.z;mm.x=x0+6;mm.z=z0;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(g.P.x===x0&&g.P.leap&&mm.hp===1e12,'assassin Q glides instead of blinking');
-        for(let i=0;i<5;i++)g.movePlayer(.05);const h1=mm.hp,far=Math.hypot(g.P.x-x0,g.P.z-z0);for(let i=0;i<6;i++)g.movePlayer(.05);
-        T(h1<1e12&&mm.hp<h1&&far>4&&Math.hypot(g.P.x-x0,g.P.z-z0)<1.5,'assassin Q cuts twice on a round trip '+far.toFixed(1));}
-      g.P.leap=null;g.MOBS.splice(0);const far=g.makeMobObj(99002,'slime',g.P.x+50,g.P.z,1,false,false,false);if(!g.MOBS.includes(far))g.MOBS.push(far);far.spawning=false;
-      {const x1=g.P.x;T(g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}})===false&&g.P.x===x1&&!g.P.leap,'assassin Q does nothing without a target');}
+      {const x0=g.P.x,z0=g.P.z;mm.x=x0+6;mm.z=z0;g.keys.q=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});T(g.P.x===x0&&g.P.leap&&mm.hp===1e12,'assassin Q glides instead of blinking');
+        for(let i=0;i<3;i++)g.movePlayer(.05);const h1=mm.hp,far=Math.hypot(g.P.x-x0,g.P.z-z0);for(let i=0;i<12;i++)g.movePlayer(.05);
+        T(h1<1e12&&mm.hp<h1&&far>4&&Math.hypot(g.P.x-x0,g.P.z-z0)<1.5,'held assassin Q cuts twice on a round trip '+far.toFixed(1));}
+      {g.P.leap=null;g.keys.q=false;const x0=g.P.x,z0=g.P.z;mm.x=x0+6;mm.z=z0;mm.hp=1e12;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<3;i++)g.movePlayer(.05);const h1=mm.hp;for(let i=0;i<12;i++)g.movePlayer(.05);
+        T(mm.hp===h1&&h1<1e12&&!g.P.leap&&Math.hypot(g.P.x-x0,g.P.z-z0)>4,'released assassin Q stays after one cut');}
+      g.P.leap=null;g.MOBS.splice(0);
+      {const x1=g.P.x,z1=g.P.z;g.keys.q=true;const r=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<5;i++)g.movePlayer(.05);const d=Math.hypot(g.P.x-x1,g.P.z-z1);
+        g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
