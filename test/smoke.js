@@ -507,6 +507,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(Array.isArray(g.tpPlayers()),'teleport map lists players');
     g.openInventory();for(const t of g.INV_TABS){g.UI.handlers.itab(t[0]);T(g.UI.modal==='가방'&&g.UI.invTab===t[0],'bag tab '+t[0])}
     T(g.INV_TABS.map(t=>t[1]).join()==='전체,방어구,무기,룬,아이템','bag tab names');g.UI.close();
+    T(g.rqRange(1)===12&&g.rqRange(10)===13.5&&g.rqRange(99)===25.5,'assassin Q range grows per 10 levels');
     {const lvNeed=async l=>{edit(a=>{a.level=l;a.xp=0});await g.API.resume(me,g.SES.token);return g.SES.pf.need};
       const n24=await lvNeed(24),n25=await lvNeed(25),n50=await lvNeed(50);T(n24===30+7*576&&n25===(30+7*625)*3&&n50===(30+7*2500)*6,'harder xp from lv25 '+[n24,n25,n50]);}
   }
