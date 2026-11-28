@@ -185,7 +185,7 @@ function windTex(){
   }
   return WINDTEX=new THREE.CanvasTexture(c);
 }
-function auraBuild(kind){
+function auraBuild(kind,form){
   const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
@@ -219,7 +219,12 @@ function auraBuild(kind){
     const tip=new THREE.ConeGeometry(.11,.34,4),body=new THREE.BoxGeometry(.13,.95,.035),guard=new THREE.BoxGeometry(.36,.07,.07),hilt=new THREE.BoxGeometry(.06,.24,.06);
     const blades=[0,1,2,3,4,5,6].map(i=>{
       const piv=new THREE.Group();fan.add(piv);const s=new THREE.Group();piv.add(s);const m=aumat(cols[i],.8);
-      add(body,m,0,.98,0,s);add(new THREE.BoxGeometry(.035,.95,.05),pale,0,.98,0,s);add(tip,pale,0,1.62,0,s).scale.z=.3;add(guard,gold,0,.47,0,s);add(hilt,mag,0,.32,0,s);
+      if(form==='archer'){add(new THREE.BoxGeometry(.045,1.2,.045),m,0,.95,0,s);add(tip,pale,0,1.68,0,s).scale.z=.3;for(const d of[-1,1])add(new THREE.BoxGeometry(.05,.26,.02),gold,d*.07,.45,0,s).rotation.z=d*.6}
+      else if(form==='wand'){add(new THREE.BoxGeometry(.05,1,.05),gold,0,.85,0,s);add(new THREE.OctahedronGeometry(.17,0),m,0,1.5,0,s);add(new THREE.TorusGeometry(.24,.02,4,20),pale,0,1.5,0,s)}
+      else if(form==='lancer'){add(new THREE.BoxGeometry(.055,1.35,.055),gold,0,.9,0,s);add(new THREE.OctahedronGeometry(.19,0),m,0,1.72,0,s).scale.set(.7,1.9,.25);add(guard,pale,0,1.42,0,s)}
+      else if(form==='monk'){add(new THREE.BoxGeometry(.28,.3,.18),m,0,1.35,0,s);for(let j=-1;j<=1;j++)add(new THREE.BoxGeometry(.07,.12,.2),pale,j*.09,1.55,0,s);add(guard,gold,0,1.15,0,s);add(hilt,mag,0,.95,0,s)}
+      else if(form==='gunner'){add(new THREE.CylinderGeometry(.09,.09,.5,8),m,0,1.15,0,s);add(new THREE.ConeGeometry(.09,.24,8),pale,0,1.52,0,s);add(new THREE.CylinderGeometry(.11,.11,.07,8),gold,0,.88,0,s);add(hilt,mag,0,.55,0,s)}
+      else{add(body,m,0,.98,0,s);add(new THREE.BoxGeometry(.035,.95,.05),pale,0,.98,0,s);add(tip,pale,0,1.62,0,s).scale.z=.3;add(guard,gold,0,.47,0,s);add(hilt,mag,0,.32,0,s)}
       return{piv,s,a:(i-3)*.52}});
     const halo1=add(new THREE.TorusGeometry(.5,.035,5,36),gold,0,0,0,fan),halo2=add(new THREE.TorusGeometry(.34,.018,4,32),mag,0,0,0,fan);
     const seal=new THREE.Group();seal.position.y=.1;g.add(seal);
@@ -254,13 +259,13 @@ function auraBuild(kind){
       motes.forEach((m,i)=>{const k=(t*.42+i/7)%1,a=i*2.4+t*.8;m.position.set(Math.cos(a)*(1-k*.4),.1+k*2.9,Math.sin(a)*(1-k*.4));m.scale.setScalar(Math.sin(k*Math.PI)+.15);m.rotation.y=t*3});
     };
   }
-  anim(0);return{kind,g,anim};
+  anim(0);return{kind,form,g,anim};
 }
-function auraApply(o,t){
-  const kind=AUKIND[t]||null;
-  if(o.wau&&o.wau.kind===kind)return;
+function auraApply(o,t,form){
+  const kind=AUKIND[t]||null;form=kind==='omni'?form:null;
+  if(o.wau&&o.wau.kind===kind&&o.wau.form===form)return;
   if(o.wau){o.g.remove(o.wau.g);o.wau=null}
-  if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
+  if(kind&&o.g){o.wau=auraBuild(kind,form);o.g.add(o.wau.g)}
 }
 
 /* 만물의 룬 aura: nine elemental fragments (low-poly 3D, one per region) ride a ring of light streams over a golden rune circle. No flat icons. */
@@ -361,6 +366,91 @@ function wOmniSword(o,k){
     o.wfx.push({list,x:0,y,z:0,r,h:.18,sp});
   }
 }
+/* other unique (crafted) weapons share the sword's materials: white metal, gold, magenta core, feathers, nine region gems */
+function wOmniMats(){return{white:M(0xf4f0ff,{metalness:.75,roughness:.18,emissive:0x5a3a6a,emissiveIntensity:.25}),dark:M(0x2a1638,{metalness:.7,roughness:.3}),
+  gold:M(0xffd873,{metalness:.7,roughness:.28,emissive:0x6a4a10,emissiveIntensity:.35}),mag:EM(0xff4fd8,1.4),fire:EM(0xff8a3a,1.8),ice:EM(0x9ff6ff,1.8),
+  wood:M(0x7a4a28),feather:M(0xfff8e0,{emissive:0xffe9a0,emissiveIntensity:.35})}}
+const wOmniGem=(k,i,x,y,z,s)=>{const g=OC(s||.045,EM(parseInt(OMNI_COL[i].slice(1),16),1.9),x,y,z,k);g.scale.set(.9,1.4,1.2);return g};
+const wOmniGlow=(k,x,y,z,s,col)=>{const g=glow(col||0xff4fd8,s,.4);g.position.set(x,y,z);k.add(g);return g};
+/* a fan of feathers growing from (x,y): side = +-1, plane 'x' or 'z' */
+function wOmniWing(k,m,x,y,z,side,len,plane){
+  for(let i=0;i<3;i++){const l=len-i*len*.2,a=.16+i*.34,d=side*(Math.cos(a)*l/2),h=y+Math.sin(a)*l/2;
+    const f=mesh(new THREE.ConeGeometry(len*.13,l,4),i===1?m.gold:m.feather,plane==='z'?x:x+d,h,plane==='z'?z+d:z,k);
+    if(plane==='z'){f.scale.x=.3;f.rotation.x=side*(Math.PI/2-a)}else{f.scale.z=.3;f.rotation.z=-side*(Math.PI/2-a)}}
+}
+function wOmniOrbit(o,k,list){
+  for(const[y,r,sp,n,col]of list){const l=[];for(let i=0;i<n;i++){const s=OC(.05,EM(col,1.8),0,y,0,k);s.scale.set(.6,1.7,.4);l.push(s)}o.wfx.push({list:l,x:0,y,z:0,r,h:.18,sp})}
+}
+function wOmniBow(o,k){
+  const m=wOmniMats();
+  const arc=(r,t,mat,dz)=>{const geo=new THREE.TorusGeometry(r,t,6,32,Math.PI);geo.rotateZ(Math.PI/2);geo.rotateY(Math.PI/2);return mesh(geo,mat,0,0,dz||0,k)};
+  arc(1.2,.07,m.white);arc(1.28,.022,m.mag);arc(1.1,.03,m.gold);
+  BX(.018,2.4,.018,m.ice,0,0,0,k);
+  for(let i=0;i<9;i++){const a=(i-4)*.32;wOmniGem(k,i,0,Math.sin(a)*1.2,Math.cos(a)*1.2)}
+  for(const s of[-1,1]){OC(.1,m.gold,0,s*1.2,0,k);wOmniWing(k,m,0,s*1.2,0,1,s*.5,'z')}
+  CY(.085,.085,.5,m.wood,0,0,1.18,k,8);for(const y of[-.27,.27])CY(.1,.1,.05,m.gold,0,y,1.18,k,8);
+  const heart=OC(.13,m.mag,0,0,1.3,k);heart.scale.set(1,1.3,1);
+  for(const y of[-1.2,0,1.2])wOmniGlow(k,0,y,y?0:1.25,.85);
+  wOmniOrbit(o,k,[[.7,.28,2.2,2,0xffd24a],[-.7,.28,-2.2,2,0xff4fd8]]);
+}
+function wOmniWand(o,k){
+  const m=wOmniMats();
+  CY(.045,.065,1.7,m.wood,0,.05,0,k,8);for(const y of[-.55,-.2,.55])CY(.075,.075,.045,m.gold,0,y,0,k,8);
+  OC(.11,m.mag,0,-.85,0,k);
+  for(const s of[-1,1])wOmniWing(k,m,s*.08,1.0,0,s,.58);
+  const heart=OC(.2,m.mag,0,1.38,0,k);heart.scale.set(1,1.3,1);
+  const r1=mesh(new THREE.TorusGeometry(.34,.025,5,30),m.gold,0,1.38,0,k),r2=mesh(new THREE.TorusGeometry(.42,.012,4,30),m.ice,0,1.38,0,k);r2.rotation.x=Math.PI/2;r1.rotation.y=.4;
+  CN(.09,.34,m.fire,0,1.9,0,k,5);for(const s of[-1,1])CN(.045,.18,m.fire,s*.1,1.78,0,k,4).rotation.z=-s*.5;
+  for(let i=0;i<9;i++){const a=i/9*TAU;wOmniGem(k,i,Math.cos(a)*.34,1.38+Math.sin(a)*.34,0,.035)}
+  const gl=wOmniGlow(k,0,1.38,0,1.5);o.orb=r2;o.orbGlow=gl;wOmniGlow(k,0,1.9,0,.8,0xff8a3a);
+  wOmniOrbit(o,k,[[1.38,.55,2.4,3,0xffd24a],[.9,.28,-1.8,2,0x9ff6ff]]);
+}
+function wOmniSpear(o,k){
+  const m=wOmniMats();
+  CY(.045,.05,2.9,m.wood,0,.55,0,k,8);for(const y of[-.75,-.2,.35,1.75])CY(.065,.065,.06,m.gold,0,y,0,k,8);
+  OC(.11,m.gold,0,-.95,0,k);
+  const blade=OC(.22,m.white,0,2.5,0,k);blade.scale.set(.75,2.6,.25);BX(.05,.9,.07,m.mag,0,2.45,0,k);
+  for(const s of[-1,1]){const p=CN(.07,.55,m.white,s*.27,2.2,0,k,4);p.rotation.z=-s*.35;p.scale.z=.35;
+    wOmniWing(k,m,s*.07,1.9,0,s,.52);CN(.06,.28,m.fire,s*.3,2.52,0,k,5)}
+  const heart=OC(.14,m.mag,0,1.95,0,k);heart.scale.set(1,1.25,1.1);
+  CN(.08,.3,m.fire,0,3.2,0,k,5);
+  for(let i=0;i<9;i++)wOmniGem(k,i,0,.55+i*.13,.055,.032);
+  for(const[y,s]of[[1.95,1],[2.6,1],[3.2,.7]])wOmniGlow(k,0,y,0,s);
+  wOmniOrbit(o,k,[[2.45,.4,2.6,3,0xffd24a],[1.7,.3,-2,2,0xff4fd8]]);
+}
+function wOmniFist(o,k,side){
+  const m=wOmniMats();
+  BX(.36,.42,.36,m.white,0,-.14,0,k);BX(.4,.09,.4,m.gold,0,.11,0,k);BX(.39,.05,.39,m.mag,0,-.02,0,k);BX(.38,.1,.14,m.gold,0,-.34,.11,k);
+  for(let i=-1;i<=1;i++)CN(.05,.18,m.fire,i*.11,-.45,.13,k,4).rotation.x=Math.PI;
+  const heart=OC(.1,m.mag,0,-.17,.2,k);heart.scale.set(1,1.25,.7);
+  wOmniWing(k,m,side*.2,-.05,0,side,.5);
+  for(let i=0;i<4;i++)wOmniGem(k,i*2+(side>0?1:0),-.15+i*.1,-.28,.19,.032);
+  wOmniGlow(k,0,-.2,0,1.1);wOmniOrbit(o,k,[[-.2,.34,side*2.6,3,side>0?0xff8a3a:0xffd24a]]);
+}
+function wOmniGun(o,k){
+  const m=wOmniMats();
+  BX(.14,.95,.14,m.white,0,-.55,0,k);BX(.05,.95,.05,m.dark,0,-.55,.1,k);BX(.16,.95,.03,m.mag,0,-.55,0,k);
+  const cyl=CY(.17,.17,.3,m.gold,0,-.08,0,k,8);cyl.rotation.y=.4;
+  for(let i=0;i<6;i++){const a=i/6*TAU;CY(.03,.03,.31,m.dark,Math.cos(a)*.12,-.08,Math.sin(a)*.12,k,6)}
+  BX(.13,.2,.16,m.gold,0,.14,0,k);BX(.11,.34,.13,m.wood,0,.2,-.15,k).rotation.x=.45;CN(.05,.16,m.gold,0,.24,.07,k,4);
+  /* sheriff star on both sides */
+  for(const s of[-1,1]){for(let i=0;i<5;i++){const a=i/5*TAU,p=CN(.04,.13,m.gold,s*.19,-.08+Math.cos(a)*.09,Math.sin(a)*.09,k,4);p.rotation.x=a;p.scale.x=.3}OC(.045,m.mag,s*.2,-.08,0,k)}
+  wOmniWing(k,m,0,.02,-.12,-1,.46,'z');
+  const mz=mesh(new THREE.TorusGeometry(.13,.025,5,20),m.ice,0,-1.06,0,k);mz.rotation.x=Math.PI/2;
+  for(let i=0;i<9;i++)wOmniGem(k,i,0,-.28-i*.085,-.085,.03);
+  wOmniGlow(k,0,-.08,0,.9);wOmniGlow(k,0,-1.1,0,.9,0x9ff6ff);
+  wOmniOrbit(o,k,[[-.9,.26,2.8,3,0x9ff6ff],[-.35,.3,-2,2,0xff8a3a]]);
+}
+function wOmniLook(o,b){
+  const c=wCls(b),one=(fn,s)=>{const k=grp(0,0,0,o.weapon);k.scale.setScalar(s||1);fn(o,k)};
+  if(o.shield&&c!=='wand')o.shield.visible=false;
+  if(c==='sword'){if(o.shield)o.shield.visible=true;one(wOmniSword,{warrior:1,rogue:.85,darknight:1.14}[o.cls]||1)}
+  else if(c==='archer')one(wOmniBow);
+  else if(c==='wand')one(wOmniWand);
+  else if(c==='lancer')one(wOmniSpear);
+  else if(c==='gunner')one(wOmniGun,1.1);
+  else if(c==='monk'){const a=grp(0,0,0,o.weapon);wOmniFist(o,a,-1);wOmniFist(o,wsecond(o),1)}
+}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
@@ -370,10 +460,10 @@ function applyWeaponLook0(o,base){
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
   try{
-    if(wCls(b)==='sword'){const k=grp(0,0,0,o.weapon);k.scale.setScalar({warrior:1,rogue:.85,darknight:1.14}[o.cls]||1);wOmniSword(o,k)}
+    if(t===10)wOmniLook(o,b);
     else fn(o,ty,t,wmats(t))
   }catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
-  try{auraApply(o,t)}catch(e){console.error('weapon aura',t,e)}
+  try{auraApply(o,t,wCls(b))}catch(e){console.error('weapon aura',t,e)}
   o.wbase=b;
 }

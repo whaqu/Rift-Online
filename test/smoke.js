@@ -256,6 +256,18 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(['warrior','rogue','darknight'].every(c=>g.wCan('sword_10',c))&&!g.wCan('sword_10','mage'),'only sword classes can use it');
     for(const c of['warrior','rogue','darknight']){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,'sword_10');T(o.wbase==='sword_10'&&o.wau&&o.wau.kind==='omni'&&o.weapon.children.length>0,'unique model and aura for '+c);o.wau.anim(1.3)}
     {let ok2=true;try{g.openSmith();g.UI.handlers.mtab('craft');g.UI.handlers.crec('omni_weapon');g.UI.handlers.cclear();g.UI.handlers.cpick('mat:wood');g.UI.handlers.ccell('0');g.UI.close()}catch(e){ok2=false;console.log(e.message)}T(ok2,'crafting tab works')}
+    const U=[['omni_bow','archer_10','만물의 활',['archer']],['omni_wand','wand_10','만물의 완드',['cleric','summoner','mage']],['omni_spear','lancer_10','만물의 창',['lancer']],['omni_gauntlet','monk_10','만물의 건틀렛',['monk']],['omni_sheriff','gunner_10','만물의 셰리프',['gunner']]];
+    T(g.RECIPES.every(r=>g.craftMatch(g.recipeCells(r))===r),'every recipe matches only itself');
+    for(const[id,base,name,cls]of U){
+      const r=g.RECIPES.find(r=>r.id===id),d2=JSON.parse(localStorage.getItem(K));
+      for(const[k,c]of Object.entries(g.recipeCells(r).filter(Boolean).reduce((o,k)=>(o[k]=(o[k]||0)+1,o),{}))){const[kind,b]=k.split(':');d2.items.push({id:d2.nid++,owner:me,kind,base:b,enh:kind==='rune'?1:0,ench:[],qty:c,eq:false,listed:false,gone:false})}
+      localStorage.setItem(K,JSON.stringify(d2));await g.API.resume(me,g.SES.token);
+      T(g.craftHtml(g.recipeCells(r),null,'').includes(name),id+' is shown on the table');
+      await g.API.call('craft',id);
+      T(g.SES.pf.items.some(i=>i.base===base)&&g.wName(base)===name,id+' gives '+name);
+      for(const c of['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight'])if(g.wCan(base,c)!==cls.includes(c))T(false,base+' wrong class '+c);
+      for(const c of cls){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,base);T(o.wbase===base&&o.wau&&o.wau.kind==='omni'&&o.weapon.children.length>0,'unique model and aura for '+c);o.wau.anim(1.3);g.applyWeaponLook(o,c+'_1');T(!o.wau,'aura removed for '+c)}
+    }
     localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
   }
   // ---- dungeon ----

@@ -1353,10 +1353,11 @@ const WNAMES={
   summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템','천공의 토템'],
   darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검','타락천사의 대검']
 };
-const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword',sword:'sword'};
-/* shared weapons: base 'sword_10' is usable by every sword class. Must match rw_wcan */
-const SWORD_CLS=['warrior','rogue','darknight'];
-const wCan=(b,c)=>wCls(b)==='sword'?SWORD_CLS.includes(c):wCls(b)===c;
+const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword',sword:'sword',wand:'staff'};
+/* shared weapons: base 'sword_10' / 'wand_10' are usable by several classes. Must match rw_wcan */
+const SHARED_CLS={sword:['warrior','rogue','darknight'],wand:['cleric','summoner','mage']};
+const wCan=(b,c)=>{const s=SHARED_CLS[wCls(b)];return s?s.includes(c):wCls(b)===c};
+const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프'};
 const wGrade=b=>wTier(b)>9?'유니크':wTier(b)+'등급('+ZONES[wTier(b)].name+')';
 const WATK=[10,22,40,70,115,180,280,420,620,880];   // 10th = unique (crafted)
 const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef','#ff4fd8'];
@@ -1400,7 +1401,7 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{if(wCls(b)==='sword')return'만물의 검';const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{if(wTier(b)>9)return UNAMES[wCls(b)];const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
 const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000,6000000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
@@ -1425,7 +1426,17 @@ const POTIONS={
 const CRAFT_N=5;
 const RECIPES=[
   {id:'omni_weapon',base:'sword_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood'},
-   pattern:['.....','..C..','..R..','.FWF.','..W..']}
+   pattern:['.....','..C..','..R..','.FWF.','..W..']},
+  {id:'omni_bow',base:'archer_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood'},
+   pattern:['..FF.','.F.W.','.C.R.','.F.W.','..FF.']},
+  {id:'omni_wand',base:'wand_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3'},
+   pattern:['..E..','..F..','..C..','..W..','..R..']},
+  {id:'omni_spear',base:'lancer_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3'},
+   pattern:['..E..','.EFE.','.WCW.','..W..','..R..']},
+  {id:'omni_gauntlet',base:'monk_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',E:'mat:m3'},
+   pattern:['.....','.....','.C.C.','.F.F.','.ERE.']},
+  {id:'omni_sheriff',base:'gunner_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3',I:'mat:m7'},
+   pattern:['.....','....C','ECRIF','...W.','...W.']}
 ];
 const recipeCells=r=>{const o=[];for(const row of r.pattern)for(const ch of row)o.push(r.key[ch]||null);return o};
 const recipeNeed=r=>{const o={};for(const k of recipeCells(r))if(k)o[k]=(o[k]||0)+1;return o};
@@ -2204,7 +2215,7 @@ function windTex(){
   }
   return WINDTEX=new THREE.CanvasTexture(c);
 }
-function auraBuild(kind){
+function auraBuild(kind,form){
   const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
@@ -2238,7 +2249,12 @@ function auraBuild(kind){
     const tip=new THREE.ConeGeometry(.11,.34,4),body=new THREE.BoxGeometry(.13,.95,.035),guard=new THREE.BoxGeometry(.36,.07,.07),hilt=new THREE.BoxGeometry(.06,.24,.06);
     const blades=[0,1,2,3,4,5,6].map(i=>{
       const piv=new THREE.Group();fan.add(piv);const s=new THREE.Group();piv.add(s);const m=aumat(cols[i],.8);
-      add(body,m,0,.98,0,s);add(new THREE.BoxGeometry(.035,.95,.05),pale,0,.98,0,s);add(tip,pale,0,1.62,0,s).scale.z=.3;add(guard,gold,0,.47,0,s);add(hilt,mag,0,.32,0,s);
+      if(form==='archer'){add(new THREE.BoxGeometry(.045,1.2,.045),m,0,.95,0,s);add(tip,pale,0,1.68,0,s).scale.z=.3;for(const d of[-1,1])add(new THREE.BoxGeometry(.05,.26,.02),gold,d*.07,.45,0,s).rotation.z=d*.6}
+      else if(form==='wand'){add(new THREE.BoxGeometry(.05,1,.05),gold,0,.85,0,s);add(new THREE.OctahedronGeometry(.17,0),m,0,1.5,0,s);add(new THREE.TorusGeometry(.24,.02,4,20),pale,0,1.5,0,s)}
+      else if(form==='lancer'){add(new THREE.BoxGeometry(.055,1.35,.055),gold,0,.9,0,s);add(new THREE.OctahedronGeometry(.19,0),m,0,1.72,0,s).scale.set(.7,1.9,.25);add(guard,pale,0,1.42,0,s)}
+      else if(form==='monk'){add(new THREE.BoxGeometry(.28,.3,.18),m,0,1.35,0,s);for(let j=-1;j<=1;j++)add(new THREE.BoxGeometry(.07,.12,.2),pale,j*.09,1.55,0,s);add(guard,gold,0,1.15,0,s);add(hilt,mag,0,.95,0,s)}
+      else if(form==='gunner'){add(new THREE.CylinderGeometry(.09,.09,.5,8),m,0,1.15,0,s);add(new THREE.ConeGeometry(.09,.24,8),pale,0,1.52,0,s);add(new THREE.CylinderGeometry(.11,.11,.07,8),gold,0,.88,0,s);add(hilt,mag,0,.55,0,s)}
+      else{add(body,m,0,.98,0,s);add(new THREE.BoxGeometry(.035,.95,.05),pale,0,.98,0,s);add(tip,pale,0,1.62,0,s).scale.z=.3;add(guard,gold,0,.47,0,s);add(hilt,mag,0,.32,0,s)}
       return{piv,s,a:(i-3)*.52}});
     const halo1=add(new THREE.TorusGeometry(.5,.035,5,36),gold,0,0,0,fan),halo2=add(new THREE.TorusGeometry(.34,.018,4,32),mag,0,0,0,fan);
     const seal=new THREE.Group();seal.position.y=.1;g.add(seal);
@@ -2273,13 +2289,13 @@ function auraBuild(kind){
       motes.forEach((m,i)=>{const k=(t*.42+i/7)%1,a=i*2.4+t*.8;m.position.set(Math.cos(a)*(1-k*.4),.1+k*2.9,Math.sin(a)*(1-k*.4));m.scale.setScalar(Math.sin(k*Math.PI)+.15);m.rotation.y=t*3});
     };
   }
-  anim(0);return{kind,g,anim};
+  anim(0);return{kind,form,g,anim};
 }
-function auraApply(o,t){
-  const kind=AUKIND[t]||null;
-  if(o.wau&&o.wau.kind===kind)return;
+function auraApply(o,t,form){
+  const kind=AUKIND[t]||null;form=kind==='omni'?form:null;
+  if(o.wau&&o.wau.kind===kind&&o.wau.form===form)return;
   if(o.wau){o.g.remove(o.wau.g);o.wau=null}
-  if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
+  if(kind&&o.g){o.wau=auraBuild(kind,form);o.g.add(o.wau.g)}
 }
 
 /* 만물의 룬 aura: nine elemental fragments (low-poly 3D, one per region) ride a ring of light streams over a golden rune circle. No flat icons. */
@@ -2380,6 +2396,91 @@ function wOmniSword(o,k){
     o.wfx.push({list,x:0,y,z:0,r,h:.18,sp});
   }
 }
+/* other unique (crafted) weapons share the sword's materials: white metal, gold, magenta core, feathers, nine region gems */
+function wOmniMats(){return{white:M(0xf4f0ff,{metalness:.75,roughness:.18,emissive:0x5a3a6a,emissiveIntensity:.25}),dark:M(0x2a1638,{metalness:.7,roughness:.3}),
+  gold:M(0xffd873,{metalness:.7,roughness:.28,emissive:0x6a4a10,emissiveIntensity:.35}),mag:EM(0xff4fd8,1.4),fire:EM(0xff8a3a,1.8),ice:EM(0x9ff6ff,1.8),
+  wood:M(0x7a4a28),feather:M(0xfff8e0,{emissive:0xffe9a0,emissiveIntensity:.35})}}
+const wOmniGem=(k,i,x,y,z,s)=>{const g=OC(s||.045,EM(parseInt(OMNI_COL[i].slice(1),16),1.9),x,y,z,k);g.scale.set(.9,1.4,1.2);return g};
+const wOmniGlow=(k,x,y,z,s,col)=>{const g=glow(col||0xff4fd8,s,.4);g.position.set(x,y,z);k.add(g);return g};
+/* a fan of feathers growing from (x,y): side = +-1, plane 'x' or 'z' */
+function wOmniWing(k,m,x,y,z,side,len,plane){
+  for(let i=0;i<3;i++){const l=len-i*len*.2,a=.16+i*.34,d=side*(Math.cos(a)*l/2),h=y+Math.sin(a)*l/2;
+    const f=mesh(new THREE.ConeGeometry(len*.13,l,4),i===1?m.gold:m.feather,plane==='z'?x:x+d,h,plane==='z'?z+d:z,k);
+    if(plane==='z'){f.scale.x=.3;f.rotation.x=side*(Math.PI/2-a)}else{f.scale.z=.3;f.rotation.z=-side*(Math.PI/2-a)}}
+}
+function wOmniOrbit(o,k,list){
+  for(const[y,r,sp,n,col]of list){const l=[];for(let i=0;i<n;i++){const s=OC(.05,EM(col,1.8),0,y,0,k);s.scale.set(.6,1.7,.4);l.push(s)}o.wfx.push({list:l,x:0,y,z:0,r,h:.18,sp})}
+}
+function wOmniBow(o,k){
+  const m=wOmniMats();
+  const arc=(r,t,mat,dz)=>{const geo=new THREE.TorusGeometry(r,t,6,32,Math.PI);geo.rotateZ(Math.PI/2);geo.rotateY(Math.PI/2);return mesh(geo,mat,0,0,dz||0,k)};
+  arc(1.2,.07,m.white);arc(1.28,.022,m.mag);arc(1.1,.03,m.gold);
+  BX(.018,2.4,.018,m.ice,0,0,0,k);
+  for(let i=0;i<9;i++){const a=(i-4)*.32;wOmniGem(k,i,0,Math.sin(a)*1.2,Math.cos(a)*1.2)}
+  for(const s of[-1,1]){OC(.1,m.gold,0,s*1.2,0,k);wOmniWing(k,m,0,s*1.2,0,1,s*.5,'z')}
+  CY(.085,.085,.5,m.wood,0,0,1.18,k,8);for(const y of[-.27,.27])CY(.1,.1,.05,m.gold,0,y,1.18,k,8);
+  const heart=OC(.13,m.mag,0,0,1.3,k);heart.scale.set(1,1.3,1);
+  for(const y of[-1.2,0,1.2])wOmniGlow(k,0,y,y?0:1.25,.85);
+  wOmniOrbit(o,k,[[.7,.28,2.2,2,0xffd24a],[-.7,.28,-2.2,2,0xff4fd8]]);
+}
+function wOmniWand(o,k){
+  const m=wOmniMats();
+  CY(.045,.065,1.7,m.wood,0,.05,0,k,8);for(const y of[-.55,-.2,.55])CY(.075,.075,.045,m.gold,0,y,0,k,8);
+  OC(.11,m.mag,0,-.85,0,k);
+  for(const s of[-1,1])wOmniWing(k,m,s*.08,1.0,0,s,.58);
+  const heart=OC(.2,m.mag,0,1.38,0,k);heart.scale.set(1,1.3,1);
+  const r1=mesh(new THREE.TorusGeometry(.34,.025,5,30),m.gold,0,1.38,0,k),r2=mesh(new THREE.TorusGeometry(.42,.012,4,30),m.ice,0,1.38,0,k);r2.rotation.x=Math.PI/2;r1.rotation.y=.4;
+  CN(.09,.34,m.fire,0,1.9,0,k,5);for(const s of[-1,1])CN(.045,.18,m.fire,s*.1,1.78,0,k,4).rotation.z=-s*.5;
+  for(let i=0;i<9;i++){const a=i/9*TAU;wOmniGem(k,i,Math.cos(a)*.34,1.38+Math.sin(a)*.34,0,.035)}
+  const gl=wOmniGlow(k,0,1.38,0,1.5);o.orb=r2;o.orbGlow=gl;wOmniGlow(k,0,1.9,0,.8,0xff8a3a);
+  wOmniOrbit(o,k,[[1.38,.55,2.4,3,0xffd24a],[.9,.28,-1.8,2,0x9ff6ff]]);
+}
+function wOmniSpear(o,k){
+  const m=wOmniMats();
+  CY(.045,.05,2.9,m.wood,0,.55,0,k,8);for(const y of[-.75,-.2,.35,1.75])CY(.065,.065,.06,m.gold,0,y,0,k,8);
+  OC(.11,m.gold,0,-.95,0,k);
+  const blade=OC(.22,m.white,0,2.5,0,k);blade.scale.set(.75,2.6,.25);BX(.05,.9,.07,m.mag,0,2.45,0,k);
+  for(const s of[-1,1]){const p=CN(.07,.55,m.white,s*.27,2.2,0,k,4);p.rotation.z=-s*.35;p.scale.z=.35;
+    wOmniWing(k,m,s*.07,1.9,0,s,.52);CN(.06,.28,m.fire,s*.3,2.52,0,k,5)}
+  const heart=OC(.14,m.mag,0,1.95,0,k);heart.scale.set(1,1.25,1.1);
+  CN(.08,.3,m.fire,0,3.2,0,k,5);
+  for(let i=0;i<9;i++)wOmniGem(k,i,0,.55+i*.13,.055,.032);
+  for(const[y,s]of[[1.95,1],[2.6,1],[3.2,.7]])wOmniGlow(k,0,y,0,s);
+  wOmniOrbit(o,k,[[2.45,.4,2.6,3,0xffd24a],[1.7,.3,-2,2,0xff4fd8]]);
+}
+function wOmniFist(o,k,side){
+  const m=wOmniMats();
+  BX(.36,.42,.36,m.white,0,-.14,0,k);BX(.4,.09,.4,m.gold,0,.11,0,k);BX(.39,.05,.39,m.mag,0,-.02,0,k);BX(.38,.1,.14,m.gold,0,-.34,.11,k);
+  for(let i=-1;i<=1;i++)CN(.05,.18,m.fire,i*.11,-.45,.13,k,4).rotation.x=Math.PI;
+  const heart=OC(.1,m.mag,0,-.17,.2,k);heart.scale.set(1,1.25,.7);
+  wOmniWing(k,m,side*.2,-.05,0,side,.5);
+  for(let i=0;i<4;i++)wOmniGem(k,i*2+(side>0?1:0),-.15+i*.1,-.28,.19,.032);
+  wOmniGlow(k,0,-.2,0,1.1);wOmniOrbit(o,k,[[-.2,.34,side*2.6,3,side>0?0xff8a3a:0xffd24a]]);
+}
+function wOmniGun(o,k){
+  const m=wOmniMats();
+  BX(.14,.95,.14,m.white,0,-.55,0,k);BX(.05,.95,.05,m.dark,0,-.55,.1,k);BX(.16,.95,.03,m.mag,0,-.55,0,k);
+  const cyl=CY(.17,.17,.3,m.gold,0,-.08,0,k,8);cyl.rotation.y=.4;
+  for(let i=0;i<6;i++){const a=i/6*TAU;CY(.03,.03,.31,m.dark,Math.cos(a)*.12,-.08,Math.sin(a)*.12,k,6)}
+  BX(.13,.2,.16,m.gold,0,.14,0,k);BX(.11,.34,.13,m.wood,0,.2,-.15,k).rotation.x=.45;CN(.05,.16,m.gold,0,.24,.07,k,4);
+  /* sheriff star on both sides */
+  for(const s of[-1,1]){for(let i=0;i<5;i++){const a=i/5*TAU,p=CN(.04,.13,m.gold,s*.19,-.08+Math.cos(a)*.09,Math.sin(a)*.09,k,4);p.rotation.x=a;p.scale.x=.3}OC(.045,m.mag,s*.2,-.08,0,k)}
+  wOmniWing(k,m,0,.02,-.12,-1,.46,'z');
+  const mz=mesh(new THREE.TorusGeometry(.13,.025,5,20),m.ice,0,-1.06,0,k);mz.rotation.x=Math.PI/2;
+  for(let i=0;i<9;i++)wOmniGem(k,i,0,-.28-i*.085,-.085,.03);
+  wOmniGlow(k,0,-.08,0,.9);wOmniGlow(k,0,-1.1,0,.9,0x9ff6ff);
+  wOmniOrbit(o,k,[[-.9,.26,2.8,3,0x9ff6ff],[-.35,.3,-2,2,0xff8a3a]]);
+}
+function wOmniLook(o,b){
+  const c=wCls(b),one=(fn,s)=>{const k=grp(0,0,0,o.weapon);k.scale.setScalar(s||1);fn(o,k)};
+  if(o.shield&&c!=='wand')o.shield.visible=false;
+  if(c==='sword'){if(o.shield)o.shield.visible=true;one(wOmniSword,{warrior:1,rogue:.85,darknight:1.14}[o.cls]||1)}
+  else if(c==='archer')one(wOmniBow);
+  else if(c==='wand')one(wOmniWand);
+  else if(c==='lancer')one(wOmniSpear);
+  else if(c==='gunner')one(wOmniGun,1.1);
+  else if(c==='monk'){const a=grp(0,0,0,o.weapon);wOmniFist(o,a,-1);wOmniFist(o,wsecond(o),1)}
+}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
@@ -2389,11 +2490,11 @@ function applyWeaponLook0(o,base){
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
   try{
-    if(wCls(b)==='sword'){const k=grp(0,0,0,o.weapon);k.scale.setScalar({warrior:1,rogue:.85,darknight:1.14}[o.cls]||1);wOmniSword(o,k)}
+    if(t===10)wOmniLook(o,b);
     else fn(o,ty,t,wmats(t))
   }catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
-  try{auraApply(o,t)}catch(e){console.error('weapon aura',t,e)}
+  try{auraApply(o,t,wCls(b))}catch(e){console.error('weapon aura',t,e)}
   o.wbase=b;
 }
 
@@ -6122,7 +6223,7 @@ function duelFocus(){
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const UI={modal:null,rerender:null,sel:null,toastT:0,vgT:0,lastHud:0,lastMini:0,chatLines:[],trade:null,tradeTimer:0};
-const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;o.sword='전사·암살자·암흑기사';return o})();
+const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;for(const k in SHARED_CLS)o[k]=SHARED_CLS[k].map(c=>CLS[c].name).join('·');return o})();
 
 UI.toast=function(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(UI.toastT);UI.toastT=setTimeout(()=>t.classList.remove('show'),ms||2200)};
 function vignette(){const v=$('vign');v.style.opacity='1';clearTimeout(UI.vgT);UI.vgT=setTimeout(()=>{v.style.opacity=(P&&!P.dead&&P.hp<S.maxHp*.25)?'.5':'0'},180)}
@@ -6344,9 +6445,9 @@ function craftHtml(grid,pick,msg){
   const cell=(k,i)=>'<div data-a="ccell" data-v="'+i+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2;word-break:keep-all;overflow:hidden;background:#232940;border:2px solid '+(k?matCol(k):'#4a5274')+';color:'+(k?matCol(k):'#fff')+'">'+(k?matName(k):'')+'</div>';
   const keys=['rune:all',...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
-  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic('sword',TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
+  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic(WICON[wCls(r.base)],TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · 전사·암살자·암흑기사</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)]+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;

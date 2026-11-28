@@ -1,7 +1,7 @@
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const UI={modal:null,rerender:null,sel:null,toastT:0,vgT:0,lastHud:0,lastMini:0,chatLines:[],trade:null,tradeTimer:0};
-const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;o.sword='전사·암살자·암흑기사';return o})();
+const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;for(const k in SHARED_CLS)o[k]=SHARED_CLS[k].map(c=>CLS[c].name).join('·');return o})();
 
 UI.toast=function(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(UI.toastT);UI.toastT=setTimeout(()=>t.classList.remove('show'),ms||2200)};
 function vignette(){const v=$('vign');v.style.opacity='1';clearTimeout(UI.vgT);UI.vgT=setTimeout(()=>{v.style.opacity=(P&&!P.dead&&P.hp<S.maxHp*.25)?'.5':'0'},180)}
@@ -223,9 +223,9 @@ function craftHtml(grid,pick,msg){
   const cell=(k,i)=>'<div data-a="ccell" data-v="'+i+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2;word-break:keep-all;overflow:hidden;background:#232940;border:2px solid '+(k?matCol(k):'#4a5274')+';color:'+(k?matCol(k):'#fff')+'">'+(k?matName(k):'')+'</div>';
   const keys=['rune:all',...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
-  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic('sword',TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
+  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic(WICON[wCls(r.base)],TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · 전사·암살자·암흑기사</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)]+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;

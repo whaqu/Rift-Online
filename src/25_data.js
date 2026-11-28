@@ -138,10 +138,11 @@ const WNAMES={
   summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템','천공의 토템'],
   darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검','타락천사의 대검']
 };
-const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword',sword:'sword'};
-/* shared weapons: base 'sword_10' is usable by every sword class. Must match rw_wcan */
-const SWORD_CLS=['warrior','rogue','darknight'];
-const wCan=(b,c)=>wCls(b)==='sword'?SWORD_CLS.includes(c):wCls(b)===c;
+const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword',sword:'sword',wand:'staff'};
+/* shared weapons: base 'sword_10' / 'wand_10' are usable by several classes. Must match rw_wcan */
+const SHARED_CLS={sword:['warrior','rogue','darknight'],wand:['cleric','summoner','mage']};
+const wCan=(b,c)=>{const s=SHARED_CLS[wCls(b)];return s?s.includes(c):wCls(b)===c};
+const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프'};
 const wGrade=b=>wTier(b)>9?'유니크':wTier(b)+'등급('+ZONES[wTier(b)].name+')';
 const WATK=[10,22,40,70,115,180,280,420,620,880];   // 10th = unique (crafted)
 const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef','#ff4fd8'];
@@ -185,7 +186,7 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{if(wCls(b)==='sword')return'만물의 검';const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{if(wTier(b)>9)return UNAMES[wCls(b)];const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
 const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000,6000000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
@@ -210,7 +211,17 @@ const POTIONS={
 const CRAFT_N=5;
 const RECIPES=[
   {id:'omni_weapon',base:'sword_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood'},
-   pattern:['.....','..C..','..R..','.FWF.','..W..']}
+   pattern:['.....','..C..','..R..','.FWF.','..W..']},
+  {id:'omni_bow',base:'archer_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood'},
+   pattern:['..FF.','.F.W.','.C.R.','.F.W.','..FF.']},
+  {id:'omni_wand',base:'wand_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3'},
+   pattern:['..E..','..F..','..C..','..W..','..R..']},
+  {id:'omni_spear',base:'lancer_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3'},
+   pattern:['..E..','.EFE.','.WCW.','..W..','..R..']},
+  {id:'omni_gauntlet',base:'monk_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',E:'mat:m3'},
+   pattern:['.....','.....','.C.C.','.F.F.','.ERE.']},
+  {id:'omni_sheriff',base:'gunner_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3',I:'mat:m7'},
+   pattern:['.....','....C','ECRIF','...W.','...W.']}
 ];
 const recipeCells=r=>{const o=[];for(const row of r.pattern)for(const ch of row)o.push(r.key[ch]||null);return o};
 const recipeNeed=r=>{const o={};for(const k of recipeCells(r))if(k)o[k]=(o[k]||0)+1;return o};
