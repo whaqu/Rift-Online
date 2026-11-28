@@ -5472,16 +5472,24 @@ function makeHidden(cls,id){
   const cone=(r,hh,mat,x,y,z,p,seg)=>mesh(new THREE.ConeGeometry(r,hh,seg||6),mat,x,y,z,p);
   const T=grp(0,0,0,o.torso),H=grp(0,0,0,o.head),AL=grp(0,0,0,o.armL),AR=grp(0,0,0,o.armR);
   /* body: broad chest, narrow waist, long robe that ends in drifting ribbons (no legs) */
-  CY(.54,.3,.9,main,0,.12,0,T,10);CY(.3,.34,.28,dark,0,-.4,0,T,10);ring(.34,.06,trim,0,-.3,0,T).rotation.x=Math.PI/2;
+  CY(.46,.3,.9,main,0,.12,0,T,10).scale.z=.7;CY(.3,.34,.28,dark,0,-.4,0,T,10);ring(.34,.06,trim,0,-.3,0,T).rotation.x=Math.PI/2;
   CY(.36,.7,.9,main,0,-.92,0,T,12);ring(.7,.045,trim,0,-1.36,0,T).rotation.x=Math.PI/2;
   BX(.24,1.15,.05,trim,0,-.88,.55,T).rotation.x=-.27;BX(.11,1.1,.06,dark,0,-.88,.57,T).rotation.x=-.27;
   const ribbons=[];
   for(let i=0;i<8;i++){const a=i*TAU/8+.39,g=grp(Math.sin(a)*.55,-1.3,Math.cos(a)*.55,T);const c=cone(.13,i%2?.78:.55,i%2?main:dark,0,-.3,0,g,4);c.rotation.x=Math.PI;c.scale.z=.35;g.rotation.y=a;ribbons.push(g)}
-  const gem=OC(.17,lit,0,.2,.45,T);gem.scale.set(.9,1.3,.7);ring(.25,.035,trim,0,.2,.42,T);
-  for(const s of[-1,1]){
-    const pad=SP(.34,trim,s*.66,.52,0,T,10,8);pad.scale.set(1.25,.78,1.15);const pad2=SP(.27,main,s*.76,.38,0,T,10,8);pad2.scale.set(1.1,.7,1.05);
-    for(let i=0;i<3;i++){const sp=cone(.085,.62-i*.13,i?main:trim,s*(.7+i*.2),.84-i*.12,-.02*i,T,5);sp.rotation.z=-s*(.35+i*.3)}
-    const col=cone(.1,.6,trim,s*.3,.78,-.22,T,4);col.rotation.z=-s*.35;col.scale.z=.4;
+  const gem=OC(.17,lit,0,.2,.34,T);gem.scale.set(.9,1.3,.7);ring(.25,.035,trim,0,.2,.31,T);
+  /* shoulders are covered by a draped mantle, open at the front */
+  { const mt=grp(0,0,0,T);mt.scale.z=.75;
+    const cloth=M(pal.main,{side:THREE.DoubleSide,roughness:.6,emissive:pal.main,emissiveIntensity:id==='fallen'?.1:.14});
+    const drape=(rt,rb,hh,y,gap,mat)=>{const m=mesh(foldGeo(rt,rb,hh,9,.035,gap,TAU-gap*2),mat,0,y,0,mt);m.userData.ol=true;return m};
+    const hem=(r,y,gap,mat,t)=>{const m=ring(r,t||.032,mat,0,y,0,mt,TAU-gap*2);m.rotation.set(Math.PI/2,0,Math.PI/2+gap);m.userData.ol=true};
+    drape(.28,.82,.3,.54,.36,cloth);drape(.82,.96,.42,.18,.42,cloth);hem(.935,-.02,.42,trim,.04);
+    if(id==='arch'){drape(.3,.87,.26,.57,.55,M(pal.trim,{side:THREE.DoubleSide,metalness:.55,roughness:.35,emissive:pal.trim,emissiveIntensity:.22}));hem(.87,.44,.55,edge,.022)}
+    else hem(.83,.39,.38,id==='fallen'?edge:trim,.022);
+    /* pointed ends around the lower edge (none at the front) */
+    for(let i=2;i<=10;i++){const q=i*TAU/12,p=cone(.1,id==='fallen'?(i%2?.5:.3):.22,id==='fallen'?dark:cloth,Math.sin(q)*.92,id==='fallen'?-.2:-.1,Math.cos(q)*.92,mt,4);p.rotation.x=Math.PI;p.userData.ol=true}
+    for(const s of[-1,1]){const cl=OC(.075,lit,s*.2,.5,.44,mt);cl.userData.ol=true;
+      const col=cone(.09,.44,trim,s*.3,.76,-.2,T,4);col.rotation.z=-s*.4;col.scale.z=.4}
   }
   /* arms: wide sleeves, tall gauntlets, glowing wrists (hands stay where the weapon is held) */
   for(const [A,s] of[[AL,-1],[AR,1]]){
