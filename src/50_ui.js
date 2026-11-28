@@ -497,7 +497,7 @@ UI.refreshHud=function(){
   $('xpfill').style.width=Math.min(100,pf.xp/pf.need*100)+'%';
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
   for(const k of['q','e','r','f']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.title=sk.desc||'';el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}
-  const dn=$('sk-dash');if(dn){dn.querySelector('.nm').textContent='대시';dn.querySelector('.ic0').innerHTML=ic('dash','#9fc8ff',30)}
+  const dn=$('sk-dash');if(dn){const hd=HIDDEN[hidOn(SES.pf)];dn.querySelector('.nm').textContent=hd?'비행':'대시';dn.querySelector('.ic0').innerHTML=hd?ic('h_fly',hd.col,30):ic('dash','#9fc8ff',30)}
   updatePerkRow();updateAutoBtn();UI.refreshTouch&&UI.refreshTouch();
 };
 /* ---------- level-up perks ---------- */

@@ -29,7 +29,7 @@ function initTouch(){
   canvas.addEventListener('touchstart',e=>{auInit()},{passive:true});
   const setI=(id,h)=>{const e=$(id);if(e){const q=e.querySelector('.ic0');if(q)q.innerHTML=h}};
   setI('tb-dash',ic('dash','#9fc8ff',26));setI('tb-hp',ic('potion','#ff6a7a',26));
-  UI.refreshTouch=()=>{for(const k of['r','f']){const b=$('tb-'+k);if(b)b.classList.toggle('hidden',!skillOf(k))}for(const k of['q','e','r','f']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28))}};
+  UI.refreshTouch=()=>{{const hd=SES.pf&&HIDDEN[hidOn(SES.pf)];setI('tb-dash',hd?ic('h_fly',hd.col,26):ic('dash','#9fc8ff',26))}for(const k of['r','f']){const b=$('tb-'+k);if(b)b.classList.toggle('hidden',!skillOf(k))}for(const k of['q','e','r','f']){const sk=skillOf(k);if(sk)setI('tb-'+k,skIcon(sk,28))}};
 }
 function openChatInput(){const ci=$('chatin');ci.classList.add('on');ci.focus()}
 

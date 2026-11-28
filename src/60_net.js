@@ -255,7 +255,7 @@ function netUpdate(dt){
     const fly=peerAir(p,dt);
     animHeroFor(p.model,p.anim,!fly&&Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
     peerAirPose(p,fly,show&&!p.dead);
-    if(show)p.label.pos(p.x,3.3+(p.y||0),p.z);else if(p.label.el)p.label.el.style.display='none';
+    if(show)p.label.pos(p.x,3.3+(p.y||0)+(p.model.hid?1.7:0),p.z);else if(p.label.el)p.label.el.style.display='none';
     peerGolems(p,dt,duelShows(k));
   }
 }
@@ -280,7 +280,7 @@ function peerAirPose(p,fly,show){
   const m=p.model;m.g.position.y=p.y;m.body.position.z=0;
   if(fly&&p.ak>.02)glidePose(m,p.anim,p.ak,-1);else if(m.airOn){m.body.rotation.x=0;m.body.position.y=0;m.armL.rotation.z=0;m.armR.rotation.z=0}
   m.airOn=fly&&p.ak>.02;
-  if(m.wau){const g=m.wau.g,b=m.body;g.rotation.x=m.airOn?b.rotation.x:0;g.position.y=m.airOn?b.position.y:0;g.position.z=m.airOn?b.position.z:0}
+  if(m.wau){const g=m.wau.g,b=m.body;g.rotation.x=m.airOn?b.rotation.x:0;g.position.y=m.airOn||m.hid?b.position.y:0;g.position.z=m.airOn?b.position.z:0}
   if(p.cp){
     if(!p.cape){p.cape=capeBuild();entG.add(p.cape)}
     p.cape.visible=show;p.cape.position.set(p.x,p.y,p.z);p.cape.rotation.y=p.f;capeWave(p.cape,p.anim,p.ak);

@@ -102,7 +102,7 @@ function movePlayer(dt){
     if(P.dashHit)dashStrike(dt);
   }else{const k=1-Math.exp(-dt*(il>0?16:11));P.vx=lerp(P.vx,ix*sp,k);P.vz=lerp(P.vz,iz*sp,k)}
   P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r);
-  if(P.dashT<=0&&!P.dead){P.stepAcc=(P.stepAcc||0)+Math.hypot(P.vx,P.vz)*dt;if(P.stepAcc>2.2){P.stepAcc=0;footstep()}}
+  if(P.dashT<=0&&!P.dead){P.stepAcc=(P.stepAcc||0)+Math.hypot(P.vx,P.vz)*dt;if(P.stepAcc>2.2){P.stepAcc=0;if(!(PM&&PM.hid))footstep()}}
   P.spdN=Math.min(1.2,Math.hypot(P.vx,P.vz)/Math.max(1,S.spd));
 }
 const STEPS=['step_stone','step_grass','step_grass','step_stone','step_stone','step_stone','step_stone','step_snow','step_sand','step_marble'];
@@ -111,7 +111,7 @@ function footstep(){const z=zoneAt(P.x,P.z);sfx(STEPS[z.id]||'step_stone',.55)}
 function glidePose(o,t,k,atk){
   if(atk==null)atk=P.atkAnim;
   const sway=Math.sin(t*3.2)*.07,tilt=.6*k;
-  o.body.rotation.x=tilt;o.body.position.z=-1.5*Math.sin(tilt);o.body.position.y=1.5*(1-Math.cos(tilt));   // lean around the shoulders so the cloak stays attached
+  o.body.rotation.x=tilt;o.body.position.z=-1.5*Math.sin(tilt);o.body.position.y=1.5*(1-Math.cos(tilt))+(o.hover||0);   // lean around the shoulders so the cloak stays attached
   o.legL.rotation.x=lerp(o.legL.rotation.x,.35+sway,k);o.legR.rotation.x=lerp(o.legR.rotation.x,.7-sway,k);
   o.armL.rotation.x=lerp(o.armL.rotation.x,.55+sway,k);o.armL.rotation.z=lerp(o.armL.rotation.z,-.85,k);
   if(atk<0){o.armR.rotation.x=lerp(o.armR.rotation.x,.55-sway,k);o.armR.rotation.z=lerp(o.armR.rotation.z,.85,k)}
@@ -124,7 +124,8 @@ function updatePlayerModel(dt){
   const air=P.glide?Math.min(1,P.glide.h/GLIDE_H):P.leap&&P.leap.y0!=null?1:0;
   animHeroFor(PM,P.animT,P.glide||air?0:P.spdN,P.atkAnim,P.dashT>0,P.swing);
   PM.body.position.z=0;if(air>0)glidePose(PM,P.animT,air);
-  if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
+  if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0||PM.hid?b.position.y:0;g.position.z=air>0?b.position.z:0}
+  if(PM.hid&&PM.g.visible&&Math.random()<dt*(balOn()?3:11))emit(P.x+rnd(-.7,.7),PM.g.position.y+rnd(.2,1.2),P.z+rnd(-.7,.7),0,rnd(-.8,-.2),0,rnd(.5,1),parseInt(HIDDEN[PM.hid].col.slice(1),16),0);
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
   if(PM.omni&&PM.omni.kind===2&&PM.g.visible&&Math.random()<dt*(balOn()?2:7)){const s=Math.random()<.5?-1:1,r=rnd(.5,2.2);emit(P.x+Math.cos(PM.g.rotation.y)*s*r,PM.g.position.y+rnd(1.2,2.6),P.z-Math.sin(PM.g.rotation.y)*s*r,0,rnd(-.5,.2),0,rnd(.5,.9),Math.random()<.5?0xffffff:0xffe08a,0)}
