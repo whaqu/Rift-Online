@@ -89,17 +89,16 @@ function hidWings(o,w,k){
     const gl=glow(w.glow,2.4,.26);gl.position.set(sd*.8,.1,-.06);arm.add(gl);
     all.push({root,arm,tip,sd,n});
   }});
-  /* attack (p = 0..1): the wing on the `lead` side slashes alone, its pairs and tips following one after another;
-     on the heavy third hit the other wing follows right behind it */
-  return(t,p,lead,big)=>{
-    for(const q of all){const u=t*2.6-q.n*.5,beat=Math.sin(u+Math.sin(u)*.45),lag=Math.sin(u-1+Math.sin(u-1)*.45),k2=q.n?.7:1;
-      const d=(q.sd===lead?0:big?.22:null),on=p>=0&&d!=null,k=on?hidSwing(p-d-q.n*.04):0,kt=on?hidSwing(p-d-q.n*.04-.08):0,
-        w=1-Math.min(1,Math.abs(k)),th=k*2.5*(q.n?.85:1);
-      q.arm.rotation.z=q.sd*((beat*.3*k2+.03)*w-k*.3+q.n*k*.12);q.arm.rotation.y=q.sd*((.24-beat*.2)*w-th*.75);
-      q.tip.rotation.z=q.sd*lag*.42*k2*w;q.tip.rotation.y=q.sd*((.1-lag*.26)*w-kt*1.25)}};
+  /* k(side, delay) is how far forward that wing is (0..1). A slow, even idle beat; pairs and tips follow a little behind. */
+  return(t,k)=>{
+    for(const q of all){const u=t*1.7-q.n*.45,beat=Math.sin(u),lag=Math.sin(u-.8),k2=q.n?.7:1,
+        a=k(q.sd,q.n*.06),b=k(q.sd,q.n*.06+.09),w=1-a,wt=1-b,th=a*2.35*(q.n?.85:1);
+      q.arm.rotation.z=q.sd*((beat*.17*k2+.03)*w-a*.28+q.n*a*.12);q.arm.rotation.y=q.sd*((.24-beat*.1)*w-th*.75);
+      q.tip.rotation.z=q.sd*lag*.2*k2*wt;q.tip.rotation.y=q.sd*((.1-lag*.13)*wt-b*1.15)}};
 }
-/* attack progress 0..1 -> wing swing: a quick forward slash, a short hold, then back */
-const hidSwing=p=>p<=0?0:p<.25?-.35+1.35*(1-(1-p/.25)**2):p<.4?1:p<.65?1-(p-.4)/.25:0;
+/* one wing slash, p = 0..1 of HID_SWING seconds: eases forward, then eases back (no snap, so fast attacks stay smooth) */
+const HID_SWING=.7,HID_GAP=.34;
+const hidEase=x=>x*x*(3-2*x),hidSwing=p=>p<=0||p>=1?0:p<.38?hidEase(p/.38):1-hidEase((p-.38)/.62);
 /* a hidden class covers the whole body with a floating, boss-sized figure (like the sky temple's fallen archangel).
    The weapon class's rig is kept only for its animation: every part of it, the weapon too, is made invisible. */
 const HID_HOVER=.85;
@@ -189,15 +188,24 @@ function makeHidden(cls,id){
   o.hidSyn=on=>{if(!!on===!!o.synGlow)return;
     if(on){const g=grp(0,1.7,-.7,o.body);for(const[r,op]of[[8,.34],[3.8,.5]]){const s=glow(0xffd24a,r,op);g.add(s)}ring(1.55,.035,aumat(0xffe27a,.9),0,0,-.1,g);o.synGlow=g}
     else{o.body.remove(o.synGlow);o.synGlow=null}};
-  o.hw=(t,atkP,sd)=>{
-    const lead=sd||1,k=atkP>=0?hidSwing(atkP):0,k2=atkP>=0&&o.atkBig?hidSwing(atkP-.22):0,ka=lead>0?k2:k,kb=lead>0?k:k2;   // ka: left side, kb: right side
-    o.body.rotation.y=(ka-kb)*.45;
+  /* the wings keep their own rhythm: however fast the attacks come, a new slash starts only on a wing that is back at rest,
+     taking turns left and right */
+  const sw={'1':-9,'-1':-9};let prevP=-1,last=-9,side=-1;
+  const wk=(t,sd,delay)=>hidSwing((t-sw[sd]-delay)/HID_SWING);
+  o.hw=(t,atkP)=>{
+    if(atkP==null)atkP=-1;
+    if(atkP>=0&&(prevP<0||atkP<prevP-.05)&&t-last>=HID_GAP&&t-sw[-side]>=HID_SWING){side=-side;sw[side]=t;last=t;
+      if(o.atkBig&&t-sw[-side]>=HID_SWING)sw[-side]=t+.16}
+    prevP=atkP;
+    const ka=wk(t,-1,0),kb=wk(t,1,0);   // ka: left side, kb: right side
+    o.wingK=[ka,kb];
+    o.body.rotation.y=(ka-kb)*.32;
     o.body.position.y=HID_HOVER+Math.sin(t*2.2)*.14;
     /* no weapon in hand: arms held a little open, the wings do the striking */
-    o.armL.rotation.set(.12-ka*.7,0,-.3-ka*.35);o.armR.rotation.set(.12-kb*.7,0,.3+kb*.35);o.torso.rotation.y=0;
-    if(k>0)o.body.rotation.x+=k*.2;
-    beat(t,atkP>=0?atkP:-1,lead,o.atkBig);halo.rotation.z=t*.35;circle.rotation.y=t*.6;
-    ribbons.forEach((g,i)=>{g.rotation.x=Math.cos(i*TAU/8+.39)*-.12+Math.sin(t*3+i*1.3)*.14;g.rotation.z=Math.sin(i*TAU/8+.39)*.12+Math.cos(t*2.6+i)*.12});
+    o.armL.rotation.set(.12-ka*.5,0,-.3-ka*.25);o.armR.rotation.set(.12-kb*.5,0,.3+kb*.25);o.torso.rotation.y=0;
+    o.body.rotation.x+=Math.max(ka,kb)*.13;
+    beat(t,(sd,d)=>wk(t,sd,d));halo.rotation.z=t*.35;circle.rotation.y=t*.6;
+    ribbons.forEach((g,i)=>{g.rotation.x=Math.cos(i*TAU/8+.39)*-.12+Math.sin(t*2+i*1.3)*.09;g.rotation.z=Math.sin(i*TAU/8+.39)*.12+Math.cos(t*1.7+i)*.08});
     orbs.forEach((g,i)=>{const a=t*.9+i*TAU/N;g.position.set(Math.cos(a)*1.45,Math.sin(t*1.8+i*1.7)*.18,Math.sin(a)*1.45);g.rotation.y=-a+Math.PI/2});
     if(o.synGlow)o.synGlow.rotation.z=t*.5};
   o.hw(0);

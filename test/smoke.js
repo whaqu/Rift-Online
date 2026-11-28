@@ -314,6 +314,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T(g.SES.pf.items.filter(i=>i.kind==='weapon'&&i.eq).length===1,'a weapon stays equipped');
     }
     {
+      const w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq),d5=JSON.parse(localStorage.getItem(K)),it=d5.items.find(i=>i.id===w.id),old={ench:it.ench,enh:it.enh,rune:it.rune,gold:d5.acc[me].gold};
+      it.ench=[{k:'burn',l:2},{k:'crit',l:3}];it.enh=4;it.rune='fire:1';d5.acc[me].gold=100000;localStorage.setItem(K,JSON.stringify(d5));await g.API.resume(me,g.SES.token);
+      let e5='';try{await g.API.call('enchRestore',w.id)}catch(e){e5=e.message}T(e5==='NO_POTION','enchant restore needs a scroll');
+      await g.API.call('buy','er',1);T(g.SES.pf.gold===0,'enchant restore scroll costs 100000');
+      await g.API.call('enchRestore',w.id);const x=g.SES.pf.items.find(i=>i.id===w.id);
+      T(x.ench.length===0&&x.enh===4&&x.rune==='fire:1'&&!g.SES.pf.items.some(i=>i.base==='er'),'only the enchants are removed');
+      const d6=JSON.parse(localStorage.getItem(K)),it6=d6.items.find(i=>i.id===w.id);it6.ench=old.ench;it6.enh=old.enh;it6.rune=old.rune;d6.acc[me].gold=old.gold;localStorage.setItem(K,JSON.stringify(d6));await g.API.resume(me,g.SES.token);
+    }
+    {
       const r=g.RECIPES.find(r=>r.id==='rune_all'),keys=g.recipeCells(r).filter(Boolean),put=enh=>{const d5=JSON.parse(localStorage.getItem(K));d5.items=d5.items.filter(i=>!(i.owner===me&&i.kind==='rune'));for(const k of keys)d5.items.push({id:d5.nid++,owner:me,kind:'rune',base:k.split(':')[1],enh,ench:[],qty:1,eq:false,listed:false,gone:false});localStorage.setItem(K,JSON.stringify(d5))};
       put(1);await g.API.resume(me,g.SES.token);let e5='';try{await g.API.call('craft','rune_all')}catch(e){e5=e.message}T(keys.length===9&&e5==='NO_MAT'&&!g.craftable(r),'grade I runes cannot make the Rune of All');
       put(2);await g.API.resume(me,g.SES.token);T(g.craftable(r)&&g.craftHtml(g.recipeCells(r),null,'').includes('만물의 룬'),'the Rune of All is on the crafting table');
@@ -353,6 +362,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.hp=g.S.maxHp*.2;g.P.graceT=null;
       const m=g.makeMobObj(88200,'slime',60,3,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;const h0=g.P.hp;g.P.autoAim=m;g.P.atkCd=0;g.doAttack();g.P.autoAim=null;
       T(g.S.grace>0&&g.P.hp>h0,'가호 restores hp on hit');g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset()}
+    {const o=g.makeHeroFor('warrior','h_arch',0xffffff);let t=0,max=0,jump=0,prev=[0,0],a=0;const used=[false,false];
+      for(let i=0;i<400;i++){t+=1/60;a+=1/12;if(a>=1)a=0;g.animHeroFor(o,t,0,a,false,1);const k=o.wingK;for(const j of[0,1]){jump=Math.max(jump,Math.abs(k[j]-prev[j]));max=Math.max(max,k[j]);if(k[j]>.9)used[j]=true}prev=k.slice()}
+      T(max>.95&&jump<.15&&used[0]&&used[1],'wings alternate and move smoothly even at 5 attacks a second (step '+jump.toFixed(2)+')')}
     /* basic attack is a wing sweep with any weapon */
     {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.face=0;g.P.atkCd=0;g.P.atkAnim=-1;g.derive();g.buildPlayerModel();
       const mk=(id,z)=>{const m=g.makeMobObj(id,'slime',60,z,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;m.x=60;m.z=z;return m};

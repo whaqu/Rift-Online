@@ -210,6 +210,7 @@ const POTIONS={
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'},
   tp:{name:'텔레포트의 서',kind:'tp',price:1000,col:'#c79bff',desc:'사용하면 지도가 열리고 누른 곳으로 순간이동합니다'},
   rr:{name:'룬의 복원서',kind:'restore',price:100000,col:'#7dffd0',desc:'사용해 무기를 고르면 그 무기의 룬이 사라지지 않고 가방으로 돌아옵니다'},
+  er:{name:'인첸트의 숨결 복원서',kind:'erestore',price:100000,col:'#9ad0ff',desc:'사용해 무기를 고르면 그 무기의 인첸트가 모두 사라집니다 (강화·룬은 유지)'},
   wr:{name:'무기의 복원서',kind:'wrestore',price:150000,col:'#ffb86a',desc:'사용해 제작한 무기를 고르면 무기가 분해되고 제작 재료가 가방으로 돌아옵니다'}
 };
 /* crafting table: 5x5 shaped recipes (Minecraft style, the shape may sit anywhere it fits).

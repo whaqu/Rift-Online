@@ -134,7 +134,7 @@ function updatePlayerModel(dt){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
-  PM.g.visible=!(P.dead||P.hidden||(P.iframes>0&&P.dashT<=0&&!P.leap&&!P.glide&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
+  PM.g.visible=!(P.dead||P.hidden||(P.iframes>0&&!PM.hid&&P.dashT<=0&&!P.leap&&!P.glide&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
 }
 
 /* ----- per-frame timers / regen ----- */
@@ -409,6 +409,7 @@ function usePotionKey(base){
   if(pd.kind==='tp'){openTeleport();return}
   if(pd.kind==='restore'){openRestore();return}
   if(pd.kind==='wrestore'){openWeaponRestore();return}
+  if(pd.kind==='erestore'){openEnchRestore();return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}
   else{const k=base;if(P.pot[k]>0){UI.toast('이미 효과가 적용 중입니다');return}P.pot[k]=30;dmgNum(P.x,3,P.z,pd.name,'info');sfx('card');burst(P.x,1,P.z,16,0xffffff,5,.5,2)}
   it.qty--;if(it.qty<=0)SES.pf.items=SES.pf.items.filter(i=>i!==it);
