@@ -6417,6 +6417,17 @@ function drawMini(){
   const px=x=>ox+x*sc,pz=z=>oz+z*sc;
   g.fillStyle='#d9534f';for(const m of MOBS){if(m.dead)continue;if(m.golden){g.fillStyle='#ffd24a';g.fillRect(px(m.x)-4,pz(m.z)-4,8,8);g.fillStyle='#d9534f';continue}if(d2(m.x,m.z,P.x,P.z)<45*45){g.fillRect(px(m.x)-2,pz(m.z)-2,4,4)}}
   g.fillStyle='#6bd4ff';for(const k in NET.peers){const p=NET.peers[k];if(p.got){g.beginPath();g.arc(px(p.x),pz(p.z),4,0,TAU);g.fill()}}
+  // dungeon entrances: ringed icon when in range, small dot on the rim toward far ones
+  const rim=cx-11;
+  for(const p of DGP){if(p.kind!=='portal')continue;
+    let dx=(p.x-P.x)*sc,dz=(p.z-P.z)*sc;const l=Math.hypot(dx,dz),far=l>rim;if(far){dx*=rim/l;dz*=rim/l}
+    const x=cx+dx,y=cx+dz,col='#'+('000000'+DGDEF[p.dg].ring.toString(16)).slice(-6);
+    g.fillStyle='#000';g.beginPath();g.arc(x,y,far?7:12,0,TAU);g.fill();
+    g.fillStyle=col;g.beginPath();g.arc(x,y,far?5:9,0,TAU);g.fill();
+    if(!far){g.fillStyle='#10131b';g.beginPath();g.arc(x,y,4,0,TAU);g.fill();
+      g.font='bold 17px sans-serif';g.textAlign='center';g.lineWidth=4;g.strokeStyle='rgba(0,0,0,.85)';
+      const t=DGDEF[p.dg].name.replace(/ 던전$/,''),ty=y<40?y+28:y-17;g.strokeText(t,x,ty);g.fillStyle='#ffe9a0';g.fillText(t,x,ty)}
+  }
   const gt=guideTarget();if(gt){let dx=gt.x-P.x,dz=gt.z-P.z;const k=Math.min(1,90/(Math.hypot(dx,dz)||1));dx=cx+dx*k*sc;dz=cx+dz*k*sc;
     g.strokeStyle='#ffd24a';g.lineWidth=3;g.beginPath();g.moveTo(cx,cx);g.lineTo(dx,dz);g.stroke();g.fillStyle='#ffd24a';g.beginPath();g.arc(dx,dz,8,0,TAU);g.fill()}
   g.fillStyle='#ffd24a';g.beginPath();g.arc(px(P.x),pz(P.z),5,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=1.5;g.stroke();
