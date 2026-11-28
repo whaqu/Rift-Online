@@ -596,7 +596,7 @@ const AMB=[
 let ambAcc=0,fireAcc=0;
 function ambientFx(dt,zi,cx,cz){
   if(typeof nightK==='function'&&zi<=2){const nk=nightK();if(nk>.35){fireAcc+=dt*9*nk;while(fireAcc>=1){fireAcc-=1;const ang=Math.random()*TAU,r=Math.sqrt(Math.random())*22;emit(cx+Math.cos(ang)*r,rnd(.4,2.6),cz+Math.sin(ang)*r,rnd(-.35,.35),rnd(-.05,.25),rnd(-.35,.35),rnd(2.5,4.5),pick([0xe8ff7a,0xc8ff6a,0xfff0a0]),0)}}}
-  const a=AMB[zi]||AMB[0];ambAcc+=dt*a.rate;
+  const a=AMB[zi]||AMB[0];ambAcc+=dt*a.rate*(balOn()?[1,.8,.6,.45][BQ.lv]:1);   // fewer drifting motes on slow machines
   while(ambAcc>=1){
     ambAcc-=1;const ang=Math.random()*TAU,r=Math.sqrt(Math.random())*26;
     emit(cx+Math.cos(ang)*r,rnd(a.y[0],a.y[1]),cz+Math.sin(ang)*r,rnd(-a.sp,a.sp),rnd(a.vy[0],a.vy[1]),rnd(-a.sp,a.sp),rnd(a.life[0],a.life[1]),pick(a.cols),0);
@@ -2251,7 +2251,7 @@ function omniPiece(i){
   else if(i===6){for(let k=0;k<3;k++)put(box(.055,.55,.055),k?m:w,0,0,0).rotation.z=k*Math.PI/3}   // frost star
   else if(i===7){put(cone(.24,.28,4),m,0,.13,0);put(cone(.24,.28,4),aumat(0xb8772e,.95),0,-.13,0).rotation.x=Math.PI}   // sandstone
   else{put(new THREE.TorusGeometry(.22,.04,5,24),m,0,.2,0).rotation.x=1.3;put(oct(.16),w,0,-.02,0,.8,1.5,.8)}   // halo
-  const gl=glow(col,i===5?1.2:1,.45);g.add(gl);
+  const gl=glow(col,i===5?1.2:1,.45);g.add(gl);g.userData.glow=gl;
   return g;
 }
 let OMMAT=null;
@@ -2269,7 +2269,7 @@ function omniBuild(){
       p.rotation.y=i===4||i===6?0:i===1?-a:t*1.6+i;p.rotation.z=i===6?t*.8:0;
       const k=i===2||i===4?1+Math.sin(t*17+i)*.12:1;p.scale.set(k,k,k)});
   };
-  anim(0,0,0);return{g,anim};
+  anim(0,0,0);return{g,anim,pieces,glows:pieces.map(p=>p.userData.glow)};
 }
 function omniApply(o,on){
   if(!o||!o.g||!!on===!!o.omni)return;
@@ -2830,7 +2830,7 @@ function buildWorld(){
   }catch(e){console.error('deco2',e)}
   /* far mountains */
   {const N=130,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
-  balFinish();dgBuildPortals();
+  dgBuildPortals();balFinish();   // portals first, so balance mode merges and culls them with the rest
 }
 
 const ATMO=[
@@ -2905,7 +2905,8 @@ function postSize(){
 }
 function postPass(mat,target){POST.quad.material=mat;renderer.setRenderTarget(target);renderer.render(POST.scene,POST.cam)}
 function renderFrame(){
-  if(balOn()&&!DG.on&&!DU.on)balCull();
+  if(balOn()){if(!DG.on&&!DU.on)balCull();if(P)balMobs()}   // mob outline detail also applies inside dungeons
+  balEntities();
   if(!save.fx||balOn()||POST.bad||!renderer.getDrawingBufferSize){renderer.render(scene,camera);return}
   try{
     if(!POST.ok)postInit();postSize();
@@ -3123,11 +3124,34 @@ function balCull(){
     if(e.o.visible!==v)e.o.visible=v;
     if(v&&e.kids){const K=e.kids;for(let j=0;j<K.length;j++){const q=K[j],w=balTest(q,cx,cz);if(q.o.visible!==w)q.o.visible=w}}
   }
-  balMobs(cx,cz);
   if(++BQ.f%BAL.sn===0)renderer.shadowMap.needsUpdate=true;
 }
+/* characters added after the first balance mode (other players, golems, NPCs, auras): detail by distance.
+   Runs in every mode so that switching balance mode off restores everything. Drawing only, no game logic. */
+function balDetail(o,far){
+  if(!o||!o.g||o._far===far)return;o._far=far;
+  if(!o._ol){o._ol=[];o.g.traverse(c=>{if(c.isMesh&&c.material===OL_MAT)o._ol.push(c)})}
+  for(const c of o._ol)c.visible=!far;
+}
+/* aura level: body = weapon aura shown, pieces = rune fragments shown, glows = their halos */
+function balAura(o,body,pieces,glows){
+  if(o.wau)o.wau.g.visible=body;
+  if(o.omni){for(const p of o.omni.pieces)p.visible=pieces;for(const s of o.omni.glows)s.visible=glows}
+}
+function balEntities(){
+  if(!P)return;
+  const on=balOn(),dist=o=>Math.hypot(o.g.position.x-P.x,o.g.position.z-P.z),far=o=>on&&dist(o)>BAL.nd;
+  if(PM)balAura(PM,true,true,!on);
+  for(const k in NET.peers){
+    const p=NET.peers[k],m=p.model;
+    if(m){const f=far(m);balDetail(m,f);balAura(m,!f,!f&&!(on&&BQ.lv>=2),!on);if(on&&!DG.on&&!DU.on&&dist(m)>BAL.rd)m.g.visible=false}
+    if(p.gol)for(const o of p.gol)balDetail(o,far(o));
+  }
+  for(const a of ACTS)if(a.gol)balDetail(a.gol,far(a.gol));
+  for(const n of WORLD.npcs)balDetail(n.model,far(n.model));
+}
 /* far mobs lose their outline shell (a third of their draw calls, invisible at that distance) */
-function balMobs(cx,cz){
+function balMobs(){
   const lim=BAL.nd*BAL.nd;
   for(const m of MOBS){
     if(m.dead||!m.m)continue;
@@ -3266,7 +3290,7 @@ function updatePlayerModel(dt){
   if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
-  if(PM.omni&&PM.g.visible&&Math.random()<dt*9){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
+  if(PM.omni&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
   if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
@@ -7286,7 +7310,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={balEntities,openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

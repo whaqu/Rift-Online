@@ -34,7 +34,8 @@ function postSize(){
 }
 function postPass(mat,target){POST.quad.material=mat;renderer.setRenderTarget(target);renderer.render(POST.scene,POST.cam)}
 function renderFrame(){
-  if(balOn()&&!DG.on&&!DU.on)balCull();
+  if(balOn()){if(!DG.on&&!DU.on)balCull();if(P)balMobs()}   // mob outline detail also applies inside dungeons
+  balEntities();
   if(!save.fx||balOn()||POST.bad||!renderer.getDrawingBufferSize){renderer.render(scene,camera);return}
   try{
     if(!POST.ok)postInit();postSize();

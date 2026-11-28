@@ -126,7 +126,7 @@ function updatePlayerModel(dt){
   if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
-  if(PM.omni&&PM.g.visible&&Math.random()<dt*9){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
+  if(PM.omni&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
   if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);

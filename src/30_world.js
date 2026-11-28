@@ -535,7 +535,7 @@ function buildWorld(){
   }catch(e){console.error('deco2',e)}
   /* far mountains */
   {const N=130,mt=instMesh(new THREE.ConeGeometry(1,1,6),M(0xffffff),N);mt.castShadow=false;for(let i=0;i<N;i++){const a=i/N*TAU,r=WORLD_R+9+R()*5,s=10+R()*14;instSet(mt,i,Math.cos(a)*r,s*.5,Math.sin(a)*r,s,s*(1.3+R()*1.2),s,R()*6,0x1c2036)}instDone(mt)}
-  balFinish();dgBuildPortals();
+  dgBuildPortals();balFinish();   // portals first, so balance mode merges and culls them with the rest
 }
 
 const ATMO=[

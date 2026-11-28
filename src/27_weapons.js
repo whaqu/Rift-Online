@@ -277,7 +277,7 @@ function omniPiece(i){
   else if(i===6){for(let k=0;k<3;k++)put(box(.055,.55,.055),k?m:w,0,0,0).rotation.z=k*Math.PI/3}   // frost star
   else if(i===7){put(cone(.24,.28,4),m,0,.13,0);put(cone(.24,.28,4),aumat(0xb8772e,.95),0,-.13,0).rotation.x=Math.PI}   // sandstone
   else{put(new THREE.TorusGeometry(.22,.04,5,24),m,0,.2,0).rotation.x=1.3;put(oct(.16),w,0,-.02,0,.8,1.5,.8)}   // halo
-  const gl=glow(col,i===5?1.2:1,.45);g.add(gl);
+  const gl=glow(col,i===5?1.2:1,.45);g.add(gl);g.userData.glow=gl;
   return g;
 }
 let OMMAT=null;
@@ -295,7 +295,7 @@ function omniBuild(){
       p.rotation.y=i===4||i===6?0:i===1?-a:t*1.6+i;p.rotation.z=i===6?t*.8:0;
       const k=i===2||i===4?1+Math.sin(t*17+i)*.12:1;p.scale.set(k,k,k)});
   };
-  anim(0,0,0);return{g,anim};
+  anim(0,0,0);return{g,anim,pieces,glows:pieces.map(p=>p.userData.glow)};
 }
 function omniApply(o,on){
   if(!o||!o.g||!!on===!!o.omni)return;

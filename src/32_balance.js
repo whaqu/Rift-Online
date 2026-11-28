@@ -200,11 +200,34 @@ function balCull(){
     if(e.o.visible!==v)e.o.visible=v;
     if(v&&e.kids){const K=e.kids;for(let j=0;j<K.length;j++){const q=K[j],w=balTest(q,cx,cz);if(q.o.visible!==w)q.o.visible=w}}
   }
-  balMobs(cx,cz);
   if(++BQ.f%BAL.sn===0)renderer.shadowMap.needsUpdate=true;
 }
+/* characters added after the first balance mode (other players, golems, NPCs, auras): detail by distance.
+   Runs in every mode so that switching balance mode off restores everything. Drawing only, no game logic. */
+function balDetail(o,far){
+  if(!o||!o.g||o._far===far)return;o._far=far;
+  if(!o._ol){o._ol=[];o.g.traverse(c=>{if(c.isMesh&&c.material===OL_MAT)o._ol.push(c)})}
+  for(const c of o._ol)c.visible=!far;
+}
+/* aura level: body = weapon aura shown, pieces = rune fragments shown, glows = their halos */
+function balAura(o,body,pieces,glows){
+  if(o.wau)o.wau.g.visible=body;
+  if(o.omni){for(const p of o.omni.pieces)p.visible=pieces;for(const s of o.omni.glows)s.visible=glows}
+}
+function balEntities(){
+  if(!P)return;
+  const on=balOn(),dist=o=>Math.hypot(o.g.position.x-P.x,o.g.position.z-P.z),far=o=>on&&dist(o)>BAL.nd;
+  if(PM)balAura(PM,true,true,!on);
+  for(const k in NET.peers){
+    const p=NET.peers[k],m=p.model;
+    if(m){const f=far(m);balDetail(m,f);balAura(m,!f,!f&&!(on&&BQ.lv>=2),!on);if(on&&!DG.on&&!DU.on&&dist(m)>BAL.rd)m.g.visible=false}
+    if(p.gol)for(const o of p.gol)balDetail(o,far(o));
+  }
+  for(const a of ACTS)if(a.gol)balDetail(a.gol,far(a.gol));
+  for(const n of WORLD.npcs)balDetail(n.model,far(n.model));
+}
 /* far mobs lose their outline shell (a third of their draw calls, invisible at that distance) */
-function balMobs(cx,cz){
+function balMobs(){
   const lim=BAL.nd*BAL.nd;
   for(const m of MOBS){
     if(m.dead||!m.m)continue;

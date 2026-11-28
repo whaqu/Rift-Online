@@ -290,7 +290,7 @@ const AMB=[
 let ambAcc=0,fireAcc=0;
 function ambientFx(dt,zi,cx,cz){
   if(typeof nightK==='function'&&zi<=2){const nk=nightK();if(nk>.35){fireAcc+=dt*9*nk;while(fireAcc>=1){fireAcc-=1;const ang=Math.random()*TAU,r=Math.sqrt(Math.random())*22;emit(cx+Math.cos(ang)*r,rnd(.4,2.6),cz+Math.sin(ang)*r,rnd(-.35,.35),rnd(-.05,.25),rnd(-.35,.35),rnd(2.5,4.5),pick([0xe8ff7a,0xc8ff6a,0xfff0a0]),0)}}}
-  const a=AMB[zi]||AMB[0];ambAcc+=dt*a.rate;
+  const a=AMB[zi]||AMB[0];ambAcc+=dt*a.rate*(balOn()?[1,.8,.6,.45][BQ.lv]:1);   // fewer drifting motes on slow machines
   while(ambAcc>=1){
     ambAcc-=1;const ang=Math.random()*TAU,r=Math.sqrt(Math.random())*26;
     emit(cx+Math.cos(ang)*r,rnd(a.y[0],a.y[1]),cz+Math.sin(ang)*r,rnd(-a.sp,a.sp),rnd(a.vy[0],a.vy[1]),rnd(-a.sp,a.sp),rnd(a.life[0],a.life[1]),pick(a.cols),0);

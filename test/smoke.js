@@ -717,6 +717,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       g.onPos({n:'소환',x:1,z:1,f:0,m:0,h:100,d:0,gl:0});g.netUpdate(.05);T(!N.peers['소환'].gol,'golems disappear for others when gone');delete N.peers['소환'];g.skReset()}
     N.on=on0;N.ch=ch0;N.party=party0;delete N.peers['상대'];
   }
+  // ---- balance mode detail for characters added later (golems, other players, NPCs, rune aura) ----
+  {
+    const N=g.NET,near=g.save.balance,me=g.SES.pf;g.P.x=0;g.P.z=0;g.P.dead=false;
+    N.peers['원거리']={got:true,x:60,z:0,tx:60,tz:0,f:0,tf:0,hp:100,lv:40,cls:'warrior',job:'warrior',anim:0,om:true,live:true};
+    g.netUpdate(.05);const m=N.peers['원거리'].model;T(m&&m.omni&&m.omni.pieces.length===9,'rune aura is built for another player');
+    g.save.balance=true;g.balEntities();T(m.omni.pieces.every(p=>!p.visible)&&m.omni.glows.every(x=>!x.visible),'balance mode drops a far aura\'s pieces');
+    g.save.balance=false;g.balEntities();T(m.omni.pieces.every(p=>p.visible)&&m.omni.glows.every(x=>x.visible),'turning balance mode off restores them');
+    g.save.balance=near;delete N.peers['원거리'];
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});
