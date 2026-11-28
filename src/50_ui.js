@@ -53,7 +53,7 @@ function itemRow(it,o){
   if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wTier(it.base)+'등급('+ZONES[wTier(it.base)].name+') · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
   else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
-  else if(it.kind==='rune'){sub=runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d}
+  else if(it.kind==='rune'){sub=(runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d)+(RUNES[it.base]?'<br>지역: '+runeFrom(it.base):'')}
   else{const p=POTIONS[it.base];sub=p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc}
   return '<div class="item'+(o.sel?' sel':'')+(it.eq?' eq':'')+'" style="--tc:'+col+'" data-a="'+(o.a||'sel')+'" data-v="'+it.id+'">'+itemIcon(it)+'<div><div class="nm" style="color:'+col+'">'+esc(itemName(it))+(it.kind==='potion'||it.kind==='mat'||it.kind==='rune'?' x'+it.qty:'')+(it.eq?' <span class="dim">[장착중]</span>':'')+'</div><div class="sub">'+sub+'</div></div><div class="rt">'+(o.rt||'')+'</div></div>';
 }
@@ -101,7 +101,7 @@ function openInventory(){
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
         const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
-        det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
+        det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'<br>지역: '+runeFrom(sel.base)+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
           +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')

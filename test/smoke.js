@@ -412,6 +412,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(code(()=>A.gmResetInv('일반유저',u.token))==='NOT_ADMIN'&&code(()=>A.gmPassword('일반유저',u.token,'pw1234','newpass123'))==='NOT_ADMIN','normal account refused');
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
+  T(Object.keys(g.RUNES).every(k=>{const s=g.runeFrom(k);return s&&!s.includes('undefined')&&(k==='all'||s.endsWith(' 던전'))})&&g.runeFrom('meadow').startsWith('초원')&&g.runeFrom('fire').includes('화염 황무지'),'every rune names its region');
   // semi-developer account: fixed Lv.65 storm +5 gear, nothing in or out, job switching only
   {
     const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}},N='1테스트';

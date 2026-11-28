@@ -252,6 +252,12 @@ function runeFx(s){
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
 /* rune effect of an equipped weapon, including the same-region bonus */
 function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null;return o&&runeMatch(w.base,w.rune)?scaleFx(o,RUNE_MATCH):o}
+/* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
+function runeFrom(k){
+  if(k==='all')return '합성 전용';
+  const own=REGION_RUNE.includes(k)?[k]:[],ds=own.concat(REGION_RUNE.filter(d=>d!==k&&DGSRV[d][3].includes(k)));
+  return ds.map(d=>ZONES[REGION_RUNE.indexOf(d)+1].name).join('·')+' 던전';
+}
 function runeDesc(k,g,mult){
   const o=runeFx(k+':'+g);if(!o)return '';const t=[];if(mult)scaleFx(o,mult);
   for(const e in o.en){const d=ENCH[e];if(d)t.push(d.name+' +'+(+(o.en[e]*d.per).toFixed(1))+(e==='pierce'?'':'%'))}
