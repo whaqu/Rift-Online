@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적에게 파고드는 공격 사이 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적에게 8m까지 달려가 16m를 도약하며 경로의 적을 모두 벱니다(도약 한가운데일수록 강함). 한 번 누를 때마다 한 번 공격하고, 적이 없으면 16m를 뛰어넘습니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','누른 순간부터 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적에게 8m까지 달려가 16m를 도약하며 경로의 적을 모두 벱니다(도약 한가운데일수록 강함). 한 번 누를 때마다 한 번 공격하고, 적이 없으면 16m를 뛰어넘습니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -281,6 +281,7 @@ const SK={
   r_q(c){   // one press: run up to Q_NEAR from an enemy, then leap Q_LEN through it, cutting everything on the way
     const m=aimMob(12);
     if(qHopWait())return false;   // still catching breath: no charge is spent
+    P.qNext=(P.qClock||0)+Q_HOP;   // the wait counts from the press, so well timed presses chain without a gap
     if(!m){qHopFree();return false}   // nothing in reach: a plain long jump, free of charge
     const ch=c.charge==null?1:c.charge,amb=P.stealth>0,mult=(amb?6.25:2.65)*qPower(ch);
     P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
@@ -304,7 +305,7 @@ const SK={
         }};
       sfx('dash');P.face=Math.atan2(ux,uz);
       const leap={t:0,dur:.24,x0,z0,x1,z1,h:1.6,done:()=>{
-        sweep(Q_LEN+4);P.qNext=(P.qClock||0)+Q_HOP;
+        sweep(Q_LEN+4);
         burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4)}};
       P.leap=leap;
       act(.3,()=>{if(P.leap===leap)sweep((P.x-x0)*ux+(P.z-z0)*uz);emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});
@@ -800,7 +801,7 @@ function qPlunge(sk){
     sArea(c,P.x,P.z,5,7,{kb:8,big:true,crit:true});shockRing(P.x,P.z,5.5,c.col,.4);flashDisc(P.x,P.z,5,c.col,.3);burst(P.x,.6,P.z,30,c.col,10,.5,4);
     cam.shake=Math.max(cam.shake,.5);hitStop(.08);sfx('slash');netFx('nova',{x:P.x,z:P.z,r:5,c:c.col})}};
 }
-/* pause between two dashes at enemies, counted from the end of the last one */
+/* minimum time between two Q presses that jump */
 const Q_HOP=.5;
 /* Q shape: leap start distance, leap length, half width of the cut, damage on the number line (s: -Q_LEN/2 .. Q_LEN/2) */
 const Q_NEAR=8,Q_LEN=16,Q_WIDE=1.8;
@@ -811,7 +812,7 @@ function qHopFree(){
   const il=Math.hypot(P.ix||0,P.iz||0),d=il>.2?{x:P.ix/il,z:P.iz/il}:qDir()||{x:Math.sin(P.face),z:Math.cos(P.face)};
   let x1=P.x+d.x*Q_LEN,z1=P.z+d.z*Q_LEN;const R=Math.hypot(x1,z1);if(!DG.on&&!DU.on&&R>WORLD_R-2){x1*=(WORLD_R-2)/R;z1*=(WORLD_R-2)/R}
   P.face=Math.atan2(d.x,d.z);sfx('dash');
-  P.leap={t:0,dur:.24,x0:P.x,z0:P.z,x1,z1,h:1.6,done:()=>{P.qNext=(P.qClock||0)+Q_HOP;burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4)}};
+  P.leap={t:0,dur:.29,x0:P.x,z0:P.z,x1,z1,h:2.5,done:()=>{burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4)}};
   act(.3,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});
 }
 /* assassin Q is a charge gauge: usable at any charge (spammable), power grows with the charge, a full gauge gets a bonus */
