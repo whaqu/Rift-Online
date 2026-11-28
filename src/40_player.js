@@ -89,7 +89,7 @@ function movePlayer(dt){
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   P.qClock=(P.qClock||0)+dt;if(P.glideCd>0)P.glideCd-=dt;
-  if(P.qArm!=null){if(!qHeld())P.qArm=null;else if(P.qClock-P.qArm>=.18){P.qArm=null;qGlideStart()}}
+  if(P.qArm!=null){if(!qHeld())P.qArm=null;else if(P.qClock-P.qArm>=.12){P.qArm=null;qGlideStart()}}
   if(P.glide){qGlideStep(dt);P.vx=P.vz=0;return}
   if(P.leap){   // fly along an arc, no steering
     const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur),k=L.smooth?u*u*(3-2*u):u;P.x=lerp(L.x0,L.x1,k);P.z=lerp(L.z0,L.z1,k);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
@@ -123,11 +123,12 @@ function updatePlayerModel(dt){
   const air=P.glide?Math.min(1,P.glide.h/GLIDE_H):P.leap&&P.leap.y0!=null?1:0;
   animHeroFor(PM,P.animT,P.glide||air?0:P.spdN,P.atkAnim,P.dashT>0,P.swing);
   PM.body.position.z=0;if(air>0)glidePose(PM,P.animT,air);
+  if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0}
   if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
-    emit(hx,rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
+    emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
   PM.g.visible=!(P.dead||P.hidden||(P.iframes>0&&P.dashT<=0&&!P.leap&&!P.glide&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
 }
@@ -298,7 +299,7 @@ function healP(n){
   if(g>0){dmgNum(P.x,3,P.z,'+'+g,'heal');burst(P.x,1.2,P.z,8,0x6bffb0,3,.6,-1,.8)}
 }
 function hurtPlayer(dmg,sx,sz,pure){   /* pure: ignores armor (meteor); buffs, shields and guard skills still apply */
-  if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
+  if(!P||P.dead||P.iframes>0||qAloft()||inTown(P.x,P.z))return false;
   dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),dgHitFloor(dmg)))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;

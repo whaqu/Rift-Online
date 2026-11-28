@@ -162,7 +162,7 @@ function duelHitOut(m,d){
 }
 function onDuelHit(d){
   if(!d||!DU.on||DU.role!=='fight'||DU.ph!=='fight'||d.id!==DU.id||d.t!==SES.name||d.f!==DU.opp)return;
-  if(P.dead||P.iframes>0||P.dashT>0||P.hidden)return;
+  if(P.dead||P.iframes>0||P.dashT>0||P.hidden||qAloft())return;
   duelFxIn(d);
   const raw=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
   if(raw>0){burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);duelHurt(raw)}

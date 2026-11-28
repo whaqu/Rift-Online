@@ -619,6 +619,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<6;i++)g.movePlayer(.05);const h0=g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);const h1=g.P.glide.h;
           g.keys.q=false;for(let i=0;i<17;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);
           {g.P.qLast=null;g.keys.q=true;g.P.glideCd=0;g.P.qArm=g.P.qClock;for(let i=0;i<120;i++)g.movePlayer(.05);T(g.P.glide&&!g.P.glide.land&&g.P.glide.t>5,'glide has no time limit');
+            {const hp=g.P.hp;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'held glide takes no damage');}
             const o={body:{rotation:{},position:{}},legL:{rotation:{x:0}},legR:{rotation:{x:0}},armL:{rotation:{x:0,z:0}},armR:{rotation:{x:0,z:0}}};g.glidePose(o,0,1);T(o.legL.rotation.x>0&&o.body.rotation.x>0&&o.armL.rotation.z<0,'glide pose replaces walking');g.keys.q=false;g.P.glide=null;}
           T(h0<h1&&h2>0&&h2<h1,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));g.P.glideCd=0;}g.P.x=x1;g.P.z=z1;}
       g.P.leap=null;g.MOBS.splice(0);
