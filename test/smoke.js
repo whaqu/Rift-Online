@@ -646,7 +646,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
             T(pond&&small&&big&&!moved(pond,true)&&moved(pond,false)&&moved(big,true)&&moved(small,false),'glide passes ponds and small things only');}}g.P.x=x1;g.P.z=z1;}
       g.P.leap=null;g.MOBS.splice(0);
       {const x1=g.P.x,z1=g.P.z;g.keys.q=true;const r=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<5;i++)g.movePlayer(.05);const d=Math.hypot(g.P.x-x1,g.P.z-z1);
-      {g.keys.q=true;g.keyReleased({key:'ㅂ',code:'KeyQ'});const a=g.keys.q;g.keys.q=true;g.mv.q=true;g.releaseAll();T(a===false&&!g.keys.q&&!g.mv.q,'Q never stays held after release');}
+      {g.keys.q=true;g.keyReleased({key:'ㅂ',code:'KeyQ'});T(g.keyName({key:'ㅈ',code:'KeyW'})==='w'&&g.keyName({key:'Process',code:'KeyD'})==='d'&&g.keyName({key:' ',code:'Space'})===' ','movement keys work with the Korean IME on');const a=g.keys.q;g.keys.q=true;g.mv.q=true;g.releaseAll();T(a===false&&!g.keys.q&&!g.mv.q,'Q never stays held after release');}
       {g.mv.q=true;g.mv.qt=7;g.qTouchCheck({touches:[{identifier:3},{identifier:7}]});const a=g.mv.q;g.qTouchCheck({touches:[{identifier:3}]});T(a===true&&g.mv.q===false&&g.mv.qt===null,'a lost Q finger is released while the joystick moves');}
       T(g.isTyping({tagName:'INPUT'})&&!g.isTyping({tagName:'CANVAS'})&&!g.isTyping(null),'typing in a box keeps touch mode');
         g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}

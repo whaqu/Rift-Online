@@ -367,9 +367,11 @@ function makeLabel(text,cls){
 const keys={},mouse={x:innerWidth/2,y:innerHeight/2,down:false,gx:0,gz:1},mv={x:0,z:0,on:false,atk:false};
 /* which key name each physical key went down as: the release can carry another name (Korean/English switch, modifiers) */
 const downAs={};
+/* letters and digits are named by the physical key, so WASD / QERF also work while the IME is in Korean */
+const keyName=e=>/^Key[A-Z]$/.test(e.code)?e.code[3].toLowerCase():/^Digit[0-9]$/.test(e.code)?e.code[5]:String(e.key).toLowerCase();
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT')return;
-  const k=e.key.toLowerCase();if(e.code)downAs[e.code]=k;if(k===' '||k==='tab'||k.startsWith('arrow'))e.preventDefault();
+  const k=keyName(e);if(e.code)downAs[e.code]=k;if(k===' '||k==='tab'||k.startsWith('arrow'))e.preventDefault();
   if(!keys[k]){keys[k]=true;if(window.onKeyPress)window.onKeyPress(k,e)}
 });
 function keyReleased(e){keys[String(e.key).toLowerCase()]=false;const k=downAs[e.code];if(k){keys[k]=false;delete downAs[e.code]}if(e.code==='KeyQ')keys.q=false}

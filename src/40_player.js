@@ -85,7 +85,7 @@ function playerFacing(dt){
 }
 function movePlayer(dt){
   let ix=(keys.d||keys.arrowright?1:0)-(keys.a||keys.arrowleft?1:0),iz=(keys.s||keys.arrowdown?1:0)-(keys.w||keys.arrowup?1:0);
-  if(mv.on){ix=mv.x;iz=mv.z}
+  if(mv.on&&!ix&&!iz){ix=mv.x;iz=mv.z}   // real keys win over a stick left on
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   P.qClock=(P.qClock||0)+dt;
