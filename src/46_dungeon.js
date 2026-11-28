@@ -405,7 +405,7 @@ function dgRwText(r){
 function dgRwCard(r){
   let col='#ffd24a',ico=ic('star',col,26),nm='',sub='';
   if(r.t==='gold'){nm=fmtN(r.n)+' G';sub='골드'}
-  else if(r.t==='weapon'){col=TIER_COL[wTier(r.base)-1];ico=ic(WICON[wCls(r.base)],col,26);nm=wName(r.base);sub='무기'}
+  else if(r.t==='weapon'){col=gcol(r.base);ico=ic(WICON[wCls(r.base)],col,26);nm=wName(r.base);sub='무기'}
   else if(r.t==='potion'){const p=POTIONS[r.base]||{};col=p.col||'#ff5a6a';ico=ic('potion',col,26);nm=(p.name||r.base)+' x'+r.n;sub='물약'}
   else if(r.t==='rune'){const q=RUNES[r.base]||{};col=q.col||'#fff';ico=ic('gem',col,26);nm=(q.name||r.base)+(r.base==='all'?'':' '+(RUNE_G[r.g]||''))+' x'+r.n;sub='룬'}
   return '<div class="rc" style="--cc:'+col+'">'+ico+'<div style="color:'+col+';font-weight:800;margin-top:4px">'+esc(nm)+'</div><small>'+sub+'</small></div>';

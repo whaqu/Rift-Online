@@ -278,6 +278,16 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       for(const c of['warrior','rogue','darknight']){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,'sword_10_3');T(g.wCan('sword_10_3',c)&&o.wbase==='sword_10_3'&&o.wau&&o.wau.kind==='dark','dark model and aura for '+c);o.wau.anim(1.3);g.applyWeaponLook(o,'sword_10');T(o.wau.kind==='omni','back to the omni aura for '+c)}
     }
     {
+      const r=g.RECIPES.find(r=>r.id==='angel_hood'),d5=JSON.parse(localStorage.getItem(K));
+      for(const[kind,b,qty]of[['mat','m9',6],['mat','m3',1],['rune','sky',2],['rune','all',5]])d5.items.push({id:d5.nid++,owner:me,kind,base:b,enh:kind==='rune'?1:0,ench:[],qty,eq:false,listed:false,gone:false});
+      localStorage.setItem(K,JSON.stringify(d5));await g.API.resume(me,g.SES.token);
+      const t=g.craftHtml(g.recipeCells(r),null,'');T(t.includes('천사의 깃털 두건')&&t.includes('333')&&t.includes('777'),'angel hood shows its stats on the table');
+      await g.API.call('craft','angel_hood');
+      const h=g.SES.pf.items.find(i=>i.base==='helm_10_cloth');T(h&&h.kind==='armor','angel hood is crafted as armor');
+      await g.API.call('equip',h.id);T(g.SES.pf.items.find(i=>i.id===h.id).eq,'angel hood equips');
+      let sv=true;try{g.openSmith();g.UI.handlers.wsel(String(h.id));g.UI.close()}catch(e){sv=false}T(sv,'angel hood opens in the smithy');
+    }
+    {
       const w=g.SES.pf.items.find(i=>i.base==='sword_10_3'),d4=JSON.parse(localStorage.getItem(K));d4.acc[me].gold=150000;localStorage.setItem(K,JSON.stringify(d4));await g.API.resume(me,g.SES.token);
       let e4='';try{await g.API.call('weaponRestore',w.id)}catch(e){e4=e.message}T(e4==='NO_POTION','weapon restore needs a scroll');
       await g.API.call('buy','wr',1);T(g.SES.pf.gold===0,'weapon restore scroll costs 150000');

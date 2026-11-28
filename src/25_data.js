@@ -142,7 +142,10 @@ const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'sta
 /* shared weapons: base 'sword_10' / 'wand_10' are usable by several classes. Must match rw_wcan */
 const SHARED_CLS={sword:['warrior','rogue','darknight'],wand:['cleric','summoner','mage']};
 const wCan=(b,c)=>{const s=SHARED_CLS[wCls(b)];return s?s.includes(c):wCls(b)===c};
-const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프',sword_10_3:'크로마이스'};
+const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프',sword_10_3:'크로마이스',helm_10_cloth:'천사의 깃털 두건'};
+/* crafted armor: fixed defense / hp at +0 (not from the tier ladder), and its own name colour */
+const UARMOR={helm_10_cloth:{def:333,hp:777,col:'#ffd24a',d:'천사의 깃털로 만들어진 두건이다.'}};
+const isArmorBase=b=>ASLOT_W[aSlot(b)]!=null,gcol=b=>UARMOR[b]?UARMOR[b].col:TIER_COL[wTier(b)-1];
 /* uniques whose attack differs from WATK[9] */
 const UATK={sword_10_3:1000};
 const wGrade=b=>wTier(b)>9?'유니크':wTier(b)+'등급('+ZONES[wTier(b)].name+')';
@@ -168,9 +171,9 @@ const ADEF=[6,14,26,42,64,92,128,172],AVALUE=[60,500,2000,7000,22000,60000,17000
 const APFX=['낡은','견습','병사의','룬 각인','미스릴','용린','폭풍의','영겁의'];
 const ANOUN={plate:{helm:'투구',body:'판금 갑옷',gloves:'철장갑',boots:'철제 장화'},leather:{helm:'가죽 모자',body:'가죽 조끼',gloves:'가죽 장갑',boots:'가죽 장화'},cloth:{helm:'두건',body:'로브',gloves:'비단 장갑',boots:'천 신발'}};
 const aSlot=b=>String(b).split('_')[0],aSet=b=>String(b).split('_')[2]||'cloth';
-const armorName=b=>APFX[wTier(b)-1]+' '+ANOUN[aSet(b)][aSlot(b)];
-const armorDef=(b,enh)=>Math.round(ADEF[wTier(b)-1]*ASLOT_W[aSlot(b)]*ASETS[aSet(b)].def*(1+(enh||0)*.09));
-const armorHp=(b,enh)=>Math.round(armorDef(b,enh)*ASETS[aSet(b)].hp*1.6);
+const armorName=b=>UARMOR[b]?UNAMES[b]:APFX[wTier(b)-1]+' '+ANOUN[aSet(b)][aSlot(b)];
+const armorDef=(b,enh)=>UARMOR[b]?Math.round(UARMOR[b].def*(1+(enh||0)*.09)):Math.round(ADEF[wTier(b)-1]*ASLOT_W[aSlot(b)]*ASETS[aSet(b)].def*(1+(enh||0)*.09));
+const armorHp=(b,enh)=>UARMOR[b]?Math.round(UARMOR[b].hp*(1+(enh||0)*.09)):Math.round(armorDef(b,enh)*ASETS[aSet(b)].hp*1.6);
 const SETB={plate:['최대 체력 +8%','피해 감소 +6%'],leather:['이동 속도 +4%','치명타 +6%, 공격 속도 +6%'],cloth:['공격력 +6%','공격력 +8%, 흡혈 +2%']};
 function armorBonus(pieces){
   const o={def:0,hp:0,atk:0,aps:0,spd:0,crit:0,armor:0,hpPct:0,vamp:0,cnt:{plate:0,leather:0,cloth:0}};
@@ -196,7 +199,7 @@ const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
 /* base resale price by tier (30% of value, top tiers capped around 70-90k) */
 const WSELL=[30,270,1050,3600,11400,33000,70000,80000,90000,90000],ASELL=[18,150,600,2100,6600,18000,51000,75000];
-const sellValue=it=>it.kind==='armor'?Math.floor(ASELL[wTier(it.base)-1]*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WSELL[wTier(it.base)-1]*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
+const sellValue=it=>it.kind==='armor'?Math.floor(ASELL[Math.min(ASELL.length,wTier(it.base))-1]*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WSELL[wTier(it.base)-1]*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
 
 const POTIONS={
   hp1:{name:'하급 체력 물약',kind:'hp',pct:.35,price:40,col:'#ff5a6a'},
@@ -227,6 +230,8 @@ const RECIPES=[
    pattern:['.....','....C','ECRIF','...W.','...W.']},
   {id:'chromaice',base:'sword_10_3',grade:'유니크',key:{E:'mat:m3',R:'rune:all',V:'mat:m6',D:'rune:void'},
    pattern:['..E..','..R..','.VRV.','..D..','..D..']},
+  {id:'angel_hood',base:'helm_10_cloth',grade:'전설',key:{F:'mat:m9',E:'mat:m3',S:'rune:sky',R:'rune:all'},
+   pattern:['.FEF.','FSRSF','FR.RF','R...R','.....']},
   /* 만물의 룬: the nine region runes, each grade II or higher (min). out = a non-weapon result */
   {id:'rune_all',out:'rune:all',min:2,grade:'룬',key:Object.fromEntries(REGION_RUNE.map((k,i)=>[String(i+1),'rune:'+k])),
    pattern:['.....','.123.','.456.','.789.','.....']}
@@ -446,7 +451,7 @@ function itemIcon(it){
   if(it.kind==='rune'){const r=RUNES[it.base],c=r?r.col:'#fff';return ico(ic('gem',c,26),c)}
   if(it.kind==='mat'){const m=MATS[it.base],c=m?m.col:'#fff';return ico(ic(m?m.icon:'leaf',c,26),c)}
   if(it.kind==='potion'){const p=POTIONS[it.base],c=p?p.col:'#fff';return ico(ic('potion',c,26),c)}
-  const c=TIER_COL[wTier(it.base)-1];if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
+  const c=gcol(it.base);if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
   if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(it.base==='all'?'':' '+(RUNE_G[it.enh]||''))}

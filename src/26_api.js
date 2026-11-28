@@ -232,7 +232,7 @@ const LocalAPI=(()=>{
       const need=Object.entries(recipeNeed(r)),own=k=>{const[kd,b]=k.split(':');return db.items.filter(i=>i.owner===n&&i.kind===kd&&i.base===b&&!i.listed&&!i.gone&&(i.enh||0)>=(r.min||0)).sort((x,y)=>(x.enh||0)-(y.enh||0))};
       if(need.some(([k,c])=>own(k).reduce((s,i)=>s+i.qty,0)<c))E('NO_MAT');
       for(let[k,c]of need)for(const i of own(k)){const x=Math.min(i.qty,c);i.qty-=x;c-=x;if(i.qty<=0)i.gone=true}
-      if(r.out)give(n,'rune',r.out.split(':')[1],1,1);else give(n,'weapon',r.base,1);
+      if(r.out)give(n,'rune',r.out.split(':')[1],1,1);else give(n,isArmorBase(r.base)?'armor':'weapon',r.base,1);
       wr();return{base:r.base||r.out,profile:pf(a)};
     },
     runeRestore(n,t,wid){semiLock(n);

@@ -11,7 +11,7 @@ UI.renderPeers=()=>{let n=1;for(const k in NET.peers)n++;$('netn').textContent=N
 UI.afterProfile=()=>{if(UI.rerender)UI.rerender()};
 UI.feed=d=>{
   let txt,col='#ccc';
-  if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='armor'){txt=armorName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='mat'){const p=MATS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
+  if(d.kind==='weapon'){txt=wName(d.base);col=gcol(d.base)}else if(d.kind==='armor'){txt=armorName(d.base);col=gcol(d.base)}else if(d.kind==='mat'){const p=MATS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
   UI.feedText('획득: '+txt+(d.qty>1?' x'+d.qty:''),col);
 };
 UI.feedText=(txt,col)=>{const f=$('feed'),d=document.createElement('div');d.textContent=txt;d.style.borderLeftColor=col||'#888';f.appendChild(d);while(f.children.length>5)f.removeChild(f.children[0]);setTimeout(()=>{try{f.removeChild(d)}catch(e){}},6000)};
@@ -49,9 +49,9 @@ function wStat(it){return it.kind==='weapon'?'공격력 '+fmtN(weaponAtk(it.base
 function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</span>').join('')}
 function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+(runeMatch(it.base,it.rune)?' ★짝 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</span>':''}
 function itemRow(it,o){
-  o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
+  o=o||{};const col=isGear(it)?gcol(it.base):it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
   if(it.kind==='weapon'){const ok=wCan(it.base,SES.pf.cls),ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wGrade(it.base)+' · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
-  else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
+  else if(it.kind==='armor'){sub=(UARMOR[it.base]?'전설 ':'')+ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
   else if(it.kind==='rune'){sub=(runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d)+(RUNES[it.base]?'<br>지역: '+runeFrom(it.base):'')}
   else{const p=POTIONS[it.base];sub=p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc}
@@ -98,6 +98,7 @@ function openInventory(){
         if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 장비는 판매할 수 없습니다.</div>';
         if(sel.kind==='weapon'&&wType(sel.base))det+='<div class="dim" style="margin-top:6px">'+WTMOD[wType(sel.base)].d+'</div>';
         if(sel.kind==='weapon'&&sel.rune){const p=sel.rune.split(':'),m=runeMatch(sel.base,sel.rune);det+='<div class="dim" style="margin-top:4px">룬 효과: '+esc(runeDesc(p[0],+p[1],m?RUNE_MATCH:0))+(m?' (짝 보너스 적용)':'')+'</div>'}
+        if(UARMOR[sel.base])det+='<div class="dim" style="margin-top:6px">'+UARMOR[sel.base].d+'</div>';
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
         const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
@@ -233,8 +234,8 @@ function openShop(){
 /* ---------- blacksmith ---------- */
 const craftHave=(k,min)=>{const[t,b]=k.split(':');return myItems().filter(i=>i.kind===t&&i.base===b&&!i.listed&&(i.enh||0)>=(min||0)).reduce((s,i)=>s+i.qty,0)};
 const craftable=r=>Object.entries(recipeNeed(r)).every(([k,n])=>craftHave(k,r.min)>=n);
-/* what a recipe makes: a weapon (base) or a rune (out) */
-const rName=r=>r.out?matName(r.out):wName(r.base),rCol=r=>r.out?matCol(r.out):TIER_COL[wTier(r.base)-1],rIcon=r=>r.out?'gem':WICON[wCls(r.base)];
+/* what a recipe makes: a weapon or armor (base), or a rune (out) */
+const rName=r=>r.out?matName(r.out):isArmorBase(r.base)?armorName(r.base):wName(r.base),rCol=r=>r.out?matCol(r.out):gcol(r.base),rIcon=r=>r.out?'gem':isArmorBase(r.base)?aSlot(r.base):WICON[wCls(r.base)];
 /* left: recipes you have every material for · middle: 5x5 table and result · bottom: your materials */
 function craftHtml(grid,pick,msg){
   for(let i=0,used={};i<grid.length;i++){const k=grid[i];if(k&&(used[k]=(used[k]||0)+1)>craftHave(k))grid[i]=null}
@@ -244,7 +245,7 @@ function craftHtml(grid,pick,msg){
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
   h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+rCol(r)+'">'+ic(rIcon(r),rCol(r),24)+'<div style="font-weight:700;color:'+rCol(r)+'">'+rName(r)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?'아홉 지역 룬 각 Ⅱ 이상':hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?'아홉 지역 룬 각 Ⅱ 이상':isArmorBase(hit.base)?hit.grade+' · '+wStat({kind:'armor',base:hit.base,enh:0}):hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;
@@ -262,14 +263,14 @@ function openSmith(){
     if(!it)h+='<div class="dim">장비가 없습니다.</div>';
     else if(tab==='enh'){
       const maxed=it.enh>=maxEnh(it),cost=maxed?0:enhCost(it.base,it.enh),rate=maxed?0:ENH_RATE[it.enh],isA=it.kind==='armor',ev=(e)=>isA?armorDef(it.base,e):weaponAtk(it.base,e);
-      h+='<div class="card"><div class="nm" style="font-size:16px;color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim">'+(isA?'방어 ':'공격력 ')+fmtN(ev(it.enh))+(maxed?'':' → <span class="grn">'+fmtN(ev(it.enh+1))+'</span>')+'</div><hr>'
+      h+='<div class="card"><div class="nm" style="font-size:16px;color:'+gcol(it.base)+'">'+esc(itemName(it))+'</div><div class="dim">'+(isA?'방어 ':'공격력 ')+fmtN(ev(it.enh))+(maxed?'':' → <span class="grn">'+fmtN(ev(it.enh+1))+'</span>')+'</div><hr>'
         +(maxed?'<div>최대 강화입니다.</div>':'<div class="kv"><span>성공 확률</span><span>'+rate+'%</span><span>비용</span><span class="gold">'+fmtG(cost)+'</span><span>실패 시</span><span>'+(it.enh>=7?'<span class="red">강화 단계 -1</span>':'변화 없음')+'</span></div>')
         +'<div style="margin:10px 0 4px;min-height:20px">'+msg+'</div><button class="btn" style="width:100%" data-a="enh" '+(maxed||pf.gold<cost?'disabled':'')+'>강화하기</button></div>';
     }else if(it.kind==='armor'){
-      h+='<div class="card"><div class="nm" style="color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-top:6px">인첸트는 무기에만 부여할 수 있습니다.</div></div>';
+      h+='<div class="card"><div class="nm" style="color:'+gcol(it.base)+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-top:6px">인첸트는 무기에만 부여할 수 있습니다.</div></div>';
     }else{
       const cnt=it.ench.length;
-      h+='<div class="card"><div class="nm" style="color:'+TIER_COL[wTier(it.base)-1]+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-bottom:6px">인첸트 슬롯 '+cnt+'/3 — 효과는 무작위로 부여됩니다.</div>';
+      h+='<div class="card"><div class="nm" style="color:'+gcol(it.base)+'">'+esc(itemName(it))+'</div><div class="dim" style="margin-bottom:6px">인첸트 슬롯 '+cnt+'/3 — 효과는 무작위로 부여됩니다.</div>';
       for(let i=0;i<3;i++){
         const e=it.ench[i];
         if(e){const ucost=e.l>=3?0:4000*e.l*e.l;h+='<div class="item" style="cursor:default;margin-bottom:5px"><div><div class="nm" style="color:'+ENCH[e.k].col+'">'+enchText(e)+'</div><div class="sub">'+enchDesc(e.k,e.l)+'</div></div><div class="rt">'+(e.l>=3?'<span class="dim">최대</span>':'<div class="gold">'+fmtG(ucost)+'</div><button class="btn sm" data-a="encup" data-v="'+i+'" '+(pf.gold<ucost?'disabled':'')+'>강화 ('+(e.l===1?55:30)+'%)</button>')+'</div></div>'}
