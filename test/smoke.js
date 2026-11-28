@@ -516,6 +516,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     }
     const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});
+    { edit(a=>{a.level=1});let solo='';try{g.LocalAPI.dgBegin(me,tk,'sky')}catch(e){solo=e.message}
+      let pty='';try{g.LocalAPI.dgBegin(me,tk,'sky',true)}catch(e){pty=e.message}
+      T(solo==='LOW_LEVEL'&&pty==='','dungeon level limit: solo only ('+solo+'/'+pty+')');edit(a=>{a.level=99}) }
     for(const id of ids){g.LocalAPI.dgBegin(me,tk,id);edit(a=>{a.dgRun.ts-=60000});const r=g.LocalAPI.dgEnd(me,tk,id,1);T(r.rewards.every(x=>x.t!=='weapon'||g.wTier(x.base)===g.DGDEF[id].zid),id+' weapon reward is the region grade');T(r.rewards.every(x=>x.t!=='rune'||x.g<2||x.base===id),id+' area rune');T(r.rewards.length>=2&&r.rewards.every(x=>x.t!=='rune'||g.RUNES[x.base]),id+' reward '+JSON.stringify(r.rewards))}
     edit(a=>{a.level=lv});
   }

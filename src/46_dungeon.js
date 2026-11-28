@@ -279,26 +279,27 @@ function dgRespawn(){
 /* ---------- portal interaction ---------- */
 async function openPortal(p){
   const def=DGDEF[p.dg];if(!def||DG.on)return;
-  if(SES.pf.level<def.need){UI.toast('Lv.'+def.need+' 이상부터 입장할 수 있습니다');return}
-  const party=NET.party&&NET.party.members.length>1;
+  const party=dgInParty();
+  if(!party&&SES.pf.level<def.need){UI.toast('Lv.'+def.need+' 이상부터 입장할 수 있습니다');return}
   if(party&&!isAuth()){
     if(NET.party.dgId!==p.dg){UI.toast('파티장이 먼저 입장해야 합니다');return}
     if(await UI.confirm(def.name+'에 합류할까요?'))dgJoin(p.dg);
     return;
   }
-  const txt=def.name+'\n입장 Lv.'+def.need+' 이상 · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
+  const txt=def.name+'\n'+(party?'파티 입장: 레벨 제한 없음':'입장 Lv.'+def.need+' 이상 (파티는 제한 없음)')+' · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
   if(!(await UI.confirm(txt)))return;
   dgStart(p.dg);
 }
+const dgInParty=()=>!!(NET.party&&NET.party.members.length>1);   /* parties ignore dungeon level limits */
 async function dgStart(id){
-  try{await API.call('dgBegin',id)}catch(e){UI.toast(errKo(e.message));return}
+  try{await API.call('dgBegin',id,dgInParty())}catch(e){UI.toast(errKo(e.message));return}
   flushKills();flushGather();
   dgEnter(id);
   if(NET.on&&NET.party&&NET.party.members.length>1&&isAuth()){NET.party.dgId=id;netSend('dg',{k:'in',id,from:SES.name,to:NET.party.members.filter(n=>n!==SES.name)})}
 }
 async function dgJoin(id){
   if(DG.on)return;
-  try{await API.call('dgBegin',id)}catch(e){UI.toast(errKo(e.message));return}
+  try{await API.call('dgBegin',id,dgInParty())}catch(e){UI.toast(errKo(e.message));return}
   flushKills();flushGather();dgEnter(id);
 }
 
@@ -396,7 +397,6 @@ async function onDgEv(d){
   if(d.k==='in'){
     if(NET.party.leader!==d.from||!DGDEF[d.id])return;NET.party.dgId=d.id;
     if(!Array.isArray(d.to)||!d.to.includes(SES.name)||DG.on)return;
-    if(SES.pf.level<DGDEF[d.id].need){UI.toast('파티장이 '+DGDEF[d.id].name+'에 입장했지만 레벨이 부족합니다');return}
     if(await UI.confirm('파티장이 '+DGDEF[d.id].name+'에 입장했습니다.\n함께 입장할까요?'))dgJoin(d.id);
   }else if(d.k==='st'){
     if(!DG.on||isAuth()||DG.id!==d.id)return;DG.ph=d.ph;DG.wave=d.w;DG.sub=d.s|0;DG.alive=d.al;DG.t=d.t;DG.bh=d.bh;if(d.dm&&typeof d.dm==='object')DG.dm=d.dm;
