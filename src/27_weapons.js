@@ -240,63 +240,60 @@ function auraApply(o,t){
   if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
 }
 
-/* 만물의 룬 aura: the nine regions' emblems circle the wearer over a golden nine-point ground circle (sprites: cheap on low-end GPUs) */
+/* 만물의 룬 aura: nine elemental fragments (low-poly 3D, one per region) ride a ring of light streams over a golden rune circle. No flat icons. */
 const OMNI_COL=['#8dff6a','#7ff0dc','#ff6a2a','#6ee7ff','#ffe24a','#c86bff','#e4f6ff','#ffb85a','#fff0b0'];   // zid 1..9
-const OMTEX={};
-function omniTex(i){
-  if(OMTEX[i])return OMTEX[i];
-  const c=document.createElement('canvas'),S2=i<9?96:256;c.width=c.height=S2;const x=c.getContext('2d');
+const OMNI_R=2.05,OMTEX={};
+/* 'trail': nine tapered comet streaks, one behind each fragment. 'floor': thin concentric rings, rune ticks, nine-colour arcs */
+function omniTex(kind){
+  if(OMTEX[kind])return OMTEX[kind];
+  const c=document.createElement('canvas');c.width=c.height=256;const x=c.getContext('2d');
   if(x&&x.arc){
-    x.translate(S2/2,S2/2);x.lineCap='round';x.lineJoin='round';
-    const path=(pts,fill)=>{x.beginPath();pts.forEach(([a,b],k)=>k?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fillStyle=fill;x.fill();x.stroke()};
-    const dot=(a,b,r,fill)=>{x.beginPath();x.arc(a,b,r,0,TAU);x.fillStyle=fill;x.fill()};
-    const line=(a,b,d,e)=>{x.beginPath();x.moveTo(a,b);x.lineTo(d,e);x.stroke()};
-    if(i===9){   // ground circle
-      x.shadowColor='#ffd24a';x.shadowBlur=12;x.strokeStyle='#ffd24a';
-      for(const[r,lw]of[[112,5],[84,2]]){x.lineWidth=lw;x.beginPath();x.arc(0,0,r,0,TAU);x.stroke()}
-      x.lineWidth=2;for(let k=0;k<9;k++){const a=k*TAU/9,b=(k+4)*TAU/9;line(Math.cos(a)*84,Math.sin(a)*84,Math.cos(b)*84,Math.sin(b)*84)}
-      for(let k=0;k<9;k++){const a=k*TAU/9;x.shadowColor=OMNI_COL[k];dot(Math.cos(a)*98,Math.sin(a)*98,10,OMNI_COL[k])}
+    x.translate(128,128);x.lineCap='round';
+    const arc=(r,a,b,col,w,al)=>{x.globalAlpha=al;x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.arc(0,0,r,a,b);x.stroke()};
+    if(kind==='trail'){
+      OMNI_COL.forEach((col,k)=>{const head=k*TAU/9,len=.62;
+        for(let i=0;i<20;i++){const u=i/19,a=head-len*(1-u);arc(100,a,a+len/19,col,1+u*u*7,u*u*.8)}
+        arc(100,head-.16,head,'#ffffff',1.5,.8)});
     }else{
-      const col=OMNI_COL[i];
-      const bg=x.createRadialGradient&&x.createRadialGradient(0,0,4,0,0,47);
-      if(bg&&bg.addColorStop){bg.addColorStop(0,col+'aa');bg.addColorStop(1,col+'00');dot(0,0,47,bg)}
-      x.shadowColor=col;x.shadowBlur=8;x.strokeStyle='#10131b';x.lineWidth=3;
-      if(i===0){   // meadow: flower
-        for(let k=0;k<5;k++){const a=k*TAU/5-TAU/4;dot(Math.cos(a)*18,Math.sin(a)*18,13,col)}dot(0,0,10,'#fff27a');
-      }else if(i===1){   // forest of the dead: skull
-        dot(0,-6,25,col);path([[-14,10],[14,10],[11,28],[-11,28]],col);dot(-10,-5,7,'#10131b');dot(10,-5,7,'#10131b');line(-4,18,-4,27);line(5,18,5,27);
-      }else if(i===2){   // ember: flame
-        path([[0,-34],[13,-13],[22,-19],[24,10],[12,29],[-12,29],[-24,10],[-18,-10],[-9,-3]],col);path([[1,-6],[12,12],[6,26],[-7,26],[-12,12]],'#ffe27a');
-      }else if(i===3){   // crystal: gem cluster
-        path([[0,-34],[13,-14],[9,28],[-9,28],[-13,-14]],col);path([[-24,-6],[-12,4],[-10,28],[-22,26]],'#b8f6ff');path([[24,-10],[12,2],[10,28],[22,26]],'#b8f6ff');
-      }else if(i===4){   // storm: lightning bolt
-        path([[6,-36],[-20,6],[-3,6],[-10,36],[21,-9],[3,-9],[16,-36]],col);
-      }else if(i===5){   // void: ringed dark orb
-        dot(0,0,21,col);dot(0,0,13,'#1a0830');x.strokeStyle=col;x.lineWidth=5;x.beginPath();x.ellipse&&x.ellipse(0,0,34,11,-.45,0,TAU);x.stroke();
-      }else if(i===6){   // snow: snowflake
-        x.strokeStyle=col;x.lineWidth=5;
-        for(let k=0;k<6;k++){x.save();x.rotate(k*TAU/6);line(0,0,0,-33);line(0,-19,-9,-28);line(0,-19,9,-28);x.restore()}
-      }else if(i===7){   // desert: sun over pyramid
-        dot(17,-19,11,'#fff27a');path([[-4,-20],[26,27],[-33,27]],col);path([[-4,-20],[26,27],[3,27]],'#b8772e');
-      }else{   // sky: winged halo
-        for(const s of[-1,1])path([[s*8,6],[s*36,-18],[s*31,-2],[s*34,6],[s*25,9],[s*25,19],[s*9,17]],'#ffffff');
-        x.strokeStyle=col;x.lineWidth=6;x.beginPath();x.ellipse&&x.ellipse(0,-19,15,6,0,0,TAU);x.stroke();dot(0,10,10,col);
-      }
+      arc(112,0,TAU,'#ffd24a',2.5,.85);arc(106,0,TAU,'#ffd24a',1,.6);arc(78,0,TAU,'#ffd24a',1.5,.55);
+      OMNI_COL.forEach((col,k)=>{const a=k*TAU/9;arc(92,a+.05,a+TAU/9-.05,col,3,.75)});
+      x.strokeStyle='#ffe9a0';x.lineWidth=2;x.globalAlpha=.75;
+      for(let k=0;k<45;k++){const a=k*TAU/45;x.save();x.rotate(a);x.beginPath();x.moveTo(97,0);x.lineTo(k%5?101:104,k%3?3:-3);x.lineTo(104,0);x.stroke();x.restore()}
     }
   }
-  return OMTEX[i]=new THREE.CanvasTexture(c);
+  return OMTEX[kind]=new THREE.CanvasTexture(c);
+}
+/* one fragment per region, built around the origin; +z is the direction of travel */
+function omniPiece(i){
+  const g=new THREE.Group(),col=parseInt(OMNI_COL[i].slice(1),16),m=aumat(col,.95),w=aumat(0xffffff,.9);
+  const put=(geo,mat,x,y,z,sx,sy,sz)=>{const o=mesh(geo,mat,x,y,z,g,false);if(sx)o.scale.set(sx,sy,sz);return o};
+  const oct=r=>new THREE.OctahedronGeometry(r,0),cone=(r,h,n)=>new THREE.ConeGeometry(r,h,n),box=(a,b,c)=>new THREE.BoxGeometry(a,b,c);
+  if(i===0){for(const s of[-1,1])put(oct(.2),s>0?m:aumat(0x3fae3a,.95),s*.16,0,0,1.4,.18,.75).rotation.z=s*.5}   // leaves
+  else if(i===1){put(oct(.16),w,0,0,0);put(cone(.15,.55,6),aumat(col,.55),0,0,-.3).rotation.x=-Math.PI/2}   // soul wisp
+  else if(i===2){put(cone(.19,.55,5),m,0,.08,0);put(cone(.1,.34,5),aumat(0xffe27a,1),0,.02,.08);put(oct(.16),m,0,-.2,0,1,.7,1)}   // flame
+  else if(i===3){put(oct(.2),m,0,0,0,.75,1.9,.75);put(oct(.11),w,.2,-.13,0,.7,1.7,.7).rotation.z=-.5}   // crystal shards
+  else if(i===4){for(const[x,y,r,l]of[[.05,.2,-.6,.32],[0,0,.9,.3],[-.05,-.2,-.6,.32]])put(box(.08,l,.08),m,x,y,0).rotation.z=r}   // lightning
+  else if(i===5){put(oct(.17),aumat(0x1c0a30,.95),0,0,0,1.1,1.1,1.1);put(new THREE.TorusGeometry(.3,.035,4,24),m,0,0,0).rotation.x=1.2}   // void core
+  else if(i===6){for(let k=0;k<3;k++)put(box(.055,.55,.055),k?m:w,0,0,0).rotation.z=k*Math.PI/3}   // frost star
+  else if(i===7){put(cone(.24,.28,4),m,0,.13,0);put(cone(.24,.28,4),aumat(0xb8772e,.95),0,-.13,0).rotation.x=Math.PI}   // sandstone
+  else{put(new THREE.TorusGeometry(.22,.04,5,24),m,0,.2,0).rotation.x=1.3;put(oct(.16),w,0,-.02,0,.8,1.5,.8)}   // halo
+  const gl=glow(col,i===5?1.2:1,.45);g.add(gl);
+  return g;
 }
 let OMMAT=null;
 function omniBuild(){
-  if(!OMMAT)OMMAT={icon:OMNI_COL.map((_,i)=>new THREE.SpriteMaterial({map:omniTex(i),transparent:true,depthWrite:false})),
-    floor:new THREE.MeshBasicMaterial({map:omniTex(9),transparent:true,opacity:.85,depthWrite:false,side:THREE.DoubleSide})};
+  if(!OMMAT){const f=(k,op)=>new THREE.MeshBasicMaterial({map:omniTex(k),transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide});OMMAT={trail:f('trail',.95),floor:f('floor',.85)}}
   const g=new THREE.Group();
-  const floor=new THREE.Group();g.add(floor);
-  const disc=mesh(new THREE.PlaneGeometry(1,1),OMMAT.floor,0,0,0,floor,false);disc.rotation.x=-Math.PI/2;disc.scale.set(4.2,4.2,1);
-  const icons=OMMAT.icon.map(m=>{const s=new THREE.Sprite(m);g.add(s);return s});
+  const plane=(mat,size)=>{const h=new THREE.Group();g.add(h);const d=mesh(new THREE.PlaneGeometry(1,1),mat,0,0,0,h,false);d.rotation.x=-Math.PI/2;d.scale.set(size,size,1);return h};
+  const floor=plane(OMMAT.floor,4.2),trail=plane(OMMAT.trail,OMNI_R*256/100);
+  const pieces=OMNI_COL.map((_,i)=>{const p=omniPiece(i);g.add(p);return p});
   const anim=(t,face,h)=>{
-    g.rotation.y=-face;floor.position.y=.09-h;floor.rotation.y=t*.5;   // the orbit stays still when the wearer turns
-    icons.forEach((s,i)=>{const a=t*.9+i*TAU/9,k=Math.sin(t*2.2+i*1.4);s.position.set(Math.cos(a)*2.05,1.15+k*.28,Math.sin(a)*2.05);const sz=.78+k*.06;s.scale.set(sz,sz,1)});
+    g.rotation.y=-face;floor.position.y=.09-h;floor.rotation.y=-t*.35;   // the orbit stays still when the wearer turns
+    trail.position.y=1.15;trail.rotation.y=-t*.9;
+    pieces.forEach((p,i)=>{const a=t*.9+i*TAU/9;p.position.set(Math.cos(a)*OMNI_R,1.15+Math.sin(t*2.2+i*1.4)*.08,Math.sin(a)*OMNI_R);
+      // flat shapes (bolt, frost star) keep facing the camera; the rest turn with the orbit or spin
+      p.rotation.y=i===4||i===6?0:i===1?-a:t*1.6+i;p.rotation.z=i===6?t*.8:0;
+      const k=i===2||i===4?1+Math.sin(t*17+i)*.12:1;p.scale.set(k,k,k)});
   };
   anim(0,0,0);return{g,anim};
 }
