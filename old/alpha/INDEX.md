@@ -62,3 +62,4 @@
 - a60_assassin-q-vault: 암살자 Q가 두 번 벤 뒤 상대를 뛰어넘어 뒤에 착지
 - a61_assassin-q-line-leap: 암살자 Q를 8m까지 접근 → 16m 도약 베기로 변경, 도약 한가운데일수록 높은 피해
 - a62_assassin-q-tap_town-glide: 암살자 Q 꾹 누르기 달리기·연속 공격 제거(한 번 누르면 도약 공격 한 번), 마을에서도 두 번 눌러 활공
+- a63_assassin-q-free-jump: 암살자 Q — 적이 없어도 16m 멀리뛰기(게이지 소모 없음)
