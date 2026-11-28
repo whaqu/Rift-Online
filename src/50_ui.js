@@ -181,6 +181,25 @@ UI.handlers.rrpick=async v=>{
     await guarded(async()=>{await API.call('runeRestore',w.id);sfx('level')},nm+'을(를) 회수했습니다');derive();netPresence();
   }finally{rrBusy=false}
 };
+/* weapon restore scroll: a crafted weapon is taken apart back into its materials */
+function openWeaponRestore(){
+  UI.sel=null;
+  UI.page('무기 복원',()=>{
+    const list=myItems().filter(i=>i.kind==='weapon'&&recipeOf(i.base)&&!i.listed).sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
+    const n=myItems().filter(i=>i.kind==='potion'&&i.base==='wr').reduce((s,i)=>s+i.qty,0);
+    return '<div class="dim" style="margin-bottom:8px">분해할 제작 무기를 고르세요. 무기의 복원서 보유 '+n+'장</div><div class="list" style="max-height:56vh">'+(list.length?list.map(i=>itemRow(i,{a:'wrpick'})).join(''):'<div class="dim">제작한 무기가 없습니다.</div>')+'</div>';
+  });
+}
+let wrBusy=false;
+UI.handlers.wrpick=async v=>{
+  const w=byId(+v),r=w&&recipeOf(w.base);if(!r||wrBusy)return;
+  const nm=itemName(w),got=Object.entries(recipeNeed(r)).map(([k,c])=>matName(k)+' '+c).join(', ');
+  wrBusy=true;
+  try{
+    if(!(await UI.confirm('무기의 복원서 1장을 사용해 '+nm+'을(를) 분해할까요? 무기는 사라지고 강화·인첸트는 돌아오지 않습니다. 돌려받는 재료: '+got+(w.rune?' + 장착한 룬':''))))return;
+    await guarded(async()=>{await API.call('weaponRestore',w.id);sfx('level')},nm+'을(를) 재료로 되돌렸습니다');derive();netPresence();
+  }finally{wrBusy=false}
+};
 UI.handlers.usep=v=>{usePotionKey(v);setTimeout(()=>UI.rerender&&UI.rerender(),50)};
 UI.handlers.toauc=v=>{UI.close();openAuction('post',+v)};
 
@@ -192,7 +211,7 @@ function openShop(){
     const pf=SES.pf;let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='buy'?'on':'')+'" data-a="stab" data-v="buy">구매</div><div class="tab '+(tab==='armor'?'on':'')+'" data-a="stab" data-v="armor">방어구</div><div class="tab '+(tab==='sell'?'on':'')+'" data-a="stab" data-v="sell">판매</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
     if(tab==='buy'){
       h+='<div class="row" style="margin-bottom:6px"><span class="dim">수량</span>'+[1,5,10,20].map(n=>'<button class="btn sm '+(qty===n?'':'sec')+'" data-a="sqty" data-v="'+n+'">'+n+'</button>').join('')+'</div><div class="list" style="max-height:56vh">';
-      for(const b of [...POTION_ORDER,'tp','rr']){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
+      for(const b of [...POTION_ORDER,'tp','rr','wr']){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
       for(const t of[2,3,4])for(let ty=0;ty<3;ty++){const b=pf.cls+'_'+t+(ty?'_'+ty:'');h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(WICON[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · '+WTMOD[ty].n+' · '+KCLS[pf.cls]+' 전용</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else if(tab==='armor'){

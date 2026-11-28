@@ -206,7 +206,8 @@ const POTIONS={
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'},
   tp:{name:'텔레포트의 서',kind:'tp',price:1000,col:'#c79bff',desc:'사용하면 지도가 열리고 누른 곳으로 순간이동합니다'},
-  rr:{name:'룬의 복원서',kind:'restore',price:100000,col:'#7dffd0',desc:'사용해 무기를 고르면 그 무기의 룬이 사라지지 않고 가방으로 돌아옵니다'}
+  rr:{name:'룬의 복원서',kind:'restore',price:100000,col:'#7dffd0',desc:'사용해 무기를 고르면 그 무기의 룬이 사라지지 않고 가방으로 돌아옵니다'},
+  wr:{name:'무기의 복원서',kind:'wrestore',price:150000,col:'#ffb86a',desc:'사용해 제작한 무기를 고르면 무기가 분해되고 제작 재료가 가방으로 돌아옵니다'}
 };
 /* crafting table: 5x5 shaped recipes (Minecraft style, the shape may sit anywhere it fits).
    To add one: add it here AND add the same id / ingredient totals to the server function rw_recipe */
@@ -227,6 +228,8 @@ const RECIPES=[
   {id:'chromaice',base:'sword_10_3',grade:'유니크',key:{E:'mat:m3',R:'rune:all',V:'mat:m6',D:'rune:void'},
    pattern:['..E..','..R..','.VRV.','..D..','..D..']}
 ];
+/* the recipe a crafted weapon came from (undefined for every other item) */
+const recipeOf=b=>RECIPES.find(r=>r.base===b);
 const recipeCells=r=>{const o=[];for(const row of r.pattern)for(const ch of row)o.push(r.key[ch]||null);return o};
 const recipeNeed=r=>{const o={};for(const k of recipeCells(r))if(k)o[k]=(o[k]||0)+1;return o};
 /* shape of a grid without its empty border */

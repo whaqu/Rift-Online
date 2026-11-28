@@ -403,6 +403,7 @@ function usePotionKey(base){
   if(!it){UI.toast(pd.name+' 없음');return}
   if(pd.kind==='tp'){openTeleport();return}
   if(pd.kind==='restore'){openRestore();return}
+  if(pd.kind==='wrestore'){openWeaponRestore();return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}
   else{const k=base;if(P.pot[k]>0){UI.toast('이미 효과가 적용 중입니다');return}P.pot[k]=30;dmgNum(P.x,3,P.z,pd.name,'info');sfx('card');burst(P.x,1,P.z,16,0xffffff,5,.5,2)}
   it.qty--;if(it.qty<=0)SES.pf.items=SES.pf.items.filter(i=>i!==it);

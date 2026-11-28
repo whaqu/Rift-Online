@@ -277,6 +277,18 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T(g.SES.pf.items.some(i=>i.base==='sword_10_3')&&g.wName('sword_10_3')==='크로마이스','chromaice is crafted');
       for(const c of['warrior','rogue','darknight']){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,'sword_10_3');T(g.wCan('sword_10_3',c)&&o.wbase==='sword_10_3'&&o.wau&&o.wau.kind==='dark','dark model and aura for '+c);o.wau.anim(1.3);g.applyWeaponLook(o,'sword_10');T(o.wau.kind==='omni','back to the omni aura for '+c)}
     }
+    {
+      const w=g.SES.pf.items.find(i=>i.base==='sword_10_3'),d4=JSON.parse(localStorage.getItem(K));d4.acc[me].gold=150000;localStorage.setItem(K,JSON.stringify(d4));await g.API.resume(me,g.SES.token);
+      let e4='';try{await g.API.call('weaponRestore',w.id)}catch(e){e4=e.message}T(e4==='NO_POTION','weapon restore needs a scroll');
+      await g.API.call('buy','wr',1);T(g.SES.pf.gold===0,'weapon restore scroll costs 150000');
+      const q=(k,b)=>g.SES.pf.items.filter(i=>i.kind===k&&i.base===b).reduce((s,i)=>s+i.qty,0),before=[q('mat','m3'),q('rune','all'),q('mat','m6'),q('rune','void')];
+      const plain=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.base.endsWith('_1'));
+      if(plain){e4='';try{await g.API.call('weaponRestore',plain.id)}catch(e){e4=e.message}T(e4==='BAD_ITEM','only crafted weapons can be restored')}
+      await g.API.call('weaponRestore',w.id);
+      T(!g.SES.pf.items.some(i=>i.id===w.id)&&!q('potion','wr'),'the weapon and the scroll are used up');
+      T([q('mat','m3'),q('rune','all'),q('mat','m6'),q('rune','void')].join()===[before[0]+1,before[1]+2,before[2]+2,before[3]+2].join(),'every material returns');
+      T(g.SES.pf.items.filter(i=>i.kind==='weapon'&&i.eq).length===1,'a weapon stays equipped');
+    }
     localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
   }
   // ---- dungeon ----
