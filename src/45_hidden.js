@@ -3,10 +3,12 @@
    To add one: add an entry to HIDDEN (skills = [Q,E,R,F] with SK functions) and a row to the server table rw_hidden_class.
    Story: 천사 is the messenger of heaven; 대천사 and 타락천사 were once brothers in arms and are now rivals (equal strength). */
 const HIDDEN_LV=99,HIDDEN_DROP=.0005,HIDDEN_DG='sky',ARCH_SYN={atk:1.3,cd:.85,ult:4};
+/* a hidden class has its own base hp (gear, runes and perks add on top), stronger skills and shorter cooldowns */
+const HIDDEN_HP=7000,HID_SKILL=2,HID_CD=.75;
 const HIDDEN={
   angel:{name:'천사',item:'hc_angel',itemName:'천사의 서사',col:'#fff4c2',size:1.22,
     story:'천상의 전령. 두 강자의 싸움 사이에서 다친 이들을 돌봅니다.',
-    m:{atk:2.2,hp:2.4,armor:.2,regen:.03,aps:1.25,crit:.1,spd:1.15},
+    m:{atk:4.5,armor:.35,regen:.06,aps:1.5,crit:.2,vamp:.08,spd:1.25},
     skills:[sd('h_an_q','성광의 파문',5,0xfff4c2,'h_halo','빛의 고리를 사방으로 퍼뜨립니다. 맞힌 수만큼 회복합니다.'),
       sd('h_an_e','가호',16,0x9fd0ff,'h_shield','자신과 주변 파티원에게 큰 보호막을 줍니다.'),
       sd('h_an_r','비상',10,0xfff2a0,'h_wing','날아올라 지정한 곳에 내려앉으며 빛기둥을 일으킵니다.'),
@@ -14,7 +16,7 @@ const HIDDEN={
     pal:{main:0xf6f4ff,dark:0x8fa6d8,trim:0xf2d27a,face:0xffe9d8,eye:0x7fd6ff},wing:{a:0xffffff,b:0xdceaff,bone:0xf2d27a,glow:0xdfeeff,pairs:1,size:1.3}},
   fallen:{name:'타락천사',item:'hc_fallen',itemName:'타락천사의 금서',col:'#c23aff',size:1.3,
     story:'하늘을 등진 검. 한때의 전우였던 대천사와 맞서며, 상대의 피로 힘을 얻습니다.',
-    m:{atk:3,hp:2.2,armor:.15,crit:.22,aps:1.4,vamp:.12,spd:1.2},
+    m:{atk:6.5,armor:.35,regen:.02,crit:.4,aps:1.8,vamp:.2,spd:1.3},
     skills:[sd('h_fa_q','나락의 초승달',4,0xb23aff,'h_moon','거대한 검은 초승달 세 개를 날려 꿰뚫고, 맞힌 만큼 흡혈합니다.'),
       sd('h_fa_e','타락의 낙인',10,0xff2a6a,'h_brand','적 무리에 낙인을 새겨 받는 피해를 50% 늘립니다. 낙인 찍힌 적이 쓰러지면 주변에 번집니다.'),
       sd('h_fa_r','검은 깃 폭우',11,0x7a2fd0,'h_feather','지정한 넓은 곳에 3초 동안 검은 깃을 쏟아붓습니다.'),
@@ -22,7 +24,7 @@ const HIDDEN={
     pal:{main:0x1c1226,dark:0x0b0710,trim:0x8a1236,face:0xcdbfd4,eye:0xff1f4a},wing:{a:0x15091f,b:0x2a0f3a,bone:0xb0143c,glow:0x7a1fb0,pairs:1,broken:1,size:1.35}},
   arch:{name:'대천사',item:'hc_arch',itemName:'대천사의 주문서',col:'#ffd24a',size:1.38,
     story:'하늘의 군단장. 등을 돌린 타락천사를 막아서는 심판자입니다.',
-    m:{atk:2.8,hp:2.7,armor:.3,regen:.02,aps:1.35,crit:.15,spd:1.15},
+    m:{atk:6,armor:.45,regen:.04,aps:1.7,crit:.3,vamp:.1,spd:1.25},
     skills:[sd('h_ar_q','천벌 탄막',4.5,0xffd24a,'h_nova','빛의 탄막을 두 번 사방으로 터뜨립니다.'),
       sd('h_ar_e','심판의 연격',10,0xffe9a0,'h_quake','전방으로 폭발이 줄지어 터집니다. 보호막과 짧은 피해 감소를 얻습니다.'),
       sd('h_ar_r','천공 유성우',11,0xff8a2a,'h_meteor','주변 적과 지정한 곳에 유성을 쏟아붓습니다.'),
@@ -140,22 +142,23 @@ function makeHidden(cls,id){
   /* head: a mask with burning eyes and a floating crown or horns */
   SP(.29,face,0,0,0,H,12,10);for(const s of[-1,1]){const e=SP(.055,lit,s*.11,.02,.26,H,6,5);e.scale.set(1.5,.6,1)}
   const halo=grp(0,.18,-.42,o.head);
+  /* a cloth hood over the head (두건), shadowed inside, with a trimmed face opening */
+  { const side=c=>M(c,{side:THREE.DoubleSide,roughness:.75,emissive:c,emissiveIntensity:id==='fallen'?.08:.12});
+    hoodRig(o.head,o.torso,side(id==='fallen'?pal.dark:pal.main),side(id==='fallen'?0x050307:pal.dark),{peak:id==='arch'?.26:id==='fallen'?.46:.34,gap:1.55,cowlR:.5});
+    const rim=ring(.375,.024,id==='fallen'?edge:trim,0,.05,.24,H,Math.PI*1.16);rim.rotation.z=-Math.PI*.08; }
   if(id==='angel'){
-    const hood=SP(.36,main,0,.06,-.1,H,12,10);hood.scale.set(1.05,1.08,.95);cone(.2,.5,main,0,.4,-.16,H,8).rotation.x=-.4;
-    ring(.31,.03,trim,0,.14,0,H).rotation.x=Math.PI/2;
-    for(const s of[-1,1]){const f=cone(.09,.62,EM(0xffffff,.55),s*.42,.24,-.08,H,4);f.rotation.z=-s*.9;f.scale.z=.3}
+    OC(.06,lit,0,.42,.34,H);
+    for(const s of[-1,1]){const f=cone(.09,.62,EM(0xffffff,.55),s*.46,.26,-.08,H,4);f.rotation.z=-s*.9;f.scale.z=.3}
     ring(.4,.05,EM(0xffe9a0,1.6),0,.46,.42,halo).rotation.x=Math.PI/2;ring(.62,.025,aumat(0xdfeeff,.8),0,0,0,halo);
   }else if(id==='fallen'){
-    const hood=SP(.37,dark,0,.07,-.1,H,12,10);hood.scale.set(1.05,1.1,.95);cone(.22,.55,dark,0,.4,-.2,H,7).rotation.x=-.6;
     for(const s of[-1,1]){const hn=cone(.1,.62,trim,s*.3,.38,.02,H,6);hn.rotation.z=-s*.75;const tp=cone(.055,.46,edge,s*.54,.7,.02,H,5);tp.rotation.z=-s*.15;
       const hem=BX(.3,1.5,.05,dark,s*.34,-.65,-.46,T);hem.rotation.set(.18,0,s*.16)}
     ring(.62,.05,edge,0,0,0,halo,TAU*.72).rotation.z=2.2;ring(.46,.025,aumat(0x7a1fb0,.9),0,0,0,halo,TAU*.8);
     for(let i=0;i<7;i++){const a=.5+i*.75,sp=cone(.05,.4,trim,Math.cos(a)*.76,Math.sin(a)*.76,0,halo,4);sp.rotation.z=a-Math.PI/2}
   }else{
-    const helm=mesh(new THREE.SphereGeometry(.33,14,10,0,TAU,0,Math.PI*.46),trim,0,.03,-.01,H);helm.rotation.x=-.2;
-    BX(.07,.34,.07,trim,0,.12,.29,H);
-    for(let i=0;i<5;i++){const a=(i-2)*.52,c=cone(.065,i===2?.58:i%4?.42:.3,EM(0xffe27a,1.2),Math.sin(a)*.3,.46+(i===2?.08:0),Math.cos(a)*.3,H,4);c.rotation.z=-Math.sin(a)*.35}
-    for(const s of[-1,1]){const w=cone(.1,.55,main,s*.4,.2,-.06,H,4);w.rotation.z=-s*.85;w.scale.z=.25}
+    OC(.08,lit,0,.44,.34,H);
+    for(let i=0;i<5;i++){const a=(i-2)*.46,c=cone(.06,i===2?.52:i%4?.38:.26,EM(0xffe27a,1.2),Math.sin(a)*.36,.54+(i===2?.07:0),Math.cos(a)*.3-.02,H,4);c.rotation.z=-Math.sin(a)*.35}
+    for(const s of[-1,1]){const w=cone(.1,.55,trim,s*.47,.2,-.06,H,4);w.rotation.z=-s*.85;w.scale.z=.25}
     ring(.7,.06,EM(0xffd24a,1.6),0,0,0,halo);ring(.46,.025,EM(0xfff2a0,1.3),0,0,0,halo);
     for(let i=0;i<16;i++){const a=i*TAU/16,l=i%2?.3:.55,r=.7+l/2,c=cone(.045,l,EM(0xfff2a0,1.2),Math.sin(a)*r,Math.cos(a)*r,0,halo,4);c.rotation.z=-a}
   }
@@ -346,7 +349,7 @@ function openHidden(){
     let s='<div class="card"><div class="row sp"><b style="font-size:18px;color:'+h.col+'">'+h.name+'</b><span class="dim">'+(on?'사용 중':'원래 직업 사용 중')+'</span></div><div class="dim" style="margin:4px 0">'+h.story+'</div><div style="font-size:12px">'
       +['Q','E','R','F'].map((k,i)=>'<div><b class="gold">'+k+' '+h.skills[i].name+'</b> — '+h.skills[i].desc+'</div>').join('')+'</div>'
       +(pf.hidden==='arch'?'<div class="gold" style="margin-top:6px;font-size:12px">대천사 축복의 룬을 장착하면: 스킬 피해 +30%, 쿨타임 -15%, 최후의 심판 +4초</div>':'')
-      +'<div class="dim" style="margin-top:6px;font-size:12px">히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
+      +'<div class="dim" style="margin-top:6px;font-size:12px">기본 체력 '+fmtN(HIDDEN_HP)+'. 히든 상태에서는 모든 무기를 장착할 수 있고(능력치·마법부여 적용), 기본 공격은 날개로 합니다.</div></div>';
     s+='<div class="row sp" style="margin-top:10px;gap:8px"><button class="btn" data-a="hswap">'+(on?JOBS[pf.job].name+'(으)로 돌아가기':h.name+'(으)로 바꾸기')+'</button><button class="btn sm sec" data-a="hdrop">히든 클래스 포기</button></div>';
     return s;
   });

@@ -13,7 +13,7 @@ function derive(){
   const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor),pk=perkOf(pf);
   S={
     cls:pf.cls,job:curJob(pf),hidden:hid,atkCls:hid&&w?styleCls(w.base):pf.cls,level:L,
-    maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct+(rf?rf.hp:0))*(1+PERK.h.per*pk.h)),
+    maxHp:Math.round(((hid?HIDDEN_HP:(c.hp+L*c.hpLv)*(m.hp||1))+ab.hp)*(1+ab.hpPct+(rf?rf.hp:0))*(1+PERK.h.per*pk.h)),
     atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk)*(1+PERK.a.per*pk.a),wa,cdr:Math.min(.4,PERK.c.per*pk.c),
     aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
     spd:c.spd*(m.spd||1)*(1+ab.spd),
@@ -214,7 +214,7 @@ function trySkill(slot){
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
-  const cdk=sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
+  const cdk=sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1)*(S.hidden?HID_CD:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;

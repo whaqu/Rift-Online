@@ -820,7 +820,7 @@ const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;
 const qPower=ch=>ch>=1?1.4:.08+.82*ch;
 /* returns false when the skill could not be used */
 function castFx(sk){
-  const atk=effAtk()*(archSyn()?ARCH_SYN.atk:1),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
+  const atk=effAtk()*(archSyn()?ARCH_SYN.atk:1)*(S.hidden?HID_SKILL:1),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
   const ambush=P.stealth>0&&sk.fx!=='r_q'&&sk.fx!=='r_e';
   if(ambush)c.atk*=2.5;
   if(SK[sk.fx](c)===false)return false;

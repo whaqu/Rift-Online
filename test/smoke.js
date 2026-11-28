@@ -347,6 +347,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset();g.P.buff=null;
       }
     }
+    {g.derive();T(g.S.hidden&&g.S.maxHp>=7000&&g.S.maxHp<20000,'hidden class has a 7000 base hp ('+g.S.maxHp+')')}
     /* basic attack is a wing sweep with any weapon */
     {const keep=g.MOBS.splice(0);g.skReset();g.P.x=60;g.P.z=0;g.P.dead=false;g.P.face=0;g.P.atkCd=0;g.P.atkAnim=-1;g.derive();g.buildPlayerModel();
       const mk=(id,z)=>{const m=g.makeMobObj(id,'slime',60,z,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;m.x=60;m.z=z;return m};
