@@ -18,11 +18,11 @@ function initTouch(){
   joy.addEventListener('touchend',endJ);joy.addEventListener('touchcancel',endJ);
   const press=(id,fn,hold)=>{
     const el=$(id);if(!el)return;
-    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();auInit();fn(true)},{passive:false});
+    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();auInit();fn(true,e)},{passive:false});
     if(hold){const up=e=>{e.preventDefault();fn(false)};el.addEventListener('touchend',up);el.addEventListener('touchcancel',up)}
   };
   press('tb-atk',on=>{mv.atk=on},true);
-  press('tb-q',on=>{mv.q=on;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
+  press('tb-q',(on,e)=>{mv.q=on;mv.qt=on&&e&&e.changedTouches?e.changedTouches[0].identifier:null;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
   press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});

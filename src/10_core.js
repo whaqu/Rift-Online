@@ -375,12 +375,18 @@ addEventListener('keydown',e=>{
 function keyReleased(e){keys[String(e.key).toLowerCase()]=false;const k=downAs[e.code];if(k){keys[k]=false;delete downAs[e.code]}if(e.code==='KeyQ')keys.q=false}
 addEventListener('keyup',keyReleased);
 /* drop everything held when the release may never arrive */
-function releaseAll(){for(const k in keys)keys[k]=false;mouse.down=false;mv.q=false;mv.qp=null}
+function releaseAll(){for(const k in keys)keys[k]=false;mouse.down=false;mv.q=false;mv.qp=null;mv.qt=null}
 addEventListener('blur',releaseAll);
 addEventListener('contextmenu',releaseAll);
 addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll()});
 /* safety nets for a held Q button: no finger left on the screen, or the mouse button is already up */
-for(const n of['touchend','touchcancel'])addEventListener(n,e=>{if(e.touches&&e.touches.length===0){mv.q=false;mv.qp=null}},true);
+/* every touch event (the joystick moving too) confirms that the finger on Q is still down */
+function qTouchCheck(e){
+  if(!e.touches)return;
+  if(e.touches.length===0){mv.q=false;mv.qp=null;mv.qt=null;return}
+  if(mv.qt!=null&&!Array.from(e.touches).some(t=>t.identifier===mv.qt)){mv.q=false;mv.qt=null}
+}
+for(const n of['touchstart','touchmove','touchend','touchcancel'])addEventListener(n,qTouchCheck,{capture:true,passive:true});
 addEventListener('pointermove',e=>{if(mv.qp!=null&&e.pointerId===mv.qp&&e.buttons===0){mv.q=false;mv.qp=null}},true);
 canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;auInit()}else if(e.button===2&&typeof rightClickSkill==='function'){rightClickSkill()}});
 addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false});

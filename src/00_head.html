@@ -174,6 +174,8 @@ body.touch #touch{display:block}
 .tb .kk{position:absolute;right:6px;bottom:3px;font-size:10px;color:#cfd4e4;z-index:2}
 .tb.off{opacity:.35}
 #tb-atk{right:18px;bottom:22px;width:86px;height:86px;border-color:var(--ac);font-size:15px;background:radial-gradient(circle at 50% 30%,rgba(120,84,26,.95),rgba(48,32,10,.95))}
+/* the press must land on the button itself, never on a child that may be redrawn */
+.tb *,.sk *{pointer-events:none}
 #tb-q{right:114px;bottom:30px;width:58px;height:58px}#tb-e{right:106px;bottom:98px;width:58px;height:58px}#tb-r{right:36px;bottom:120px;width:58px;height:58px}#tb-f{right:182px;bottom:148px;width:54px;height:54px;border-color:#ff9a3a}
 #tb-dash{right:182px;bottom:24px;width:50px;height:50px}#tb-hp{right:176px;bottom:86px;width:50px;height:50px}
 #tb-recall{right:110px;bottom:166px;width:46px;height:46px;font-size:13px;border-color:#8fe8ff}

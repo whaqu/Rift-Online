@@ -174,6 +174,8 @@ body.touch #touch{display:block}
 .tb .kk{position:absolute;right:6px;bottom:3px;font-size:10px;color:#cfd4e4;z-index:2}
 .tb.off{opacity:.35}
 #tb-atk{right:18px;bottom:22px;width:86px;height:86px;border-color:var(--ac);font-size:15px;background:radial-gradient(circle at 50% 30%,rgba(120,84,26,.95),rgba(48,32,10,.95))}
+/* the press must land on the button itself, never on a child that may be redrawn */
+.tb *,.sk *{pointer-events:none}
 #tb-q{right:114px;bottom:30px;width:58px;height:58px}#tb-e{right:106px;bottom:98px;width:58px;height:58px}#tb-r{right:36px;bottom:120px;width:58px;height:58px}#tb-f{right:182px;bottom:148px;width:54px;height:54px;border-color:#ff9a3a}
 #tb-dash{right:182px;bottom:24px;width:50px;height:50px}#tb-hp{right:176px;bottom:86px;width:50px;height:50px}
 #tb-recall{right:110px;bottom:166px;width:46px;height:46px;font-size:13px;border-color:#8fe8ff}
@@ -679,12 +681,18 @@ addEventListener('keydown',e=>{
 function keyReleased(e){keys[String(e.key).toLowerCase()]=false;const k=downAs[e.code];if(k){keys[k]=false;delete downAs[e.code]}if(e.code==='KeyQ')keys.q=false}
 addEventListener('keyup',keyReleased);
 /* drop everything held when the release may never arrive */
-function releaseAll(){for(const k in keys)keys[k]=false;mouse.down=false;mv.q=false;mv.qp=null}
+function releaseAll(){for(const k in keys)keys[k]=false;mouse.down=false;mv.q=false;mv.qp=null;mv.qt=null}
 addEventListener('blur',releaseAll);
 addEventListener('contextmenu',releaseAll);
 addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll()});
 /* safety nets for a held Q button: no finger left on the screen, or the mouse button is already up */
-for(const n of['touchend','touchcancel'])addEventListener(n,e=>{if(e.touches&&e.touches.length===0){mv.q=false;mv.qp=null}},true);
+/* every touch event (the joystick moving too) confirms that the finger on Q is still down */
+function qTouchCheck(e){
+  if(!e.touches)return;
+  if(e.touches.length===0){mv.q=false;mv.qp=null;mv.qt=null;return}
+  if(mv.qt!=null&&!Array.from(e.touches).some(t=>t.identifier===mv.qt)){mv.q=false;mv.qt=null}
+}
+for(const n of['touchstart','touchmove','touchend','touchcancel'])addEventListener(n,qTouchCheck,{capture:true,passive:true});
 addEventListener('pointermove',e=>{if(mv.qp!=null&&e.pointerId===mv.qp&&e.buttons===0){mv.q=false;mv.qp=null}},true);
 canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;auInit()}else if(e.button===2&&typeof rightClickSkill==='function'){rightClickSkill()}});
 addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false});
@@ -6372,11 +6380,11 @@ function initTouch(){
   joy.addEventListener('touchend',endJ);joy.addEventListener('touchcancel',endJ);
   const press=(id,fn,hold)=>{
     const el=$(id);if(!el)return;
-    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();auInit();fn(true)},{passive:false});
+    el.addEventListener('touchstart',e=>{e.preventDefault();e.stopPropagation();auInit();fn(true,e)},{passive:false});
     if(hold){const up=e=>{e.preventDefault();fn(false)};el.addEventListener('touchend',up);el.addEventListener('touchcancel',up)}
   };
   press('tb-atk',on=>{mv.atk=on},true);
-  press('tb-q',on=>{mv.q=on;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
+  press('tb-q',(on,e)=>{mv.q=on;mv.qt=on&&e&&e.changedTouches?e.changedTouches[0].identifier:null;if(on)trySkill('q')},true);press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
   press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});
@@ -7040,7 +7048,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>
