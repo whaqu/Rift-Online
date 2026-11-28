@@ -412,6 +412,23 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(code(()=>A.gmResetInv('일반유저',u.token))==='NOT_ADMIN'&&code(()=>A.gmPassword('일반유저',u.token,'pw1234','newpass123'))==='NOT_ADMIN','normal account refused');
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
+  // semi-developer account: fixed Lv.65 storm +5 gear, nothing in or out, job switching only
+  {
+    const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}},N='1테스트';
+    await g.API.register(N,'semi-pass-1','archer');
+    const it=()=>g.SES.pf.items,n0=it().length;
+    T(g.SES.pf.semi&&!g.SES.pf.admin&&g.SES.pf.level===65,'semi account is Lv65, not admin');
+    T(n0===42&&it().every(i=>i.enh===5&&/_7(_|$)/.test(i.base)),'30 weapons and 12 armour pieces, storm +5');
+    T(it().filter(i=>i.eq).length===5,'weapon and full armour set equipped');
+    await g.API.call('gmJob','mage');T(g.SES.pf.cls==='mage'&&it().find(i=>i.kind==='weapon'&&i.eq).base==='mage_7'&&it().length===n0,'semi switches job freely');
+    const t=g.SES.token,id=it().find(i=>!i.eq).id;
+    T(['buy','sell','aucPost','enhance','enchant'].every(f=>code(()=>A[f](N,t,f==='buy'?'hp1':id,1,0))==='SEMI_LOCKED'),'no buying, selling, listing or upgrading');
+    T(code(()=>A.gmWeapon(N,t,'mage_8',20,[]))==='NOT_ADMIN'&&code(()=>A.gmGrowth(N,t,true))==='NOT_ADMIN'&&code(()=>A.gmPassword(N,t,'semi-pass-1','newpass123'))==='NOT_ADMIN'&&code(()=>A.gmResetInv(N,t))==='NOT_ADMIN','no weapon grant, growth or password tools');
+    let drops=0;for(let i=0;i<6;i++){const r=await g.API.call('claim',[{z:3,ml:20,e:true,n:30}]);drops+=r.drops.length}
+    await g.API.call('daily');
+    T(!drops&&g.SES.pf.items.length===n0&&g.SES.pf.level===65&&g.SES.pf.xp===0,'no drops, no items, level stays 65');
+    g.enterGame();step(3);g.openGM();T(g.UI.modal==='GM 패널','semi gets the GM panel');g.UI.close();
+  }
   // every class skill (Q/E/R/F) runs, does something and cleans up
   {
     await g.API.login('테스트','newpass123');g.enterGame();step(3);

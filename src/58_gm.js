@@ -1,7 +1,7 @@
 /* ---------------- GM panel (관리자 계정 전용) ----------------
-   일반 계정에는 버튼과 창을 아예 만들지 않는다. 실제 권한 검사는 서버(rw_gm_*)가 한다. */
+   일반 계정에는 버튼과 창을 아예 만들지 않는다. 세미 개발자(semi)는 직업 탭만 본다. 실제 권한 검사는 서버(rw_gm_*)가 한다. */
 function gmMenuButton(){
-  if(!SES.pf||!SES.pf.admin)return;
+  if(!SES.pf||!(SES.pf.admin||SES.pf.semi))return;
   const b=document.createElement('div');b.className='mbtn';b.title='GM 패널';b.innerHTML=ic('star','#ffd24a',20)+'<small>GM</small>';
   b.onclick=e=>{e.stopPropagation();if(!UI.modal)openGM()};
   $('menu').appendChild(b);
@@ -13,14 +13,14 @@ async function gmApply(fn,...a){
   buildPlayerModel();UI.refreshHud();netPresence();
 }
 function openGM(){
-  if(!SES.pf||!SES.pf.admin)return;
+  if(!SES.pf||!(SES.pf.admin||SES.pf.semi))return;
   let tab='job',cls=SES.pf.cls,wt=0,tier=8,enh=20,ench=[],busy=false;
   const run=async(fn,msg)=>{if(busy)return;busy=true;try{await fn();sfx('equip');UI.toast(msg)}catch(e){UI.toast(errKo(e.message))}busy=false;UI.rerender&&UI.rerender()};
   const btn=(a,v,label,on)=>'<button class="btn sm '+(on?'':'sec')+'" data-a="'+a+'" data-v="'+v+'">'+label+'</button>';
   const line=(title,body)=>'<div class="dim" style="margin:8px 0 4px">'+title+'</div><div class="row wrap" style="gap:6px">'+body+'</div>';
   const base=()=>cls+'_'+tier+(wt?'_'+wt:'');
   UI.page('GM 패널',()=>{
-    let h='<div class="tabs">'+[['job','직업'],['weapon','무기'],['grow','성장'],['acc','계정']].map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
+    let h='<div class="tabs">'+(SES.pf.admin?[['job','직업'],['weapon','무기'],['grow','성장'],['acc','계정']]:[['job','직업']]).map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
     h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'||tab==='acc'?'':line('계열',CLASSES.map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
     if(tab==='grow'){
       const k=perkOf(SES.pf),gl=gatLvOf((SES.pf.gather&&SES.pf.gather.xp)||0);

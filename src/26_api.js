@@ -23,6 +23,9 @@ async function rpc(fn,args){
 
 /* ---------- local fallback (same rules as the SQL functions) ---------- */
 const LOCAL_GM='테스트';   // offline mode: only this name gets the GM panel (starts at Lv.99)
+/* semi-developer account: Lv.65 fixed, every storm-tier(7) weapon and armour at +5, nothing in or out of the bag,
+   job switching only. Server: rw_semi table + rw_semi_guard trigger. */
+const LOCAL_SEMI='1테스트';
 /* offline mirror of rw_dungeon_begin/end: [need level, rank-1 gold, zone id (= weapon grade), side runes, potion] (area rune = dungeon id) */
 const DGSRV={
   meadow:[8,800,1,['holy','ice'],'hp1'],forest:[14,2000,2,['dark','meadow'],'hp1'],ember:[22,3600,3,['fire','thunder'],'hp2'],
@@ -54,16 +57,25 @@ const LocalAPI=(()=>{
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
       duel:{w:0,l:0,pt:0},
-      admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
+      semi:a.name===LOCAL_SEMI,admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
   function auth(n,t){const a=db.acc[n];if(!a||a.token!==t)E('BAD_AUTH');dqEnsure(a);return a}
+  function semiLock(n){if(n===LOCAL_SEMI)E('SEMI_LOCKED')}
+  function semiSetup(a){
+    db.items=db.items.filter(i=>i.owner!==a.name);
+    const add=(kind,base,eq)=>db.items.push({id:db.nid++,owner:a.name,kind,base,enh:5,ench:[],qty:1,eq,listed:false,gone:false});
+    for(const c of CLASSES)for(const v of ['','_1','_2'])add('weapon',c+'_7'+v,c===a.cls&&!v);
+    for(const s of ASET_KEYS)for(const sl of ASLOTS)add('armor',sl+'_7_'+s,s==='plate');
+    a.level=65;a.xp=0;
+  }
   function give(n,kind,base,q){
+    if(n===LOCAL_SEMI)return{id:0,kind,base,qty:0};   // drops and rewards never reach a semi account
     if(kind==='rune'){const it=db.items.find(i=>i.owner===n&&i.kind==='rune'&&i.base===base&&i.enh===(arguments[4]||1)&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}const r={id:db.nid++,owner:n,kind,base,enh:arguments[4]||1,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(r);return r}
     if(kind==='potion'||kind==='mat'){const it=db.items.find(i=>i.owner===n&&i.kind===kind&&i.base===base&&!i.listed&&!i.gone);if(it){it.qty+=q;return it}}
     const it={id:db.nid++,owner:n,kind,base,enh:0,ench:[],qty:q,eq:false,listed:false,gone:false};db.items.push(it);return it;
   }
-  function applyXp(a,x){a.xp+=x;while(a.level<99&&a.xp>=xpNeed(a.level)){a.xp-=xpNeed(a.level);a.level++}if(a.level>=99)a.xp=0}
+  function applyXp(a,x){if(a.name===LOCAL_SEMI)return;a.xp+=x;while(a.level<99&&a.xp>=xpNeed(a.level)){a.xp-=xpNeed(a.level);a.level++}if(a.level>=99)a.xp=0}
   const isNightL=()=>{const p=((Date.now()/1000)%DAYLEN)/DAYLEN;return p>=.55&&p<.95};
   const rnd01=Math.random;
   // seed a few fake market listings so the auction house isn't empty offline
@@ -81,7 +93,7 @@ const LocalAPI=(()=>{
       if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
       const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:name===LOCAL_GM?99:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
       if(name===LOCAL_GM){a.perks={a:98,h:98,c:40};a.gat_xp=9025}
-      const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5);wr();
+      if(name===LOCAL_SEMI)semiSetup(a);else{const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5)}wr();
       return{token:a.token,profile:pf(a)};
     },
     login(name,pass){rd();seedMarket();const a=db.acc[name];if(!a||a.pass!==pass)E('BAD_LOGIN');a.token='t'+Math.random().toString(36).slice(2);wr();return{token:a.token,profile:pf(a)}},
@@ -106,6 +118,7 @@ const LocalAPI=(()=>{
       a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;
       if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=9;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
       applyXp(a,xx);wr();
+      if(n===LOCAL_SEMI)drops.length=0;
       return{gold:gx,xp:xx,n:got,drops,night,profile:pf(a)};
     },
     daily(n,t){
@@ -122,7 +135,7 @@ const LocalAPI=(()=>{
       else E('BAD_ARGS');
       applyXp(a,rx);wr();return{gold:rg,xp:rx,profile:pf(a)};
     },
-    buy(n,t,base,q){
+    buy(n,t,base,q){semiLock(n);
       rd();const a=auth(n,t);q=clamp(q|0||1,1,99);
       if(POTIONS[base]){const p=POTIONS[base].price*q;if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'potion',base,q)}
       else if(new RegExp('^('+CLASSES.join('|')+')_[2-4](_[12])?$').test(base)){const p=WVALUE[wTier(base)-1];if(a.gold<p)E('NO_GOLD');a.gold-=p;give(n,'weapon',base,1)}
@@ -130,16 +143,16 @@ const LocalAPI=(()=>{
       else E('NOT_SOLD');
       wr();return pf(a);
     },
-    sell(n,t,id,q){
+    sell(n,t,id,q){semiLock(n);
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&!i.gone);if(!it||it.listed||it.eq)E('BAD_ITEM');
       let v;if(it.kind==='rune'){const qq=clamp(q|0||1,1,it.qty);v=runePrice(it.base,it.enh)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else if(it.kind==='weapon'||it.kind==='armor'){v=sellValue(it);it.gone=true}else if(it.kind==='mat'){const qq=clamp(q|0||1,1,it.qty);v=(MATS[it.base]?MATS[it.base].price:0)*qq;it.qty-=qq;if(it.qty<=0)it.gone=true}else{const qq=clamp(q|0||1,1,it.qty);v=Math.floor(POTIONS[it.base].price*.25*qq);it.qty-=qq;if(it.qty<=0)it.gone=true}
       a.gold+=v;wr();return pf(a);
     },
-    runeAttach(n,t,wid,rid){
+    runeAttach(n,t,wid,rid){semiLock(n);
       rd();const a=auth(n,t);const w=db.items.find(i=>i.id===wid&&i.owner===n&&i.kind==='weapon'&&!i.gone&&!i.listed),r=db.items.find(i=>i.id===rid&&i.owner===n&&i.kind==='rune'&&!i.gone&&!i.listed&&i.qty>0);
       if(!w||!r)E('BAD_ITEM');w.rune=r.base+':'+r.enh;r.qty--;if(r.qty<=0)r.gone=true;wr();return pf(a);
     },
-    runeFuse(n,t,mode,base,grade){
+    runeFuse(n,t,mode,base,grade){semiLock(n);
       rd();const a=auth(n,t);
       const have=(b,g)=>db.items.filter(i=>i.owner===n&&i.kind==='rune'&&i.base===b&&i.enh===g&&!i.gone&&!i.listed).reduce((s,i)=>s+i.qty,0);
       const take=(b,g,c)=>{for(const i of db.items){if(c<=0)break;if(i.owner===n&&i.kind==='rune'&&i.base===b&&i.enh===g&&!i.gone&&!i.listed){const x=Math.min(i.qty,c);i.qty-=x;c-=x;if(i.qty<=0)i.gone=true}}};
@@ -150,7 +163,7 @@ const LocalAPI=(()=>{
       }else E('BAD_ARGS');
       wr();return pf(a);
     },
-    runeBrew(n,t,id){
+    runeBrew(n,t,id){semiLock(n);
       rd();const a=auth(n,t);const r=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='rune'&&!i.gone&&!i.listed&&i.qty>0);if(!r||!RUNE_POTION[r.base])E('BAD_ITEM');
       const sp=RUNE_POTION[r.base],q=sp[1]*r.enh;r.qty--;if(r.qty<=0)r.gone=true;give(n,'potion',sp[0],q);wr();return{potion:sp[0],qty:q,profile:pf(a)};
     },
@@ -168,7 +181,7 @@ const LocalAPI=(()=>{
         give(n,'potion',pot,3);rw.push({t:'potion',base:pot,n:3});
         if(rnd01()<.15+(rk===2?.1:0)){const er=rnd01()<.4?zr:els[Math.floor(rnd01()*2)];give(n,'rune',er,1,1);rw.push({t:'rune',base:er,g:1,n:1})}
       }
-      wr();return{rewards:rw,rank:rk,profile:pf(a)};
+      wr();return{rewards:n===LOCAL_SEMI?rw.filter(x=>x.t==='gold'):rw,rank:rk,profile:pf(a)};
     },
     gather(n,t,weed,wood){
       rd();const a=auth(n,t);const lv0=gatLvOf(a.gat_xp||0),ch=gatDouble(lv0);
@@ -176,6 +189,7 @@ const LocalAPI=(()=>{
       let w=Math.min(tk|0,clamp(weed|0,0,30));tk-=w;let d=Math.min((tk/2)|0,clamp(wood|0,0,30));tk-=d*2;
       let gw=0,gd=0;for(let i=0;i<w;i++)gw+=1+(rnd01()<ch?1:0);for(let i=0;i<d;i++)gd+=1+(rnd01()<ch?1:0);
       a.gat_tk=tk;a.gat_ts=Date.now();a.gat_xp=(a.gat_xp||0)+w+d*5;
+      if(n===LOCAL_SEMI)gw=gd=0;
       if(gw>0)give(n,'mat','weed',gw);if(gd>0)give(n,'mat','wood',gd);
       wr();return{weed:gw,wood:gd,up:gatLvOf(a.gat_xp)>lv0,profile:pf(a)};
     },
@@ -194,14 +208,14 @@ const LocalAPI=(()=>{
       rd();const a=auth(n,t);const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone&&i.qty>0);if(!it)E('NO_POTION');
       it.qty--;if(it.qty<=0)it.gone=true;if(base!=='tp')dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
     },
-    enhance(n,t,id){
+    enhance(n,t,id){semiLock(n);
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
       if(it.enh>=maxEnh(it))E('MAX_ENH');const cost=enhCost(it.base,it.enh);if(a.gold<cost)E('NO_GOLD');a.gold-=cost;
       const rate=ENH_RATE[it.enh];let res;
       if(rnd01()*100<rate){it.enh++;res='success'}else if(it.enh>=7){it.enh--;res='drop'}else res='fail';
       wr();return{result:res,cost,rate,enh:it.enh,profile:pf(a)};
     },
-    enchant(n,t,id,slot){
+    enchant(n,t,id,slot){semiLock(n);
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&i.kind==='weapon'&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
       const cnt=it.ench.length;let cost,res;
       if(slot==null||slot<0){
@@ -223,12 +237,12 @@ const LocalAPI=(()=>{
         .sort((a,b)=>b.x.created-a.x.created).slice(0,60).map(o=>({id:o.x.id,seller:o.x.seller,price:o.x.price,item:{id:o.i.id,kind:o.i.kind,base:o.i.base,enh:o.i.enh,ench:o.i.ench,qty:o.i.qty}}));
     },
     aucMine(n,t){rd();auth(n,t);return db.auc.filter(x=>x.seller===n).sort((a,b)=>b.id-a.id).slice(0,30).map(x=>{const i=db.items.find(i=>i.id===x.item_id);return{id:x.id,price:x.price,status:x.status,buyer:x.buyer,item:{id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty}}})},
-    aucPost(n,t,id,price){
+    aucPost(n,t,id,price){semiLock(n);
       rd();const a=auth(n,t);if(!(price>=1&&price<=1e8))E('BAD_PRICE');const it=db.items.find(i=>i.id===id&&i.owner===n&&!i.gone);if(!it||it.listed||it.eq)E('BAD_ITEM');
       if(db.auc.filter(x=>x.seller===n&&x.status==='active').length>=20)E('TOO_MANY');it.listed=true;db.auc.push({id:db.aid++,seller:n,item_id:it.id,price,status:'active',created:Date.now()});wr();return pf(a);
     },
     aucCancel(n,t,id){rd();const a=auth(n,t);const x=db.auc.find(x=>x.id===id&&x.seller===n&&x.status==='active');if(!x)E('BAD_LISTING');x.status='cancelled';db.items.find(i=>i.id===x.item_id).listed=false;wr();return pf(a)},
-    aucBuy(n,t,id){
+    aucBuy(n,t,id){semiLock(n);
       rd();const a=auth(n,t);const x=db.auc.find(x=>x.id===id&&x.status==='active');if(!x)E('SOLD_OUT');if(x.seller===n)E('OWN_LISTING');if(a.gold<x.price)E('NO_GOLD');
       const fee=Math.floor(x.price*.05);a.gold-=x.price;const s=db.acc[x.seller];if(s)s.gold+=x.price-fee;
       const it=db.items.find(i=>i.id===x.item_id);it.owner=n;it.listed=false;it.eq=false;x.status='sold';x.buyer=n;wr();return pf(a);
@@ -249,7 +263,7 @@ const LocalAPI=(()=>{
       give(n,'weapon',a.cls+'_1',1).eq=true;give(n,'potion','hp1',5);wr();return pf(a);
     },
     gmJob(n,t,job){
-      rd();const a=auth(n,t);if(n!==LOCAL_GM)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
+      rd();const a=auth(n,t);if(n!==LOCAL_GM&&n!==LOCAL_SEMI)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
       const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
       if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCls(i.base)===j.cls).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
       wr();return pf(a);
