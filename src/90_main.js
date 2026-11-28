@@ -76,7 +76,7 @@ function frame(dt){
     const modal=!!UI.modal;
     playerFacing(dt);
     const watch=DU.on&&DU.role==='spec';
-    if(watch){P.ix=P.iz=0;P.vx=P.vz=0}else if(P.dead||modal){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
+    if(watch){P.ix=P.iz=0;P.vx=P.vz=0}else if(P.dead||modal||P.stunT>0){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
     tickPlayer(dt);tickGather(dt);
     if(!modal&&!watch&&!(DU.on&&DU.ph!=='fight'))tryAttackInput();
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);

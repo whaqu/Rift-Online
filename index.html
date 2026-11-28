@@ -3150,7 +3150,7 @@ function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
   if(el==='fire')burnMob(e,atk*.35);
   else if(el==='ice')freezeMob(e,1.5);
-  else if(el==='thunder'){let q=null,bd=36;for(const m of MOBS){if(m===e||m.dead||m.spawning)continue;const d=d2(m.x,m.z,e.x,e.z);if(d<bd){bd=d;q=m}}if(q){boltFx(e.x,e.z,q.x,q.z,0xfff2a0);dealMob(q,atk*.5,{noKb:true,noProc:true})}}
+  else if(el==='thunder'){let q=null,bd=36;for(const m of MOBS){if(m===e||m.dead||m.spawning)continue;const d=d2(m.x,m.z,e.x,e.z);if(d<bd){bd=d;q=m}}if(q){boltFx(e.x,e.z,q.x,q.z,0xfff2a0);dealMob(q,atk*.5,{noKb:true,noProc:true})}else if(e.duel){boltFx(e.x,e.z+1,e.x,e.z,0xfff2a0);duelHitOut(e,atk*.5)}}
   else if(el==='dark'){if(G.t-(P.elHT||0)>.15){P.elHT=G.t;healP(Math.max(1,Math.round(S.maxHp*.012)))}}
 }
 function castSkill(sk,slot){
@@ -3223,7 +3223,7 @@ function dashStrike(dt){
   if(P.dashT<=0)P.dashHit=null;
 }
 function doDash(){
-  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.hidden||UI.modal)return;
+  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.hidden||P.stunT>0||UI.modal)return;
   let dx=P.ix,dz=P.iz;if(!dx&&!dz){dx=Math.sin(P.face);dz=Math.cos(P.face)}
   const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8*(1-S.cdr);
   sfx('dash');burst(P.x,.6,P.z,10,0xffffff,4,.3,0);
@@ -3326,8 +3326,8 @@ function explodeAt(x,z,r,dmg,hex){
 }
 
 /* ---------------- damage to monsters ---------------- */
-function freezeMob(m,t){if(m.ghost){netSendHit(m,0,{fz:t});return}m.freeze=Math.max(m.freeze||0,m.elite?t*.5:t)}
-function burnMob(m,dps){if(m.ghost){netSendHit(m,0,{bn:dps});return}m.burnT=3;m.burnD=Math.max(m.burnD||0,dps)}
+function freezeMob(m,t){if(m.duel){duelStunOut(t);return}if(m.ghost){netSendHit(m,0,{fz:t});return}m.freeze=Math.max(m.freeze||0,m.elite?t*.5:t)}
+function burnMob(m,dps){if(m.duel){duelBurnOut(dps);return}if(m.ghost){netSendHit(m,0,{bn:dps});return}m.burnT=3;m.burnD=Math.max(m.burnD||0,dps)}
 function dealMob(m,base,o){
   if(m.dead)return;o=o||{};
   const crit=o.crit!==undefined?o.crit:Math.random()<S.crit;
@@ -3342,7 +3342,7 @@ function dealMob(m,base,o){
   if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28);hitStop(.04)}else cam.shake=Math.max(cam.shake,heavy?.2:.06);
   if(heavy)hitStop(.055);
   const kk={kx:o.kx||0,kz:o.kz||0,kb:o.noKb?0:(o.kb||0)};
-  if(m.duel){duelHitOut(m,d);return}
+  if(m.duel){duelHitOut(m,d);if(kk.kb)duelPushOut(kk.kx,kk.kz,kk.kb*.22);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
   if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
@@ -4021,7 +4021,7 @@ function skReset(){
   P.stealth=0;P.leap=null;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
-const skBusy=()=>!!(P.leap||P.hidden||P.chan>0);
+const skBusy=()=>!!(P.leap||P.hidden||P.chan>0||P.stunT>0);
 
 /* ---------- helpers ---------- */
 const alive=m=>!!m&&!m.dead&&!m.spawning;
@@ -4041,6 +4041,7 @@ function sArea(c,x,z,r,mult,o){const l=mobsIn(x,z,r);for(const m of l)sHit(c,m,m
 /* move a monster toward (dx,dz) by about `dist` */
 function shove(m,dx,dz,dist){
   const l=Math.hypot(dx,dz);if(l<.01||!alive(m))return;
+  if(m.duel){duelPushOut(dx,dz,dist);return}
   const kk={kx:dx/l,kz:dz/l,kb:Math.min(20,dist*4.4)};
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
@@ -4205,7 +4206,7 @@ const SK={
     let x=P.x,z=P.z,gone=0;const held=new Set();
     act(1,(t,dt)=>{const st=36*dt;x+=a.x*st;z+=a.z*st;gone+=st;g.position.set(x,1.2,z);emit(x,1.2,z,0,0,0,.3,c.col,0);
       for(const m of mobsIn(x,z,1.5)){if(!held.has(m)){held.add(m);sHit(c,m,1.8,{noProc:true})}}
-      for(const m of held)if(alive(m)){if(m.ghost)shove(m,a.x,a.z,2);else{m.x=x+a.x*.6;m.z=z+a.z*.6;m.kx=m.kz=0}}
+      for(const m of held)if(alive(m)){if(m.duel)duelMoveOut(x+a.x*.6,z+a.z*.6);else if(m.ghost)shove(m,a.x,a.z,2);else{m.x=x+a.x*.6;m.z=z+a.z*.6;m.kx=m.kz=0}}
       if(gone>=17)return true},()=>{for(const m of held)if(valid(m))sHit(c,m,2.4,{x:x-a.x,z:z-a.z,freeze:2,big:true});boom(x,z,3,c.col,.5)},g);
     sfx('shot');netFx('shot',{x:P.x,z:P.z,vx:a.x*36,vz:a.z*36,v:'arrow',c:c.col});
   },
@@ -4427,8 +4428,8 @@ const SK={
   brawler(c){
     const m=aimMob(8);if(!m){UI.toast('가까운 대상이 없습니다');return false}
     const a=c.a,x0=P.x,z0=P.z,sx=m.x,sz=m.z,tx=P.x+a.x*10,tz=P.z+a.z*10;freezeMob(m,1.2);P.atkAnim=0;P.atkDur=.5;sHit(c,m,1,{noProc:true});
-    act(.55,t=>{const u=t/.55;if(valid(m)&&!m.ghost){m.x=lerp(sx,tx,u);m.z=lerp(sz,tz,u);m.kx=m.kz=0;if(m.m&&m.m.g)m.m.g.position.y=Math.sin(u*Math.PI)*5}},
-      ()=>{if(m.m&&m.m.g)m.m.g.position.y=0;sArea(c,tx,tz,4.5,4.2,{kb:12,freeze:1,big:true});boom(tx,tz,4.5,c.col,.9);hitStop(.08)});
+    act(.55,t=>{const u=t/.55;if(valid(m)&&!m.ghost&&!m.duel){m.x=lerp(sx,tx,u);m.z=lerp(sz,tz,u);m.kx=m.kz=0;if(m.m&&m.m.g)m.m.g.position.y=Math.sin(u*Math.PI)*5}},
+      ()=>{if(m.duel)duelMoveOut(tx,tz);if(m.m&&m.m.g)m.m.g.position.y=0;sArea(c,tx,tz,4.5,4.2,{kb:12,freeze:1,big:true});boom(tx,tz,4.5,c.col,.9);hitStop(.08)});
     sfx('hit');
   },
   zenmaster(c){
@@ -5423,7 +5424,7 @@ function duelEnter(){
 }
 function duelStart(id,a,b){
   DU.on=true;DU.role='fight';DU.id=id;DU.a=a;DU.b=b;DU.opp=a===SES.name?b:a;DU.ph='count';DU.pt=3;DU.t=0;DU.out=0;DU.prox=null;DU.res=null;DU.seen=Date.now();
-  DU.back={x:P.x,z:P.z};UI.close();duelEnter();
+  DU.back={x:P.x,z:P.z};UI.close();duelEnter();duelClearFx();
   P.recall=0;P.x=DU.x+(a===SES.name?-6:6);P.z=DU.z;P.vx=P.vz=0;P.face=a===SES.name?Math.PI/2:-Math.PI/2;P.hp=S.maxHp;P.shield=0;P.iframes=0;cam.x=P.x;cam.z=P.z;
   for(const k of['q','e','r','f'])P.cd[k]=0;P.dashCd=0;
   NET.lastPos=0;
@@ -5438,7 +5439,7 @@ function duelSpectate(name){
 function duelLeave(msg){
   if(!DU.on)return;
   const spec=DU.role==='spec',back=DU.back;
-  DU.on=false;DU.ph='idle';DU.prox=null;DU.role=null;DU.res=null;
+  DU.on=false;duelClearFx();DU.ph='idle';DU.prox=null;DU.role=null;DU.res=null;
   if(DU.arena)DU.arena.g.visible=false;worldG.visible=true;skReset();resetMobs();
   if(!spec&&back){P.x=back.x;P.z=back.z;P.vx=P.vz=0;P.hp=S.maxHp;P.shield=0;P.iframes=2}
   cam.x=P.x;cam.z=P.z;if(PM&&PM.g)PM.g.visible=true;
@@ -5449,7 +5450,7 @@ function duelLeave(msg){
 /* the fight is decided; stay a moment, then return */
 function duelFinish(winner,msg){
   if(!DU.on||DU.ph==='end')return;
-  DU.ph='end';DU.pt=3.5;DU.res=msg||(winner+'님의 승리!');
+  DU.ph='end';duelClearFx();DU.pt=3.5;DU.res=msg||(winner+'님의 승리!');
   if(DU.prox){removeMob(DU.prox,false);DU.prox=null}
   if(DU.role==='fight'){skReset();P.iframes=9}
 }
@@ -5484,13 +5485,44 @@ function duelHitOut(m,d){
 function onDuelHit(d){
   if(!d||!DU.on||DU.role!=='fight'||DU.ph!=='fight'||d.id!==DU.id||d.t!==SES.name||d.f!==DU.opp)return;
   if(P.dead||P.iframes>0||P.dashT>0||P.hidden)return;
-  let dmg=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
-  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  duelFxIn(d);
+  const raw=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
+  if(raw>0){burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);duelHurt(raw)}
+}
+
+/* ---------- crowd control: stun, burn, knockback, pull and throw all reach the opponent ---------- */
+const duelFxOut=()=>DU.fx||(DU.fx={});
+function duelStunOut(t){if(DU.ph==='fight'){const f=duelFxOut();f.fz=Math.max(f.fz||0,t)}}
+function duelBurnOut(dps){if(DU.ph==='fight'){const f=duelFxOut();f.bn=Math.max(f.bn||0,Math.round(dps))}}
+/* displacement: keep only the strongest push of this tick (skills that push every frame must not add up) */
+function duelPushOut(dx,dz,dist){
+  const l=Math.hypot(dx,dz);if(DU.ph!=='fight'||l<.01||!(dist>.05))return;
+  const f=duelFxOut(),o=f.mv;if(!o||Math.hypot(o[0],o[1])<dist)f.mv=[+(dx/l*dist).toFixed(2),+(dz/l*dist).toFixed(2)];
+}
+function duelMoveOut(x,z){if(DU.ph==='fight')duelFxOut().to=[+x.toFixed(2),+z.toFixed(2)]}   // carried or thrown to a spot
+function duelFxIn(d){
+  if(+d.bn>0){DU.burnT=3;DU.burnD=Math.max(DU.burnD||0,Math.min(+d.bn,S.maxHp*2))}
+  /* stun is halved and capped, then there is a short immunity so that ice hits cannot lock someone forever */
+  if(+d.fz>0&&!(P.stunT>0)&&!(P.stunImm>0)){P.stunT=Math.min(1.5,d.fz*.6);P.stunImm=P.stunT+1.5;P.vx=P.vz=0;dmgNum(P.x,3.6,P.z,'기절!','info')}
+  const V=a=>Array.isArray(a)&&isFinite(a[0])&&isFinite(a[1]);
+  let dx=0,dz=0;
+  if(V(d.to)){const e={x:+d.to[0],z:+d.to[1]};duelClampXZ(e);dx=e.x-P.x;dz=e.z-P.z}
+  else if(V(d.mv)){dx=+d.mv[0];dz=+d.mv[1];const l=Math.hypot(dx,dz);if(l>9){dx*=9/l;dz*=9/l}}
+  if(dx||dz){DU.kn={vx:dx/.18,vz:dz/.18,t:.18};if(P.recall>0)cancelRecall('')}
+}
+function duelHurt(raw){
+  let dmg=Math.max(1,Math.round(raw*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab}
   if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(.6);cam.shake=Math.max(cam.shake,.25)}
-  burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);
   if(P.hp<=0){P.hp=1;duelLose()}
 }
+function duelTickFx(dt){
+  if(P.stunImm>0)P.stunImm-=dt;
+  if(P.stunT>0){P.stunT-=dt;if(Math.random()<dt*14)emit(P.x+rnd(-.6,.6),rnd(1.6,2.8),P.z+rnd(-.6,.6),0,.5,0,.4,0xffe27a,0)}
+  if(DU.kn){const k=DU.kn,s=Math.min(dt,k.t);P.x+=k.vx*s;P.z+=k.vz*s;pushOut(P,P.r);k.t-=dt;if(k.t<=0)DU.kn=null}
+  if(DU.burnT>0){DU.burnT-=dt;DU.burnC=(DU.burnC||0)-dt;if(DU.burnC<=0){DU.burnC=.5;burst(P.x,1.2,P.z,6,0xff7a2a,3,.4,-2);duelHurt(Math.min(DU.burnD*.5*DUEL_K,S.maxHp*.04))}if(DU.burnT<=0)DU.burnD=0}
+}
+function duelClearFx(){DU.fx=null;DU.kn=null;DU.burnT=0;DU.burnD=0;DU.burnC=0;DU.out=0;if(P){P.stunT=0;P.stunImm=0}}
 
 /* ---------- HUD ---------- */
 function duelHud(on){
@@ -5538,7 +5570,8 @@ function duelUpdate(dt){
   }else if(DU.ph==='fight'){
     const p=NET.peers[DU.opp],m=DU.prox;
     if(m&&p){m.x=m.tx=p.x;m.z=m.tz=p.z;m.dead=false;m.hp=m.maxHp*Math.max(.01,p.hp/100);if(!MOBS.includes(m))MOBS.push(m)}
-    DU.flush-=dt;if(DU.out>0&&DU.flush<=0){DU.flush=.1;netSend('dh',{id:DU.id,f:SES.name,t:DU.opp,d:Math.round(DU.out)});DU.out=0}
+    DU.flush-=dt;if((DU.out>0||DU.fx)&&DU.flush<=0){DU.flush=.1;netSend('dh',Object.assign({id:DU.id,f:SES.name,t:DU.opp,d:Math.round(DU.out)},DU.fx));DU.out=0;DU.fx=null}
+    if(DU.role==='fight')duelTickFx(dt);
     /* time over: the one with less HP left concedes (ties: the challenger) */
     if(DU.t>=DUEL_TIME&&p){const me=P.hp/S.maxHp*100;if(me<p.hp||(me===p.hp&&DU.a===SES.name))duelLose('시간 종료 · 패배')}
   }
@@ -6436,7 +6469,7 @@ function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
   p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
-  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
+  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
   if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
@@ -6545,7 +6578,7 @@ function netUpdate(dt){
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
       if(moved||now-NET.lastPos>(DU.on?200:1200)){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp]:0})}
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -6554,7 +6587,8 @@ function netUpdate(dt){
     if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
     if(!p.label)p.label=makeLabel(peerLabel(p),'pl');
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
-    const show=duelShows(k);p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
+    const show=duelShows(k)&&!(p.du&&p.du.hid);   // a stealthed opponent really disappears
+    p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
     if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
   }
@@ -6683,7 +6717,7 @@ function frame(dt){
     const modal=!!UI.modal;
     playerFacing(dt);
     const watch=DU.on&&DU.role==='spec';
-    if(watch){P.ix=P.iz=0;P.vx=P.vz=0}else if(P.dead||modal){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
+    if(watch){P.ix=P.iz=0;P.vx=P.vz=0}else if(P.dead||modal||P.stunT>0){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
     tickPlayer(dt);tickGather(dt);
     if(!modal&&!watch&&!(DU.on&&DU.ph!=='fight'))tryAttackInput();
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);

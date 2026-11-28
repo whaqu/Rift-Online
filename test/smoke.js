@@ -439,6 +439,13 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         T(cd>0&&hit,'skill '+job+' '+slot+' '+sk.name+' cd='+cd+' hit='+hit);
         run(400);T(g.ACTS.length===0&&g.DECOYS.length===0&&!g.skBusy()&&Number.isFinite(g.P.x)&&Number.isFinite(g.P.hp),'skill '+sk.name+' cleans up '+g.ACTS.length);
       }
+      for(const slot of job===c?['q','e','f']:['r']){   // the same skill against a duel opponent
+        await setup(job);const m=dummy(0,5);m.duel=true;m.freeze=0;aim(0,5);g.DU.ph='fight';g.DU.out=0;g.DU.fx=null;
+        const sk=g.skillOf(slot);g.trySkill(slot);if(sk.fx==='mk_q'||sk.fx==='g_e')for(let i=0;i<150;i++){aim(0,4);g.tickPlayer(.016)}
+        if(sk.fx==='r_e')aim(0,1);run(530);
+        if(!['c_q','c_e','r_e','priest','crusader','moly'].includes(sk.fx))T(g.DU.out>0,'skill reaches duel opponent: '+job+' '+sk.name);
+        g.DU.ph='idle';g.DU.out=0;g.DU.fx=null;
+      }
       if(job!==c&&g.JOBS[job].tier===2){await setup(job);dummy(0,4);aim(0,4);g.trySkill('r');run(200);T(g.P.cd.r>0&&g.skillOf('r').el===g.JOBS[job].el,'awakened R '+job)}
     }
     T(fxs.size===50,'50 distinct skill behaviours: '+fxs.size);
@@ -585,6 +592,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     for(let i=0;i<35;i++)g.duelUpdate(.1);T(g.DU.ph==='fight'&&!!g.DU.prox,'duel fight phase');
     g.dealMob(g.DU.prox,100,{crit:false});g.duelUpdate(.2);T(sent.some(o=>o.event==='dh'&&o.payload.d>0&&o.payload.t==='상대'),'hit sent to opponent');
     const hp=g.P.hp;g.P.iframes=0;g.P.dashT=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:200});T(g.P.hp<hp,'duel damage taken');
+    g.P.iframes=0;g.P.stunT=0;g.P.stunImm=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:0,fz:2,mv:[3,0],bn:50});
+    T(g.P.stunT>0&&g.P.stunT<=1.5&&g.skBusy(),'duel stun applies');const kx=g.P.x,bh=g.P.hp;for(let i=0;i<25;i++)g.duelUpdate(.1);T(g.P.x>kx+2&&g.P.hp<bh&&!(g.P.stunT>0),'duel knockback and burn apply, stun ends');
+    g.P.hp=g.S.maxHp;
     for(let i=0;i<20&&g.DU.ph==='fight';i++){g.P.iframes=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:1e9})}
     T(g.DU.ph==='end'&&sent.some(o=>o.event==='de'&&o.payload.w==='상대'&&o.payload.counted===1),'loser reports defeat');
     for(let i=0;i<45;i++)g.duelUpdate(.1);T(!g.DU.on&&g.P.x===x0&&g.P.z===z0,'returns after duel');

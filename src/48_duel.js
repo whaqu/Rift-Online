@@ -102,7 +102,7 @@ function duelEnter(){
 }
 function duelStart(id,a,b){
   DU.on=true;DU.role='fight';DU.id=id;DU.a=a;DU.b=b;DU.opp=a===SES.name?b:a;DU.ph='count';DU.pt=3;DU.t=0;DU.out=0;DU.prox=null;DU.res=null;DU.seen=Date.now();
-  DU.back={x:P.x,z:P.z};UI.close();duelEnter();
+  DU.back={x:P.x,z:P.z};UI.close();duelEnter();duelClearFx();
   P.recall=0;P.x=DU.x+(a===SES.name?-6:6);P.z=DU.z;P.vx=P.vz=0;P.face=a===SES.name?Math.PI/2:-Math.PI/2;P.hp=S.maxHp;P.shield=0;P.iframes=0;cam.x=P.x;cam.z=P.z;
   for(const k of['q','e','r','f'])P.cd[k]=0;P.dashCd=0;
   NET.lastPos=0;
@@ -117,7 +117,7 @@ function duelSpectate(name){
 function duelLeave(msg){
   if(!DU.on)return;
   const spec=DU.role==='spec',back=DU.back;
-  DU.on=false;DU.ph='idle';DU.prox=null;DU.role=null;DU.res=null;
+  DU.on=false;duelClearFx();DU.ph='idle';DU.prox=null;DU.role=null;DU.res=null;
   if(DU.arena)DU.arena.g.visible=false;worldG.visible=true;skReset();resetMobs();
   if(!spec&&back){P.x=back.x;P.z=back.z;P.vx=P.vz=0;P.hp=S.maxHp;P.shield=0;P.iframes=2}
   cam.x=P.x;cam.z=P.z;if(PM&&PM.g)PM.g.visible=true;
@@ -128,7 +128,7 @@ function duelLeave(msg){
 /* the fight is decided; stay a moment, then return */
 function duelFinish(winner,msg){
   if(!DU.on||DU.ph==='end')return;
-  DU.ph='end';DU.pt=3.5;DU.res=msg||(winner+'님의 승리!');
+  DU.ph='end';duelClearFx();DU.pt=3.5;DU.res=msg||(winner+'님의 승리!');
   if(DU.prox){removeMob(DU.prox,false);DU.prox=null}
   if(DU.role==='fight'){skReset();P.iframes=9}
 }
@@ -163,13 +163,44 @@ function duelHitOut(m,d){
 function onDuelHit(d){
   if(!d||!DU.on||DU.role!=='fight'||DU.ph!=='fight'||d.id!==DU.id||d.t!==SES.name||d.f!==DU.opp)return;
   if(P.dead||P.iframes>0||P.dashT>0||P.hidden)return;
-  let dmg=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
-  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  duelFxIn(d);
+  const raw=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
+  if(raw>0){burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);duelHurt(raw)}
+}
+
+/* ---------- crowd control: stun, burn, knockback, pull and throw all reach the opponent ---------- */
+const duelFxOut=()=>DU.fx||(DU.fx={});
+function duelStunOut(t){if(DU.ph==='fight'){const f=duelFxOut();f.fz=Math.max(f.fz||0,t)}}
+function duelBurnOut(dps){if(DU.ph==='fight'){const f=duelFxOut();f.bn=Math.max(f.bn||0,Math.round(dps))}}
+/* displacement: keep only the strongest push of this tick (skills that push every frame must not add up) */
+function duelPushOut(dx,dz,dist){
+  const l=Math.hypot(dx,dz);if(DU.ph!=='fight'||l<.01||!(dist>.05))return;
+  const f=duelFxOut(),o=f.mv;if(!o||Math.hypot(o[0],o[1])<dist)f.mv=[+(dx/l*dist).toFixed(2),+(dz/l*dist).toFixed(2)];
+}
+function duelMoveOut(x,z){if(DU.ph==='fight')duelFxOut().to=[+x.toFixed(2),+z.toFixed(2)]}   // carried or thrown to a spot
+function duelFxIn(d){
+  if(+d.bn>0){DU.burnT=3;DU.burnD=Math.max(DU.burnD||0,Math.min(+d.bn,S.maxHp*2))}
+  /* stun is halved and capped, then there is a short immunity so that ice hits cannot lock someone forever */
+  if(+d.fz>0&&!(P.stunT>0)&&!(P.stunImm>0)){P.stunT=Math.min(1.5,d.fz*.6);P.stunImm=P.stunT+1.5;P.vx=P.vz=0;dmgNum(P.x,3.6,P.z,'기절!','info')}
+  const V=a=>Array.isArray(a)&&isFinite(a[0])&&isFinite(a[1]);
+  let dx=0,dz=0;
+  if(V(d.to)){const e={x:+d.to[0],z:+d.to[1]};duelClampXZ(e);dx=e.x-P.x;dz=e.z-P.z}
+  else if(V(d.mv)){dx=+d.mv[0];dz=+d.mv[1];const l=Math.hypot(dx,dz);if(l>9){dx*=9/l;dz*=9/l}}
+  if(dx||dz){DU.kn={vx:dx/.18,vz:dz/.18,t:.18};if(P.recall>0)cancelRecall('')}
+}
+function duelHurt(raw){
+  let dmg=Math.max(1,Math.round(raw*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab}
   if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(.6);cam.shake=Math.max(cam.shake,.25)}
-  burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);
   if(P.hp<=0){P.hp=1;duelLose()}
 }
+function duelTickFx(dt){
+  if(P.stunImm>0)P.stunImm-=dt;
+  if(P.stunT>0){P.stunT-=dt;if(Math.random()<dt*14)emit(P.x+rnd(-.6,.6),rnd(1.6,2.8),P.z+rnd(-.6,.6),0,.5,0,.4,0xffe27a,0)}
+  if(DU.kn){const k=DU.kn,s=Math.min(dt,k.t);P.x+=k.vx*s;P.z+=k.vz*s;pushOut(P,P.r);k.t-=dt;if(k.t<=0)DU.kn=null}
+  if(DU.burnT>0){DU.burnT-=dt;DU.burnC=(DU.burnC||0)-dt;if(DU.burnC<=0){DU.burnC=.5;burst(P.x,1.2,P.z,6,0xff7a2a,3,.4,-2);duelHurt(Math.min(DU.burnD*.5*DUEL_K,S.maxHp*.04))}if(DU.burnT<=0)DU.burnD=0}
+}
+function duelClearFx(){DU.fx=null;DU.kn=null;DU.burnT=0;DU.burnD=0;DU.burnC=0;DU.out=0;if(P){P.stunT=0;P.stunImm=0}}
 
 /* ---------- HUD ---------- */
 function duelHud(on){
@@ -217,7 +248,8 @@ function duelUpdate(dt){
   }else if(DU.ph==='fight'){
     const p=NET.peers[DU.opp],m=DU.prox;
     if(m&&p){m.x=m.tx=p.x;m.z=m.tz=p.z;m.dead=false;m.hp=m.maxHp*Math.max(.01,p.hp/100);if(!MOBS.includes(m))MOBS.push(m)}
-    DU.flush-=dt;if(DU.out>0&&DU.flush<=0){DU.flush=.1;netSend('dh',{id:DU.id,f:SES.name,t:DU.opp,d:Math.round(DU.out)});DU.out=0}
+    DU.flush-=dt;if((DU.out>0||DU.fx)&&DU.flush<=0){DU.flush=.1;netSend('dh',Object.assign({id:DU.id,f:SES.name,t:DU.opp,d:Math.round(DU.out)},DU.fx));DU.out=0;DU.fx=null}
+    if(DU.role==='fight')duelTickFx(dt);
     /* time over: the one with less HP left concedes (ties: the challenger) */
     if(DU.t>=DUEL_TIME&&p){const me=P.hp/S.maxHp*100;if(me<p.hp||(me===p.hp&&DU.a===SES.name))duelLose('시간 종료 · 패배')}
   }

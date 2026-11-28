@@ -137,7 +137,7 @@ function skReset(){
   P.stealth=0;P.leap=null;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
-const skBusy=()=>!!(P.leap||P.hidden||P.chan>0);
+const skBusy=()=>!!(P.leap||P.hidden||P.chan>0||P.stunT>0);
 
 /* ---------- helpers ---------- */
 const alive=m=>!!m&&!m.dead&&!m.spawning;
@@ -157,6 +157,7 @@ function sArea(c,x,z,r,mult,o){const l=mobsIn(x,z,r);for(const m of l)sHit(c,m,m
 /* move a monster toward (dx,dz) by about `dist` */
 function shove(m,dx,dz,dist){
   const l=Math.hypot(dx,dz);if(l<.01||!alive(m))return;
+  if(m.duel){duelPushOut(dx,dz,dist);return}
   const kk={kx:dx/l,kz:dz/l,kb:Math.min(20,dist*4.4)};
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
@@ -321,7 +322,7 @@ const SK={
     let x=P.x,z=P.z,gone=0;const held=new Set();
     act(1,(t,dt)=>{const st=36*dt;x+=a.x*st;z+=a.z*st;gone+=st;g.position.set(x,1.2,z);emit(x,1.2,z,0,0,0,.3,c.col,0);
       for(const m of mobsIn(x,z,1.5)){if(!held.has(m)){held.add(m);sHit(c,m,1.8,{noProc:true})}}
-      for(const m of held)if(alive(m)){if(m.ghost)shove(m,a.x,a.z,2);else{m.x=x+a.x*.6;m.z=z+a.z*.6;m.kx=m.kz=0}}
+      for(const m of held)if(alive(m)){if(m.duel)duelMoveOut(x+a.x*.6,z+a.z*.6);else if(m.ghost)shove(m,a.x,a.z,2);else{m.x=x+a.x*.6;m.z=z+a.z*.6;m.kx=m.kz=0}}
       if(gone>=17)return true},()=>{for(const m of held)if(valid(m))sHit(c,m,2.4,{x:x-a.x,z:z-a.z,freeze:2,big:true});boom(x,z,3,c.col,.5)},g);
     sfx('shot');netFx('shot',{x:P.x,z:P.z,vx:a.x*36,vz:a.z*36,v:'arrow',c:c.col});
   },
@@ -543,8 +544,8 @@ const SK={
   brawler(c){
     const m=aimMob(8);if(!m){UI.toast('가까운 대상이 없습니다');return false}
     const a=c.a,x0=P.x,z0=P.z,sx=m.x,sz=m.z,tx=P.x+a.x*10,tz=P.z+a.z*10;freezeMob(m,1.2);P.atkAnim=0;P.atkDur=.5;sHit(c,m,1,{noProc:true});
-    act(.55,t=>{const u=t/.55;if(valid(m)&&!m.ghost){m.x=lerp(sx,tx,u);m.z=lerp(sz,tz,u);m.kx=m.kz=0;if(m.m&&m.m.g)m.m.g.position.y=Math.sin(u*Math.PI)*5}},
-      ()=>{if(m.m&&m.m.g)m.m.g.position.y=0;sArea(c,tx,tz,4.5,4.2,{kb:12,freeze:1,big:true});boom(tx,tz,4.5,c.col,.9);hitStop(.08)});
+    act(.55,t=>{const u=t/.55;if(valid(m)&&!m.ghost&&!m.duel){m.x=lerp(sx,tx,u);m.z=lerp(sz,tz,u);m.kx=m.kz=0;if(m.m&&m.m.g)m.m.g.position.y=Math.sin(u*Math.PI)*5}},
+      ()=>{if(m.duel)duelMoveOut(tx,tz);if(m.m&&m.m.g)m.m.g.position.y=0;sArea(c,tx,tz,4.5,4.2,{kb:12,freeze:1,big:true});boom(tx,tz,4.5,c.col,.9);hitStop(.08)});
     sfx('hit');
   },
   zenmaster(c){

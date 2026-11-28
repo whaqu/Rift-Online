@@ -197,7 +197,7 @@ function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
   if(el==='fire')burnMob(e,atk*.35);
   else if(el==='ice')freezeMob(e,1.5);
-  else if(el==='thunder'){let q=null,bd=36;for(const m of MOBS){if(m===e||m.dead||m.spawning)continue;const d=d2(m.x,m.z,e.x,e.z);if(d<bd){bd=d;q=m}}if(q){boltFx(e.x,e.z,q.x,q.z,0xfff2a0);dealMob(q,atk*.5,{noKb:true,noProc:true})}}
+  else if(el==='thunder'){let q=null,bd=36;for(const m of MOBS){if(m===e||m.dead||m.spawning)continue;const d=d2(m.x,m.z,e.x,e.z);if(d<bd){bd=d;q=m}}if(q){boltFx(e.x,e.z,q.x,q.z,0xfff2a0);dealMob(q,atk*.5,{noKb:true,noProc:true})}else if(e.duel){boltFx(e.x,e.z+1,e.x,e.z,0xfff2a0);duelHitOut(e,atk*.5)}}
   else if(el==='dark'){if(G.t-(P.elHT||0)>.15){P.elHT=G.t;healP(Math.max(1,Math.round(S.maxHp*.012)))}}
 }
 function castSkill(sk,slot){
@@ -270,7 +270,7 @@ function dashStrike(dt){
   if(P.dashT<=0)P.dashHit=null;
 }
 function doDash(){
-  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.hidden||UI.modal)return;
+  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.hidden||P.stunT>0||UI.modal)return;
   let dx=P.ix,dz=P.iz;if(!dx&&!dz){dx=Math.sin(P.face);dz=Math.cos(P.face)}
   const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8*(1-S.cdr);
   sfx('dash');burst(P.x,.6,P.z,10,0xffffff,4,.3,0);
