@@ -108,6 +108,33 @@ function hidBlank(root,keep){
   const go=n=>{if(!n||keep.has(n))return;if(n.material){if(n.isSprite||n.type==='Sprite')n.visible=false;else{n.material=HID_INV;n.castShadow=false}}if(n.children)for(const c of n.children)go(c)};
   go(root);
 }
+/* balance mode: same figure, far fewer draw calls. Each group's own meshes (outlines included) become one mesh per material,
+   so every moving part still moves. Nearly-solid wing feathers turn solid, which lets them be joined without layering changes. */
+const HID_SOLID=new Map();
+function hidSolid(m){
+  if(!m.transparent||!(m.opacity>=.93))return m;
+  let s=HID_SOLID.get(m);if(!s){s=new THREE.MeshBasicMaterial({color:m.color,side:THREE.DoubleSide});HID_SOLID.set(m,s)}return s;
+}
+function hidMerge(node){
+  if(!node||!node.children)return;
+  const own=[],buckets=new Map();
+  for(const c of node.children.slice()){
+    if(c.isMesh&&!c.userData.ol){if(c.material&&c.material!==HID_INV&&c.geometry&&c.geometry.clone&&(c.children||[]).every(k=>k.isMesh&&!(k.children||[]).length))own.push(c);else hidMerge(c)}
+    else if(!c.isMesh&&!c.isSprite)hidMerge(c);
+  }
+  if(own.length<2)return;
+  const put=(mesh,matrix)=>{
+    const mat=hidSolid(mesh.material),key=mat.uuid+'|'+(mesh.castShadow?1:0)+(mesh.userData.ol?1:0);
+    let b=buckets.get(key);if(!b){b={mat,cs:mesh.castShadow,ol:!!mesh.userData.ol,geos:[]};buckets.set(key,b)}
+    const g=mesh.geometry.index?mesh.geometry.toNonIndexed():mesh.geometry.clone();g.applyMatrix4(matrix);b.geos.push(g)};
+  try{
+    for(const m of own){m.updateMatrix();put(m,m.matrix);
+      for(const k of m.children){k.updateMatrix();put(k,new THREE.Matrix4().multiplyMatrices(m.matrix,k.matrix))}}
+    const made=[...buckets.values()].map(b=>{const x=new THREE.Mesh(balConcat(b.geos),b.mat);x.castShadow=b.cs;if(b.ol)x.userData.ol=true;return x});
+    for(const m of own)node.remove(m);
+    for(const x of made)node.add(x);
+  }catch(e){}   // keep the separate meshes if joining is not possible
+}
 function makeHidden(cls,id){
   const h=HIDDEN[id],o=makeHero(cls,h.pal.main),pal=h.pal,colN=parseInt(h.col.slice(1),16);
   hidBlank(o.body,new Set());o.orb=null;o.orbGlow=null;
@@ -183,6 +210,9 @@ function makeHidden(cls,id){
   ring(1.35,.04,cm,0,0,0,circle).rotation.x=Math.PI/2;ring(.95,.02,cm,0,0,0,circle).rotation.x=Math.PI/2;
   for(let i=0;i<8;i++){const a=i*TAU/8,b=mesh(new THREE.BoxGeometry(.1,.02,.3),cm,Math.sin(a)*1.15,0,Math.cos(a)*1.15,circle,false);b.rotation.y=a}
   const aura=glow(colN,5.6,.4);aura.position.set(0,1.1,-.3);o.body.add(aura);o.aura=aura;
+  /* balance mode has no bloom: soft extra halos stand in for it */
+  const bloom=[[colN,3.4,.3,0,2.2,-.5],[colN,6.5,.16,0,1.4,-.7]].map(([c,r,op,x,y,z])=>{const s=glow(c,r,op);s.position.set(x,y,z);s.visible=balOn();o.body.add(s);return s});
+  if(balOn()&&HID_INV&&o.g.children.length)hidMerge(o.g);
   o.g.scale.setScalar(h.size);o.base=h.size;
   o.hid=id;o.hover=HID_HOVER;
   o.hidSyn=on=>{if(!!on===!!o.synGlow)return;
@@ -200,6 +230,7 @@ function makeHidden(cls,id){
     const ka=wk(t,-1,0),kb=wk(t,1,0);   // ka: left side, kb: right side
     o.wingK=[ka,kb];
     o.body.rotation.y=(ka-kb)*.32;
+    const low=balOn();for(const s of bloom)s.visible=low;
     o.body.position.y=HID_HOVER+Math.sin(t*2.2)*.14;
     /* no weapon in hand: arms held a little open, the wings do the striking */
     o.armL.rotation.set(.12-ka*.5,0,-.3-ka*.25);o.armR.rotation.set(.12-kb*.5,0,.3+kb*.25);o.torso.rotation.y=0;

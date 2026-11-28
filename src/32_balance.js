@@ -34,6 +34,7 @@ function applyGfxMode(){
   const ty=on?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;       // hard-edged PCF is clearly cheaper on integrated GPUs
   if(renderer.shadowMap.type!==ty){renderer.shadowMap.type=ty;scene.traverse(o=>{if(o.material)[].concat(o.material).forEach(m=>{m.needsUpdate=true})})}
   renderer.shadowMap.autoUpdate=!on;                            // balance mode refreshes the shadow map every BAL.sn frames (see balCull)
+  if(typeof PM!=='undefined'&&PM&&PM.hid&&PM.lowBuilt!==on){buildPlayerModel();PM.lowBuilt=on}
   if(on)balApply(BQ.lv);else{BAL.rd=70;GRASS_U.uFade.value.set(1e5,1e5+1)}
   try{resize()}catch(e){}
 }
@@ -216,7 +217,7 @@ function balAura(o,body,pieces,glows){
 function balEntities(){
   if(!P)return;
   const on=balOn(),dist=o=>Math.hypot(o.g.position.x-P.x,o.g.position.z-P.z),far=o=>on&&dist(o)>BAL.nd;
-  if(PM)balAura(PM,true,true,!on);
+  if(PM)balAura(PM,true,true,!on||!!(PM.omni&&PM.omni.kind===2));   // the archangel wings keep their glow
   for(const k in NET.peers){
     const p=NET.peers[k],m=p.model;
     if(m){const f=far(m);balDetail(m,f);balAura(m,!f,!f&&!(on&&BQ.lv>=2),!on);if(on&&!DG.on&&!DU.on&&dist(m)>BAL.rd)m.g.visible=false}

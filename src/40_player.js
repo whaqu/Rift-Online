@@ -125,7 +125,7 @@ function updatePlayerModel(dt){
   animHeroFor(PM,P.animT,P.glide||air?0:P.spdN,P.atkAnim,P.dashT>0,P.swing);
   PM.body.position.z=0;if(air>0)glidePose(PM,P.animT,air);
   if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0||PM.hid?b.position.y:0;g.position.z=air>0?b.position.z:0}
-  if(PM.hid&&PM.g.visible&&Math.random()<dt*(balOn()?3:11))emit(P.x+rnd(-.7,.7),PM.g.position.y+rnd(.2,1.2),P.z+rnd(-.7,.7),0,rnd(-.8,-.2),0,rnd(.5,1),parseInt(HIDDEN[PM.hid].col.slice(1),16),0);
+  if(PM.hid&&PM.g.visible&&Math.random()<dt*(balOn()?7:11))emit(P.x+rnd(-.7,.7),PM.g.position.y+rnd(.2,1.2),P.z+rnd(-.7,.7),0,rnd(-.8,-.2),0,rnd(.5,1),parseInt(HIDDEN[PM.hid].col.slice(1),16),0);
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
   if(PM.omni&&PM.omni.kind===2&&PM.g.visible&&Math.random()<dt*(balOn()?2:7)){const s=Math.random()<.5?-1:1,r=rnd(.5,2.2);emit(P.x+Math.cos(PM.g.rotation.y)*s*r,PM.g.position.y+rnd(1.2,2.6),P.z-Math.sin(PM.g.rotation.y)*s*r,0,rnd(-.5,.2),0,rnd(.5,.9),Math.random()<.5?0xffffff:0xffe08a,0)}
