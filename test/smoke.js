@@ -289,6 +289,12 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       T([q('mat','m3'),q('rune','all'),q('mat','m6'),q('rune','void')].join()===[before[0]+1,before[1]+2,before[2]+2,before[3]+2].join(),'every material returns');
       T(g.SES.pf.items.filter(i=>i.kind==='weapon'&&i.eq).length===1,'a weapon stays equipped');
     }
+    {
+      const r=g.RECIPES.find(r=>r.id==='rune_all'),keys=g.recipeCells(r).filter(Boolean),put=enh=>{const d5=JSON.parse(localStorage.getItem(K));d5.items=d5.items.filter(i=>!(i.owner===me&&i.kind==='rune'));for(const k of keys)d5.items.push({id:d5.nid++,owner:me,kind:'rune',base:k.split(':')[1],enh,ench:[],qty:1,eq:false,listed:false,gone:false});localStorage.setItem(K,JSON.stringify(d5))};
+      put(1);await g.API.resume(me,g.SES.token);let e5='';try{await g.API.call('craft','rune_all')}catch(e){e5=e.message}T(keys.length===9&&e5==='NO_MAT'&&!g.craftable(r),'grade I runes cannot make the Rune of All');
+      put(2);await g.API.resume(me,g.SES.token);T(g.craftable(r)&&g.craftHtml(g.recipeCells(r),null,'').includes('만물의 룬'),'the Rune of All is on the crafting table');
+      await g.API.call('craft','rune_all');const rs=g.SES.pf.items.filter(i=>i.kind==='rune');T(rs.length===1&&rs[0].base==='all'&&rs[0].qty===1,'crafting uses the nine runes and gives the Rune of All');
+    }
     localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
   }
   // ---- dungeon ----

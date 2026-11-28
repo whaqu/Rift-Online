@@ -226,7 +226,10 @@ const RECIPES=[
   {id:'omni_sheriff',base:'gunner_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3',I:'mat:m7'},
    pattern:['.....','....C','ECRIF','...W.','...W.']},
   {id:'chromaice',base:'sword_10_3',grade:'유니크',key:{E:'mat:m3',R:'rune:all',V:'mat:m6',D:'rune:void'},
-   pattern:['..E..','..R..','.VRV.','..D..','..D..']}
+   pattern:['..E..','..R..','.VRV.','..D..','..D..']},
+  /* 만물의 룬: the nine region runes, each grade II or higher (min). out = a non-weapon result */
+  {id:'rune_all',out:'rune:all',min:2,grade:'룬',key:Object.fromEntries(REGION_RUNE.map((k,i)=>[String(i+1),'rune:'+k])),
+   pattern:['.....','.123.','.456.','.789.','.....']}
 ];
 /* the recipe a crafted weapon came from (undefined for every other item) */
 const recipeOf=b=>RECIPES.find(r=>r.base===b);
@@ -338,7 +341,7 @@ function questText(q){
 const questDone=c=>!!c&&c.p>=c.t;
 /* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
 function runeFrom(k){
-  if(k==='all')return '합성 전용';
+  if(k==='all')return '제작대';
   const own=REGION_RUNE.includes(k)?[k]:[],ds=own.concat(REGION_RUNE.filter(d=>d!==k&&DGSRV[d][3].includes(k)));
   return ds.map(d=>ZONES[REGION_RUNE.indexOf(d)+1].name).join('·')+' 던전';
 }

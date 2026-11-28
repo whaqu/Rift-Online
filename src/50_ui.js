@@ -106,8 +106,7 @@ function openInventory(){
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
-          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 9개 지역의 룬('+REGION_RUNE.map(k=>RUNES[k].name.replace('의 룬','')).join('·')+')을 Ⅱ 이상으로 모두 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
-          +(REGION_RUNE.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
+          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 9개 지역의 룬('+REGION_RUNE.map(k=>RUNES[k].name.replace('의 룬','')).join('·')+')을 Ⅱ 이상으로 모두 모으면 대장간 제작대에서 ‘만물의 룬’을 만들 수 있습니다.</div>';
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">'+(MATS[sel.base].mob?'몬스터에게서 얻은 전리품입니다. 상점에 팔거나 경매·교환할 수 있습니다.':'강화 재료로 쓰일 수 있는 채집 재료입니다.')+'</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
@@ -158,7 +157,6 @@ UI.handlers.none=()=>{};
 UI.handlers.equip=v=>{sfx('equip');return guarded(()=>API.call('equip',+v),'장비를 변경했습니다').then(()=>{if(SES.pf.items.find(i=>i.eq&&i.id==v)){buildPlayerModel();netPresence()}})};
 UI.handlers.rattach=async v=>{const w=myItems().find(i=>i.kind==='weapon'&&i.eq);if(!w)return;if(w.rune&&!(await UI.confirm('현재 장착된 룬이 사라지고 교체됩니다. 계속할까요?')))return;await guarded(()=>API.call('runeAttach',w.id,+v),'룬을 장착했습니다');derive();netPresence()};
 UI.handlers.rfuse=v=>{const r=byId(+v);if(!r)return;sfx('level');guarded(()=>API.call('runeFuse','up',r.base,r.enh),'룬을 합성했습니다')};
-UI.handlers.rall=()=>{sfx('level');guarded(()=>API.call('runeFuse','all'),'만물의 룬을 얻었습니다!')};
 UI.handlers.rbrew=async v=>{const r=await guarded(()=>API.call('runeBrew',+v));if(r)UI.toast(POTIONS[r.potion].name+' x'+r.qty+' 제작')};
 UI.handlers.dgout=()=>dgOut();
 UI.handlers.sellall=v=>{const it=byId(+v);if(!it)return;sfx('coin');guarded(()=>API.call('sell',+v,it.qty),'모두 판매했습니다')};
@@ -233,8 +231,10 @@ function openShop(){
 }
 
 /* ---------- blacksmith ---------- */
-const craftHave=k=>{const[t,b]=k.split(':');return myItems().filter(i=>i.kind===t&&i.base===b&&!i.listed).reduce((s,i)=>s+i.qty,0)};
-const craftable=r=>Object.entries(recipeNeed(r)).every(([k,n])=>craftHave(k)>=n);
+const craftHave=(k,min)=>{const[t,b]=k.split(':');return myItems().filter(i=>i.kind===t&&i.base===b&&!i.listed&&(i.enh||0)>=(min||0)).reduce((s,i)=>s+i.qty,0)};
+const craftable=r=>Object.entries(recipeNeed(r)).every(([k,n])=>craftHave(k,r.min)>=n);
+/* what a recipe makes: a weapon (base) or a rune (out) */
+const rName=r=>r.out?matName(r.out):wName(r.base),rCol=r=>r.out?matCol(r.out):TIER_COL[wTier(r.base)-1],rIcon=r=>r.out?'gem':WICON[wCls(r.base)];
 /* left: recipes you have every material for · middle: 5x5 table and result · bottom: your materials */
 function craftHtml(grid,pick,msg){
   for(let i=0,used={};i<grid.length;i++){const k=grid[i];if(k&&(used[k]=(used[k]||0)+1)>craftHave(k))grid[i]=null}
@@ -242,9 +242,9 @@ function craftHtml(grid,pick,msg){
   const cell=(k,i)=>'<div data-a="ccell" data-v="'+i+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2;word-break:keep-all;overflow:hidden;background:#232940;border:2px solid '+(k?matCol(k):'#4a5274')+';color:'+(k?matCol(k):'#fff')+'">'+(k?matName(k):'')+'</div>';
   const keys=[...Object.keys(RUNES).map(b=>'rune:'+b),...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
-  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic(WICON[wCls(r.base)],TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
+  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+rCol(r)+'">'+ic(rIcon(r),rCol(r),24)+'<div style="font-weight:700;color:'+rCol(r)+'">'+rName(r)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)]+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?'아홉 지역 룬 각 Ⅱ 이상':hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;
@@ -288,8 +288,8 @@ function openSmith(){
   UI.handlers.cmake=async()=>{
     const r=craftMatch(grid);if(!r||crafting||!craftable(r))return;crafting=true;
     try{
-      if(!(await UI.confirm('재료를 모두 사용해 '+wName(r.base)+'을(를) 제작할까요?')))return;
-      await API.call('craft',r.id);grid.fill(null);pick=null;msg='<b style="color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+' 제작 완료! 가방에서 장착하세요.</b>';
+      if(!(await UI.confirm('재료를 모두 사용해 '+rName(r)+'을(를) 제작할까요?')))return;
+      await API.call('craft',r.id);grid.fill(null);pick=null;msg='<b style="color:'+rCol(r)+'">'+rName(r)+' 제작 완료! 가방에서 장착하세요.</b>';
       sfx('level');UI.refreshHud();if(P)shockRing(P.x,P.z,5,0xff4fd8,.8);UI.rerender();
     }catch(e){UI.toast(errKo(e.message))}finally{crafting=false}
   };

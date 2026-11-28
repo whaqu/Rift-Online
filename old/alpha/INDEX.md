@@ -64,3 +64,4 @@
 - a62_assassin-q-tap_town-glide: 암살자 Q 꾹 누르기 달리기·연속 공격 제거(한 번 누르면 도약 공격 한 번), 마을에서도 두 번 눌러 활공
 - a63_assassin-q-free-jump: 암살자 Q — 적이 없어도 16m 멀리뛰기(게이지 소모 없음)
 - a64_assassin-q-dash-jump: 암살자 Q 빈 점프를 더 높고 약간 느리게, 0.5초 대기를 누른 순간부터 계산
+- a65_rune-all-crafting: 만물의 룬을 대장간 제작대에서 조합(지역 룬 9종 각 Ⅱ 이상, 3x3), 가방의 합성 버튼 제거

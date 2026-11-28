@@ -229,10 +229,11 @@ const LocalAPI=(()=>{
     },
     craft(n,t,id){semiLock(n);
       rd();const a=auth(n,t),r=RECIPES.find(r=>r.id===id);if(!r)E('BAD_ARGS');
-      const need=Object.entries(recipeNeed(r)),own=k=>{const[kd,b]=k.split(':');return db.items.filter(i=>i.owner===n&&i.kind===kd&&i.base===b&&!i.listed&&!i.gone)};
+      const need=Object.entries(recipeNeed(r)),own=k=>{const[kd,b]=k.split(':');return db.items.filter(i=>i.owner===n&&i.kind===kd&&i.base===b&&!i.listed&&!i.gone&&(i.enh||0)>=(r.min||0)).sort((x,y)=>(x.enh||0)-(y.enh||0))};
       if(need.some(([k,c])=>own(k).reduce((s,i)=>s+i.qty,0)<c))E('NO_MAT');
       for(let[k,c]of need)for(const i of own(k)){const x=Math.min(i.qty,c);i.qty-=x;c-=x;if(i.qty<=0)i.gone=true}
-      give(n,'weapon',r.base,1);wr();return{base:r.base,profile:pf(a)};
+      if(r.out)give(n,'rune',r.out.split(':')[1],1,1);else give(n,'weapon',r.base,1);
+      wr();return{base:r.base||r.out,profile:pf(a)};
     },
     runeRestore(n,t,wid){semiLock(n);
       rd();const a=auth(n,t);const w=db.items.find(i=>i.id===wid&&i.owner===n&&i.kind==='weapon'&&!i.gone&&!i.listed);if(!w||!w.rune)E('BAD_ITEM');
