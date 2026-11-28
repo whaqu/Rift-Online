@@ -318,7 +318,11 @@ function runeFx(s){
 }
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
 /* rune effect of an equipped weapon, including the same-region bonus */
-function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null;return o&&runeMatch(w.base,w.rune)?scaleFx(o,RUNE_MATCH):o}
+/* 대천사 synergy: a crafted weapon with 대천사 in its name (not just 천사 / 타락천사) holding the 대천사 rune */
+const ANGEL_SYN=1.3;
+const angelSyn=(base,rune)=>String(rune||'').split(':')[0]==='angel'&&!!recipeOf(base)&&String(wName(base)).includes('대천사');
+const runeBonus=(base,rune)=>angelSyn(base,rune)?ANGEL_SYN:runeMatch(base,rune)?RUNE_MATCH:0;
+function weaponRuneFx(w){const o=w&&w.rune?runeFx(w.rune):null,k=o?runeBonus(w.base,w.rune):0;return k?scaleFx(o,k):o}
 const xpBase=l=>30+7*l*l;
 /* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
 const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);

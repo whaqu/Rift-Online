@@ -296,6 +296,10 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       const a=g.SES.pf.items.find(i=>i.kind==='rune'&&i.base==='angel'),w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);T(!!a&&!!w,'angel rune is crafted');
       await g.API.call('runeAttach',w.id,a.id);T(g.myOmni()===2,'angel rune gives the wing aura');
       const o=g.makeHeroFor('warrior','warrior',0xffffff);g.omniApply(o,2);T(o.omni&&o.omni.kind===2&&o.omni.pieces.length>10,'angel wings are built');o.omni.anim(1.7,0,0);g.omniApply(o,1);T(o.omni.kind===1,'aura swaps');g.omniApply(o,0);T(!o.omni,'aura removed');
+      {const fx=b=>g.weaponRuneFx({base:b,rune:'angel:1'}).hp,old=g.UNAMES.sword_10;
+        T(!g.angelSyn('sword_10','angel:1')&&Math.abs(fx('sword_10')-.3)<1e-9,'no synergy without 대천사 in the name');
+        for(const n of['천사의 검','타락천사의 검']){g.UNAMES.sword_10=n;T(!g.angelSyn('sword_10','angel:1'),'no synergy for '+n)}
+        g.UNAMES.sword_10='대천사의 검';T(g.angelSyn('sword_10','angel:1')&&!g.angelSyn('sword_10','all:1')&&Math.abs(fx('sword_10')-.39)<1e-9,'대천사 weapon gets the synergy');g.UNAMES.sword_10=old}
     }
     {
       const w=g.SES.pf.items.find(i=>i.base==='sword_10_3'),d4=JSON.parse(localStorage.getItem(K));d4.acc[me].gold=150000;localStorage.setItem(K,JSON.stringify(d4));await g.API.resume(me,g.SES.token);

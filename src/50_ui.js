@@ -97,13 +97,13 @@ function openInventory(){
         det+='<div class="row wrap" style="margin-top:8px">'+(sel.eq?(sel.kind==='armor'?'<button class="btn sm sec" data-a="equip" data-v="'+sel.id+'">해제</button>':''):'<button class="btn sm" data-a="equip" data-v="'+sel.id+'">장착</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">상점 판매 ('+fmtG(sellValue(sel))+')</button>')+(sel.eq?'':'<button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button>')+'</div>';
         if(sel.eq)det+='<div class="dim" style="margin-top:6px">장착 중인 장비는 판매할 수 없습니다.</div>';
         if(sel.kind==='weapon'&&wType(sel.base))det+='<div class="dim" style="margin-top:6px">'+WTMOD[wType(sel.base)].d+'</div>';
-        if(sel.kind==='weapon'&&sel.rune){const p=sel.rune.split(':'),m=runeMatch(sel.base,sel.rune);det+='<div class="dim" style="margin-top:4px">룬 효과: '+esc(runeDesc(p[0],+p[1],m?RUNE_MATCH:0))+(m?' (짝 보너스 적용)':'')+'</div>'}
+        if(sel.kind==='weapon'&&sel.rune){const p=sel.rune.split(':'),m=runeBonus(sel.base,sel.rune);det+='<div class="dim" style="margin-top:4px">룬 효과: '+esc(runeDesc(p[0],+p[1],m))+(angelSyn(sel.base,sel.rune)?' (대천사 시너지 +'+Math.round((ANGEL_SYN-1)*100)+'%)':m?' (짝 보너스 적용)':'')+'</div>'}
         if(UARMOR[sel.base])det+='<div class="dim" style="margin-top:6px">'+UARMOR[sel.base].d+'</div>';
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
         const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=!SPECIAL_RUNE[sel.base]&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
         det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'<br>지역: '+runeFrom(sel.base)+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
-          +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
+          +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(angelSyn(ww.base,sel.base)?' ★시너지':runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
