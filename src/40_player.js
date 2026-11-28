@@ -329,12 +329,47 @@ function tickRecall(dt){
   }
 }
 
+/* ----- teleport scroll: pick a spot on the world map ----- */
+const tpBlocked=()=>!P||P.dead?'지금은 사용할 수 없습니다':DU.on?'결투 중에는 사용할 수 없습니다':DG.on?'던전에서는 사용할 수 없습니다':'';
+function openTeleport(){
+  const why=tpBlocked();if(why){UI.toast(why);return}
+  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
+}
+function tpDrawMap(){
+  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();
+  c.onclick=ev=>{const r=c.getBoundingClientRect(),W=c.width,sc=(W/2-14)/WORLD_R;
+    teleportTo(((ev.clientX-r.left)*W/r.width-W/2)/sc,((ev.clientY-r.top)*W/r.height-W/2)/sc)};
+}
+/* nearest free spot inside the world */
+function tpSpot(x,z){
+  const l=Math.hypot(x,z),max=WORLD_R-6;if(l>max){x*=max/l;z*=max/l}
+  for(let i=0;i<80;i++){const a=i*2.4,d=i*.6,nx=x+Math.cos(a)*d,nz=z+Math.sin(a)*d;if(Math.hypot(nx,nz)<=max&&!blocked(nx,nz,1.2))return{x:nx,z:nz}}
+  return{x:SPAWN.x,z:SPAWN.z};
+}
+let tpBusy=false;
+async function teleportTo(x,z){
+  if(tpBusy||!isFinite(x)||!isFinite(z))return false;
+  const why=tpBlocked();if(why){UI.toast(why);return false}
+  tpBusy=true;
+  try{
+    await API.call('usePotion','tp');
+    UI.close();
+    if(tpBlocked())return false;
+    const q=tpSpot(x,z);cancelRecall();pillar(P.x,P.z,0xc79bff,14,.5);
+    P.x=q.x;P.z=q.z;P.vx=P.vz=0;P.iframes=Math.max(P.iframes,2);cam.x=P.x;cam.z=P.z;
+    ringBurst(P.x,.2,P.z,18,0xc79bff,9,.5);pillar(P.x,P.z,0xc79bff,14,.5);sfx('level');UI.toast('순간이동했습니다');
+    UI.refreshHud();return true;
+  }catch(e){UI.toast(errKo(e.message));return false}
+  finally{tpBusy=false}
+}
+
 /* ----- potions ----- */
 function usePotionKey(base){
   if(!P||P.dead)return;
   if(DU.on){UI.toast('결투 중에는 물약을 쓸 수 없습니다');return}const pd=POTIONS[base];if(!pd)return;
   const it=SES.pf.items.find(i=>i.kind==='potion'&&i.base===base&&!i.listed&&i.qty>0);
   if(!it){UI.toast(pd.name+' 없음');return}
+  if(pd.kind==='tp'){openTeleport();return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}
   else{const k=base;if(P.pot[k]>0){UI.toast('이미 효과가 적용 중입니다');return}P.pot[k]=30;dmgNum(P.x,3,P.z,pd.name,'info');sfx('card');burst(P.x,1,P.z,16,0xffffff,5,.5,2)}
   it.qty--;if(it.qty<=0)SES.pf.items=SES.pf.items.filter(i=>i!==it);

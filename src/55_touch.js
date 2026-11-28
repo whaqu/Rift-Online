@@ -25,7 +25,7 @@ function initTouch(){
   press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
-  press('tb-use',on=>{if(on)interact()});
+  press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});
   canvas.addEventListener('touchstart',e=>{auInit()},{passive:true});
   const setI=(id,h)=>{const e=$(id);if(e){const q=e.querySelector('.ic0');if(q)q.innerHTML=h}};
   setI('tb-dash',ic('dash','#9fc8ff',26));setI('tb-hp',ic('potion','#ff6a7a',26));

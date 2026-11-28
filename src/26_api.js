@@ -190,7 +190,7 @@ const LocalAPI=(()=>{
     },
     usePotion(n,t,base){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone&&i.qty>0);if(!it)E('NO_POTION');
-      it.qty--;if(it.qty<=0)it.gone=true;dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
+      it.qty--;if(it.qty<=0)it.gone=true;if(base!=='tp')dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
     },
     enhance(n,t,id){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');

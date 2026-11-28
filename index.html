@@ -176,6 +176,7 @@ body.touch #touch{display:block}
 #tb-atk{right:18px;bottom:22px;width:86px;height:86px;border-color:var(--ac);font-size:15px;background:radial-gradient(circle at 50% 30%,rgba(120,84,26,.95),rgba(48,32,10,.95))}
 #tb-q{right:114px;bottom:30px;width:58px;height:58px}#tb-e{right:106px;bottom:98px;width:58px;height:58px}#tb-r{right:36px;bottom:120px;width:58px;height:58px}#tb-f{right:182px;bottom:148px;width:54px;height:54px;border-color:#ff9a3a}
 #tb-dash{right:182px;bottom:24px;width:50px;height:50px}#tb-hp{right:176px;bottom:86px;width:50px;height:50px}
+#tb-recall{right:110px;bottom:166px;width:46px;height:46px;font-size:13px;border-color:#8fe8ff}
 #tb-use{right:20px;bottom:200px;width:66px;height:66px;border-color:var(--ac)}
 body.touch #chat{width:230px;bottom:176px}body.touch #chatlog{max-height:70px}
 body.touch #bar{display:none}body.touch #feed{bottom:238px}
@@ -263,6 +264,7 @@ body.touch #combo{top:34%;right:170px}body.touch #combo b{font-size:32px}
   <div class="tb" id="tb-f"><span class="ic0"></span><span class="kk">F</span><div class="cdm"></div></div>
   <div class="tb" id="tb-dash"><span class="ic0"></span><div class="cdm"></div></div>
   <div class="tb" id="tb-hp"><span class="ic0"></span></div>
+  <div class="tb" id="tb-recall">귀환</div>
   <div class="tb hidden" id="tb-use"><span>상호작용</span></div>
 </div>
 
@@ -1389,7 +1391,8 @@ const POTIONS={
   hp3:{name:'상급 체력 물약',kind:'hp',pct:1,price:320,col:'#ff2a4a'},
   spd:{name:'신속 물약',kind:'buff',price:150,col:'#5ee7ff',desc:'30초간 이동 속도 +40%'},
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
-  def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
+  def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'},
+  tp:{name:'텔레포트의 서',kind:'tp',price:1000,col:'#c79bff',desc:'사용하면 지도가 열리고 누른 곳으로 순간이동합니다'}
 };
 /* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
@@ -1749,7 +1752,7 @@ const LocalAPI=(()=>{
     },
     usePotion(n,t,base){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.owner===n&&i.kind==='potion'&&i.base===base&&!i.listed&&!i.gone&&i.qty>0);if(!it)E('NO_POTION');
-      it.qty--;if(it.qty<=0)it.gone=true;dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
+      it.qty--;if(it.qty<=0)it.gone=true;if(base!=='tp')dqProg(a,'potion',0,1);wr();return{ok:true,profile:pf(a)};
     },
     enhance(n,t,id){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
@@ -3286,12 +3289,47 @@ function tickRecall(dt){
   }
 }
 
+/* ----- teleport scroll: pick a spot on the world map ----- */
+const tpBlocked=()=>!P||P.dead?'지금은 사용할 수 없습니다':DU.on?'결투 중에는 사용할 수 없습니다':DG.on?'던전에서는 사용할 수 없습니다':'';
+function openTeleport(){
+  const why=tpBlocked();if(why){UI.toast(why);return}
+  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
+}
+function tpDrawMap(){
+  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();
+  c.onclick=ev=>{const r=c.getBoundingClientRect(),W=c.width,sc=(W/2-14)/WORLD_R;
+    teleportTo(((ev.clientX-r.left)*W/r.width-W/2)/sc,((ev.clientY-r.top)*W/r.height-W/2)/sc)};
+}
+/* nearest free spot inside the world */
+function tpSpot(x,z){
+  const l=Math.hypot(x,z),max=WORLD_R-6;if(l>max){x*=max/l;z*=max/l}
+  for(let i=0;i<80;i++){const a=i*2.4,d=i*.6,nx=x+Math.cos(a)*d,nz=z+Math.sin(a)*d;if(Math.hypot(nx,nz)<=max&&!blocked(nx,nz,1.2))return{x:nx,z:nz}}
+  return{x:SPAWN.x,z:SPAWN.z};
+}
+let tpBusy=false;
+async function teleportTo(x,z){
+  if(tpBusy||!isFinite(x)||!isFinite(z))return false;
+  const why=tpBlocked();if(why){UI.toast(why);return false}
+  tpBusy=true;
+  try{
+    await API.call('usePotion','tp');
+    UI.close();
+    if(tpBlocked())return false;
+    const q=tpSpot(x,z);cancelRecall();pillar(P.x,P.z,0xc79bff,14,.5);
+    P.x=q.x;P.z=q.z;P.vx=P.vz=0;P.iframes=Math.max(P.iframes,2);cam.x=P.x;cam.z=P.z;
+    ringBurst(P.x,.2,P.z,18,0xc79bff,9,.5);pillar(P.x,P.z,0xc79bff,14,.5);sfx('level');UI.toast('순간이동했습니다');
+    UI.refreshHud();return true;
+  }catch(e){UI.toast(errKo(e.message));return false}
+  finally{tpBusy=false}
+}
+
 /* ----- potions ----- */
 function usePotionKey(base){
   if(!P||P.dead)return;
   if(DU.on){UI.toast('결투 중에는 물약을 쓸 수 없습니다');return}const pd=POTIONS[base];if(!pd)return;
   const it=SES.pf.items.find(i=>i.kind==='potion'&&i.base===base&&!i.listed&&i.qty>0);
   if(!it){UI.toast(pd.name+' 없음');return}
+  if(pd.kind==='tp'){openTeleport();return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}
   else{const k=base;if(P.pot[k]>0){UI.toast('이미 효과가 적용 중입니다');return}P.pot[k]=30;dmgNum(P.x,3,P.z,pd.name,'info');sfx('card');burst(P.x,1,P.z,16,0xffffff,5,.5,2)}
   it.qty--;if(it.qty<=0)SES.pf.items=SES.pf.items.filter(i=>i!==it);
@@ -5814,7 +5852,7 @@ function openShop(){
     const pf=SES.pf;let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='buy'?'on':'')+'" data-a="stab" data-v="buy">구매</div><div class="tab '+(tab==='armor'?'on':'')+'" data-a="stab" data-v="armor">방어구</div><div class="tab '+(tab==='sell'?'on':'')+'" data-a="stab" data-v="sell">판매</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
     if(tab==='buy'){
       h+='<div class="row" style="margin-bottom:6px"><span class="dim">수량</span>'+[1,5,10,20].map(n=>'<button class="btn sm '+(qty===n?'':'sec')+'" data-a="sqty" data-v="'+n+'">'+n+'</button>').join('')+'</div><div class="list" style="max-height:56vh">';
-      for(const b of POTION_ORDER){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
+      for(const b of [...POTION_ORDER,'tp']){const p=POTIONS[b];h+='<div class="item" style="--tc:'+p.col+'">'+ico(ic('potion',p.col,26),p.col)+'<div><div class="nm">'+p.name+'</div><div class="sub">'+(p.kind==='hp'?'체력 '+Math.round(p.pct*100)+'% 회복':p.desc)+'</div></div><div class="rt"><div class="gold">'+fmtG(p.price*qty)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<p.price*qty?'disabled':'')+'>구매</button></div></div>'}
       for(const t of[2,3,4])for(let ty=0;ty<3;ty++){const b=pf.cls+'_'+t+(ty?'_'+ty:'');h+='<div class="item" style="--tc:'+TIER_COL[t-1]+'">'+ico(ic(WICON[pf.cls],TIER_COL[t-1],26),TIER_COL[t-1])+'<div><div class="nm" style="color:'+TIER_COL[t-1]+'">'+wName(b)+'</div><div class="sub">공격력 '+WATK[t-1]+' · '+WTMOD[ty].n+' · '+KCLS[pf.cls]+' 전용</div></div><div class="rt"><div class="gold">'+fmtG(WVALUE[t-1])+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<WVALUE[t-1]?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else if(tab==='armor'){
@@ -6189,7 +6227,7 @@ function initTouch(){
   press('tb-q',on=>{if(on)trySkill('q')});press('tb-e',on=>{if(on)trySkill('e')});press('tb-r',on=>{if(on)trySkill('r')});press('tb-f',on=>{if(on)trySkill('f')});
   press('tb-dash',on=>{if(on)doDash()});
   press('tb-hp',on=>{if(!on)return;const order=['hp1','hp2','hp3'];for(const b of order){if(SES.pf.items.find(i=>i.kind==='potion'&&i.base===b&&i.qty>0&&!i.listed)){usePotionKey(b);return}}UI.toast('체력 물약이 없습니다')});
-  press('tb-use',on=>{if(on)interact()});
+  press('tb-use',on=>{if(on)interact()});press('tb-recall',on=>{if(on)startRecall()});
   canvas.addEventListener('touchstart',e=>{auInit()},{passive:true});
   const setI=(id,h)=>{const e=$(id);if(e){const q=e.querySelector('.ic0');if(q)q.innerHTML=h}};
   setI('tb-dash',ic('dash','#9fc8ff',26));setI('tb-hp',ic('potion','#ff6a7a',26));
@@ -6850,7 +6888,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

@@ -496,6 +496,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.save.auto=false;T(!tryOnce(),'switch off stops it');
     g.SES.pf.level=lv;g.save.auto=au;
   }
+  { // teleport scroll
+    g.UI.close();g.P.dead=false;g.SES.pf.gold;
+    const K='rw_local_db_v1',me=g.SES.name,edit=h=>{const d=JSON.parse(localStorage.getItem(K));h(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
+    edit(a=>{a.gold=5000});await g.API.resume(me,g.SES.token);const g0=g.SES.pf.gold;await g.API.call('buy','tp',1);
+    T(g0-g.SES.pf.gold===1000,'teleport scroll costs 1000');
+    g.P.x=0;g.P.z=0;const done=await g.teleportTo(200,150);
+    T(done&&Math.hypot(g.P.x-200,g.P.z-150)<50&&!g.SES.pf.items.some(i=>i.base==='tp'&&i.qty>0),'teleport moves and uses the scroll '+g.P.x.toFixed(0)+','+g.P.z.toFixed(0));
+    const x=g.P.x;T(!(await g.teleportTo(0,0))&&g.P.x===x,'no scroll, no teleport');
+  }
   // developer tools guard (last: once tripped the game stays stopped)
   { // every region has its own dungeon: entry, scenery, waves, boss, offline rewards
     const ids=['meadow','forest','ember','crystal','storm','void','snow','desert','sky'],D=g.DG;

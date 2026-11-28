@@ -40,3 +40,4 @@
 - a39_sky-meteor-phase2: 천공 보스에 5000 피해 유성우(방어력 무시)와 2페이즈 추가
 - a40_dungeon-rewards-cut: 모든 던전 골드 1/5, 1위 무기 보상 확률 20%
 - a41_judgement-moly-recommend: 천공 보스 체력 100만+200만, 천상의 심판 추가, 홀리 몰리 자동 공격, 캐릭터 생성 성직자 추천 테두리
+- a42_teleport-scroll-mobile-recall: 모바일 귀환 버튼, 텔레포트의 서(1000G, 지도에서 순간이동)

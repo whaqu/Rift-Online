@@ -197,7 +197,8 @@ const POTIONS={
   hp3:{name:'상급 체력 물약',kind:'hp',pct:1,price:320,col:'#ff2a4a'},
   spd:{name:'신속 물약',kind:'buff',price:150,col:'#5ee7ff',desc:'30초간 이동 속도 +40%'},
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
-  def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
+  def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'},
+  tp:{name:'텔레포트의 서',kind:'tp',price:1000,col:'#c79bff',desc:'사용하면 지도가 열리고 누른 곳으로 순간이동합니다'}
 };
 /* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
