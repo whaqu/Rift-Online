@@ -88,6 +88,9 @@ function movePlayer(dt){
   if(mv.on){ix=mv.x;iz=mv.z}
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
+  P.qClock=(P.qClock||0)+dt;if(P.glideCd>0)P.glideCd-=dt;
+  if(P.qArm!=null){if(!qHeld())P.qArm=null;else if(P.qClock-P.qArm>=.18){P.qArm=null;qGlideStart()}}
+  if(P.glide){qGlideStep(dt);P.vx=P.vz=0;return}
   if(P.leap){   // fly along an arc, no steering
     const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur),k=L.smooth?u*u*(3-2*u):u;P.x=lerp(L.x0,L.x1,k);P.z=lerp(L.z0,L.z1,k);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
@@ -105,7 +108,7 @@ function movePlayer(dt){
 const STEPS=['step_stone','step_grass','step_grass','step_stone','step_stone','step_stone','step_stone','step_snow','step_sand','step_marble'];
 function footstep(){const z=zoneAt(P.x,P.z);sfx(STEPS[z.id]||'step_stone',.55)}
 function updatePlayerModel(dt){
-  P.animT+=dt;PM.g.position.set(P.x,P.leap?Math.sin(Math.min(1,P.leap.t/P.leap.dur)*Math.PI)*P.leap.h:0,P.z);
+  P.animT+=dt;PM.g.position.set(P.x,P.leap?(P.leap.y0!=null?P.leap.y0*(1-Math.pow(Math.min(1,P.leap.t/P.leap.dur),2)):Math.sin(Math.min(1,P.leap.t/P.leap.dur)*Math.PI)*P.leap.h):P.glide?P.glide.h:0,P.z);
   let fy=P.face;if(P.spinT>0)fy+=(1-P.spinT/.5)*TAU*1.2;
   PM.g.rotation.y=fy;
   if(P.atkAnim>=0){P.atkAnim+=dt/P.atkDur;if(P.atkAnim>=1)P.atkAnim=-1}
@@ -116,7 +119,7 @@ function updatePlayerModel(dt){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
   }
-  PM.g.visible=!(P.dead||P.hidden||(P.iframes>0&&P.dashT<=0&&!P.leap&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
+  PM.g.visible=!(P.dead||P.hidden||(P.iframes>0&&P.dashT<=0&&!P.leap&&!P.glide&&Math.floor(P.animT*30)%2===0)||(P.stealth>0&&Math.floor(P.animT*20)%4!==0));
 }
 
 /* ----- per-frame timers / regen ----- */
@@ -188,7 +191,9 @@ function doAttack(){
 
 /* ----- skills ----- */
 function trySkill(slot){
-  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy()||(DU.on&&(DU.role!=='fight'||DU.ph!=='fight')))return;
+  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||(DU.on&&(DU.role!=='fight'||DU.ph!=='fight')))return;
+  if(slot==='q'&&!P.qChain&&qPress())return;
+  if(skBusy())return;
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
@@ -271,7 +276,7 @@ function dashStrike(dt){
   if(P.dashT<=0)P.dashHit=null;
 }
 function doDash(){
-  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.hidden||P.stunT>0||UI.modal)return;
+  if(!P||P.dead||P.dashCd>0||P.dashT>0||P.leap||P.glide||P.hidden||P.stunT>0||UI.modal)return;
   let dx=P.ix,dz=P.iz;if(!dx&&!dz){dx=Math.sin(P.face);dz=Math.cos(P.face)}
   const l=Math.hypot(dx,dz)||1;P.dashDX=dx/l;P.dashDZ=dz/l;P.dashT=.2;P.dashSp=38;P.dashHit=null;P.iframes=Math.max(P.iframes,.34);P.dashCd=2.8*(1-S.cdr);
   sfx('dash');burst(P.x,.6,P.z,10,0xffffff,4,.3,0);

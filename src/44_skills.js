@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고, 활공 중 적 위에서 한 번 더 누르면 내려찍습니다. (활공 재사용 5초) 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -122,6 +122,7 @@ const later=(t,fn)=>act(t,null,fn);
 function tickSkills(dt){
   hbTick(dt);healTick(dt);
   if(P.chan>0)P.chan-=dt;
+  if(P.cape&&!P.glide){entG.remove(P.cape);P.cape=null}
   if(P.stealth>0){P.stealth-=dt;if(Math.random()<dt*18)emit(P.x+rnd(-.5,.5),rnd(.2,1.6),P.z+rnd(-.5,.5),0,.8,0,.45,0x8a6ad0,0)}
   for(let i=0;i<ACTS.length;i++){
     const a=ACTS[i];a.t+=dt;
@@ -134,10 +135,10 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.qRun=false;P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.glideCd=0;if(P.cape){entG.remove(P.cape);P.cape=null}P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
-const skBusy=()=>!!(P.leap||P.hidden||P.chan>0||P.stunT>0);
+const skBusy=()=>!!(P.leap||P.glide||P.hidden||P.chan>0||P.stunT>0);
 
 /* ---------- helpers ---------- */
 const alive=m=>!!m&&!m.dead&&!m.spawning;
@@ -701,13 +702,47 @@ function holyProc(m,base){
 }
 /* assassin Q reacts to the button being held: keyboard, touch button or the skill icon */
 const qHeld=()=>!!(keys.q||mv.q);
+/* where a held Q moves: joystick / facing on touch, toward the mouse on PC (null: already on the cursor) */
+function qDir(){
+  if(IS_TOUCH||mv.on){const l=mv.on?Math.hypot(mv.x,mv.z):0;return l>.2?{x:mv.x/l,z:mv.z/l}:{x:Math.sin(P.face),z:Math.cos(P.face)}}
+  const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);return l<1?null:{x:mx/l,z:mz/l};
+}
+/* double tap and hold: spread the cloak and glide; press again above an enemy to plunge */
+function qPress(){
+  const sk=skillOf('q');if(!sk||sk.fx!=='r_q'||P.stunT>0)return false;
+  if(P.glide){qPlunge(sk);return true}
+  const t=P.qClock||0;
+  if(P.qLast!=null&&t-P.qLast<.32&&!(P.glideCd>0))P.qArm=t;   // second tap: becomes a glide if kept held
+  P.qLast=t;return false;
+}
+function qGlideStart(){
+  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0};P.glideCd=5;sfx('dash');
+  const g=grp(P.x,0,P.z);for(const s of[-1,1]){const w=part(g,'box',0x3a1a5a,1.5,.07,1.1,s*.85,1.5,-.45);w.rotation.z=-s*.3;w.rotation.y=s*.35;
+    part(g,'box',0x8a6ad0,1.4,.08,.12,s*.85,1.52,.05).rotation.z=-s*.3}
+  if(P.cape)entG.remove(P.cape);P.cape=g;entG.add(g);
+}
+function qGlideStep(dt){
+  const G=P.glide;G.t+=dt;G.off=qHeld()?0:G.off+dt;   // let go: float a moment so the plunge press fits in
+  if(P.dead||P.stunT>0||G.t>2.5||G.off>.6){P.glide=null;return}
+  G.h=Math.min(3,G.h+dt*20);
+  const d=qDir();if(d){const step=effSpd()*2*dt;blinkTo(P.x+d.x*step,P.z+d.z*step);P.face=Math.atan2(d.x,d.z)}
+  if(P.cape){P.cape.position.set(P.x,G.h,P.z);P.cape.rotation.y=P.face}
+  emit(P.x,G.h+.8,P.z,0,0,0,.3,0x8a6ad0,0);
+}
+function qPlunge(sk){
+  const l=mobsIn(P.x,P.z,6).sort((a,b)=>d2(a.x,a.z,P.x,P.z)-d2(b.x,b.z,P.x,P.z));
+  if(!l.length){P.glide.off=0;return}   // nothing below: keep gliding
+  const m=l[0],y0=P.glide.h;P.glide=null;P.iframes=Math.max(P.iframes,.35);P.qGuard=.8;P.cd.q=P.cdMax.q||0;P.face=Math.atan2(m.x-P.x,m.z-P.z);
+  P.leap={t:0,dur:.18,x0:P.x,z0:P.z,x1:m.x,z1:m.z,h:0,y0,done:()=>{
+    const c={atk:effAtk(),col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk};
+    sArea(c,P.x,P.z,5,7,{kb:8,big:true,crit:true});shockRing(P.x,P.z,5.5,c.col,.4);flashDisc(P.x,P.z,5,c.col,.3);burst(P.x,.6,P.z,30,c.col,10,.5,4);
+    cam.shake=Math.max(cam.shake,.5);hitStop(.08);sfx('slash');netFx('nova',{x:P.x,z:P.z,r:5,c:c.col})}};
+}
 /* hold-to-glide movement; turns into an attack as soon as an enemy is in reach */
 function qRunStep(dt){
   if(!qHeld()||P.dead||P.stunT>0||P.hidden||P.dashT>0){P.qRun=false;return false}
   if(aimMob(12)){P.qRun=false;P.qChain=true;trySkill('q');P.qChain=false;return true}
-  let dx,dz;
-  if(IS_TOUCH||mv.on){const l=mv.on?Math.hypot(mv.x,mv.z):0;if(l>.2){dx=mv.x/l;dz=mv.z/l}else{dx=Math.sin(P.face);dz=Math.cos(P.face)}}
-  else{const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);if(l<1)return true;dx=mx/l;dz=mz/l}
+  const dr=qDir();if(!dr)return true;const dx=dr.x,dz=dr.z;
   const step=effSpd()*2.2*dt;blinkTo(P.x+dx*step,P.z+dz*step);P.face=Math.atan2(dx,dz);
   emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0);return true;
 }
