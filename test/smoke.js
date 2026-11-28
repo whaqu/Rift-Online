@@ -347,6 +347,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     await g.API.call('equip',bow);g.derive();g.buildPlayerModel();T(g.S.atkCls==='archer','any weapon, fighting the weapon\'s way');
     for(const k of Object.keys(g.HIDDEN)){
       await up(d=>{d.acc[me].hidden=k;d.acc[me].hiddenOn=true});g.derive();g.buildPlayerModel();
+      {const m0=g.MOBS.splice(0),x0=g.P.x,z0=g.P.z;g.P.x=60;g.P.z=0;g.P.dead=false;g.skReset();g.P.cd.f=0;g.trySkill('f');T(g.P.cd.f===5,'hidden F cooldown is 5s '+k+' '+g.P.cd.f);g.skReset();g.P.cd.f=0;g.P.hp=g.S.maxHp;g.P.x=x0;g.P.z=z0;g.MOBS.push(...m0)}
       for(const c of['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight']){const o=g.makeHeroFor(c,'h_'+k,0xffffff);g.applyWeaponLook(o,c+'_3');g.animHeroFor(o,1.3,1,-1,false,1);g.omniApply(o,2);g.omniApply(o,1);g.omniApply(o,0);if(o.hid!==k||!o.hw)T(false,'hidden model '+k+' '+c)}
       for(const sl of['q','e','r','f']){
         const keep=g.MOBS.splice(0);g.P.x=60;g.P.z=0;g.P.dead=false;g.P.hp=g.S.maxHp;g.skReset();g.P.cd[sl]=0;

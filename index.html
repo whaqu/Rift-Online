@@ -3740,7 +3740,7 @@ function trySkill(slot){
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
-  const cdk=sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1)*(S.hidden?HID_CD:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
+  const cdk=S.hidden&&slot==='f'?HID_F_CD:sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1)*(S.hidden?HID_CD:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
@@ -5379,7 +5379,7 @@ function castFx(sk){
    Story: 천사 is the messenger of heaven; 대천사 and 타락천사 were once brothers in arms and are now rivals (equal strength). */
 const HIDDEN_LV=99,HIDDEN_DROP=.0005,HIDDEN_DG='sky',ARCH_SYN={atk:1.3,cd:.85,ult:4};
 /* a hidden class has its own base hp (gear, runes and perks add on top), stronger skills and shorter cooldowns */
-const HIDDEN_HP=30000,HID_SKILL=2,HID_CD=.75,HID_APS=3;
+const HIDDEN_HP=30000,HID_SKILL=2,HID_CD=.75,HID_APS=3,HID_F_CD=5;
 /* super armor: no knockback / stun / dungeon hit floor; fixed (armor-ignoring) hits and duel hits are cut down */
 const HID_PURE=.3,HID_DUEL={dmg:.3,cap:.04};
 const HIDDEN={

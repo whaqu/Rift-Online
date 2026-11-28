@@ -214,7 +214,7 @@ function trySkill(slot){
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
-  const cdk=sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1)*(S.hidden?HID_CD:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
+  const cdk=S.hidden&&slot==='f'?HID_F_CD:sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1)*(S.hidden?HID_CD:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
