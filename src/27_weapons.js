@@ -393,7 +393,9 @@ function angelBuild(){
 }
 function omniApply(o,on){
   const k=+on||0;
-  if(!o||!o.g||k===(o.omni?o.omni.kind:0))return;
+  if(!o||!o.g)return;
+  if(o.hid){if(o.hidSyn)o.hidSyn(k===2&&o.hid==='arch');if(k===2){if(o.omni){o.g.remove(o.omni.g);o.omni=null}return}}
+  if(k===(o.omni?o.omni.kind:0))return;
   if(o.omni){o.g.remove(o.omni.g);o.omni=null}
   if(k){try{o.omni=k===2?angelBuild():omniBuild();o.g.add(o.omni.g)}catch(e){console.error('rune aura',e)}}
 }

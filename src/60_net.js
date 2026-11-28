@@ -5,7 +5,7 @@ const NET={on:false,sb:null,ch:null,shard:0,peers:{},party:null,invite:null,last
 const SHARD_MAX=12;
 function loadScript(src){return new Promise((res,rej)=>{const s=document.createElement('script');s.src=src;s.onload=res;s.onerror=()=>rej(new Error('script'));document.head.appendChild(s)})}
 function netSend(event,payload){if(!NET.on||!NET.ch)return;try{NET.ch.send({type:'broadcast',event,payload})}catch(e){}}
-const myInfo=()=>({name:SES.name,cls:SES.pf.cls,job:SES.pf.job,lv:SES.pf.level,w:myWeaponBase()});
+const myInfo=()=>({name:SES.name,cls:SES.pf.cls,job:curJob(),lv:SES.pf.level,w:myWeaponBase()});
 function netSys(kind,val){if(kind==='lv')netChatSend('sys',SES.name+'님이 레벨 '+val+'에 도달했습니다.')}
 function netFx(k,d){
   if(!NET.on)return;const now=performance.now();if(now-NET.lastFx<70)return;NET.lastFx=now;
@@ -118,7 +118,7 @@ function syncPeers(){
 const peerLabel=p=>(p.lv?'Lv.'+p.lv+' ':'')+p.name;
 /* level / class / job / weapon of another player; returns true when something changed */
 function applyPeerInfo(p,m){
-  const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=JOBS[m.job]?m.job:c,w=typeof m.w==='string'&&m.w.length<24?m.w:null,lv=clamp(Math.floor(+m.lv)||0,0,99)||p.lv;
+  const c=CLASSES.includes(m.cls)?m.cls:'warrior',j=jobDef(m.job)?m.job:c,w=typeof m.w==='string'&&m.w.length<24?m.w:null,lv=clamp(Math.floor(+m.lv)||0,0,99)||p.lv;
   const look=c!==p.cls||j!==p.job||w!==p.w,changed=look||lv!==p.lv;
   if(look){p.cls=c;p.job=j;p.w=w;if(p.model){entG.remove(p.model.g);p.model=null}}
   p.lv=lv;if(p.label)p.label.el.textContent=peerLabel(p);
@@ -240,13 +240,13 @@ function netUpdate(dt){
       const gl=myGolems();
       const up=myAir();   // airborne: keep sending (height changes while standing still), plus one packet after landing
       if(moved||up||NET.hadAir||(NET.hadGol&&!gl)||now-NET.lastPos>(DU.on||gl?200:1200)){NET.hadAir=!!up;NET.hadGol=!!gl;NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase(),myOmni()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0,a:up||0})}
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,curJob(),myWeaponBase(),myOmni()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0,a:up||0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
   for(const k in NET.peers){
     const p=NET.peers[k];if(!p.got){if(p.model)p.model.g.visible=false;continue}
-    if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
+    if(!p.model){p.model=makeHeroFor(lookCls(p.cls,p.job,p.w),p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
     if(!p.label)p.label=makeLabel(peerLabel(p),'pl');
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
     const show=duelShows(k)&&!(p.du&&p.du.hid);   // a stealthed opponent really disappears

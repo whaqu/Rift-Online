@@ -482,6 +482,7 @@ const JOB_COL={gladiator:0xd8452f,guardian:0x4a78d8,blademaster:0xbfe4ff,berserk
   sniper:0xffe27a,hunter:0x6bffb0,marksman:0xffd24a,shadowarcher:0xa07aff,stormarcher:0x7fd6ff,beasthunter:0xe0a050};
 function makeHeroFor(cls,job,tint){HQ++;try{return makeHeroFor0(cls,job,tint)}finally{HQ--}}
 function makeHeroFor0(cls,job,tint){
+  if(HJOBS[job]){const h=makeHidden(cls,HJOBS[job].hid);h.job=job;return h}
   const o=makeHero(cls,tint);o.job=job;
   const jd=JOBS[job],t=jd?jd.tier:0;
   if(t>=1){
@@ -498,6 +499,7 @@ function makeHeroFor0(cls,job,tint){
 }
 function animHeroFor(o,t,spd,atkP,dashing,sd){
   animHero(o,t,spd,atkP,dashing,sd);
+  if(o.hw)o.hw(t);
   if(o.scarf)o.scarf.forEach((b,i)=>{b.rotation.x=.35+i*.15+Math.sin(t*5.5+i*1.3)*.13;b.rotation.y=Math.sin(t*3.7+i)*.15});
   if(o.wfx)for(const f of o.wfx){const n=f.list.length;f.list.forEach((r,i)=>{const a=t*f.sp+i/n*TAU,k=1+.15*Math.sin(t*2+i);r.position.set(f.x+Math.cos(a)*f.r*k,f.y+Math.sin(t*1.7+i*1.9)*f.h,f.z+Math.sin(a)*f.r*k);r.rotation.y=-a})}
   if(o.wau)o.wau.anim(t);

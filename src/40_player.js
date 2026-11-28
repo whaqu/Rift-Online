@@ -4,7 +4,7 @@ let P=null,PM=null,S=null;
 const inTown=(x,z)=>x*x+z*z<19*19;
 
 function derive(){
-  const pf=SES.pf,c=CLS[pf.cls],job=JOBS[pf.job]||JOBS[pf.cls],m=job.m,L=pf.level;
+  const pf=SES.pf,c=CLS[pf.cls],hid=hidOn(pf),job=jobDef(curJob(pf))||JOBS[pf.cls],m=job.m,L=pf.level;
   const w=pf.items.find(i=>i.kind==='weapon'&&i.eq);
   const ab=armorBonus(pf.items.filter(i=>i.kind==='armor'&&i.eq));
   const wa=w?weaponAtk(w.base,w.enh):0,wt=w?WTMOD[wType(w.base)]:WTMOD[0];const en={};(w?w.ench:[]).forEach(e=>en[e.k]=e.l);
@@ -12,14 +12,14 @@ function derive(){
   const burnLv=(m.burn||0)+(en.burn||0);
   const dr=Math.min(.8,dmgReduce(ab.def,L)+ab.armor),pk=perkOf(pf);
   S={
-    cls:pf.cls,job:pf.job,level:L,
+    cls:pf.cls,job:curJob(pf),hidden:hid,atkCls:hid&&w?styleCls(w.base):pf.cls,level:L,
     maxHp:Math.round(((c.hp+L*c.hpLv)*(m.hp||1)+ab.hp)*(1+ab.hpPct+(rf?rf.hp:0))*(1+PERK.h.per*pk.h)),
     atk:(c.atk+L*c.atkLv+wa)*(m.atk||1)*wt.atk*(1+ab.atk)*(1+PERK.a.per*pk.a),wa,cdr:Math.min(.4,PERK.c.per*pk.c),
     aps:c.aps*(m.aps||1)*wt.aps*(1+ab.aps)*(1+(en.aspd||0)*.06),
     spd:c.spd*(m.spd||1)*(1+ab.spd),
     crit:Math.min(.8,c.crit+(m.crit||0)+wt.crit+ab.crit+(en.crit||0)*.05),critDmg:1.6,
     armor:1-(1-(m.armor||0))*(1-dr)*(1-(en.armor||0)*.04),
-    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'?ROGUE_VAMP:0),burnLv,
+    vamp:(m.vamp||0)+ab.vamp+(en.vamp||0)*.03+(pf.cls==='rogue'&&!hid?ROGUE_VAMP:0),burnLv,
     chainP:Math.min(.6,(m.chain||0)*.10+(en.chain||0)*.12),explP:(en.explode||0)*.10,
     pierce:(m.pierce||0)+(en.pierce||0),rangeMul:1+(en.pierce||0)*.1,
     regen:(m.regen||0)+(rf?rf.rg:0),runeAura:!!(rf&&rf.aura),berserk:!!m.berserk,weapon:w||null,en,def:ab.def,setCnt:ab.cnt
@@ -36,11 +36,12 @@ function newPlayer(){
 }
 function buildPlayerModel(){
   if(PM)entG.remove(PM.g);
-  PM=makeHeroFor(SES.pf.cls,SES.pf.job,CLS[SES.pf.cls].col);applyWeaponLook(PM,myWeaponBase());entG.add(PM.g);
+  PM=makeHeroFor(lookCls(SES.pf.cls,curJob(),myWeaponBase()),curJob(),CLS[SES.pf.cls].col);applyWeaponLook(PM,myWeaponBase());entG.add(PM.g);
 }
 function myWeaponBase(){const w=SES.pf&&SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);return w?w.base:null}
 function skillOf(slot){
-  const pf=SES.pf,c=CLS[pf.cls],j=JOBS[pf.job];
+  const pf=SES.pf,c=CLS[pf.cls],j=JOBS[pf.job],hid=hidOn(pf);
+  if(hid)return HIDDEN[hid].skills[['q','e','r','f'].indexOf(slot)]||null;
   if(pf.cls==='cleric'){
     if(slot==='q'){const L=pf.level;if(L<10)return null;const t=L>=30?3:L>=20?2:1;return CLQ[t]}
     if(slot==='e'&&pf.level<15)return null;
@@ -97,7 +98,7 @@ function movePlayer(dt){
   }
   if(P.dashT>0){
     P.dashT-=dt;P.vx=P.dashDX*(P.dashSp||38);P.vz=P.dashDZ*(P.dashSp||38);
-    emit(P.x,1,P.z,rnd(-1,1),rnd(0,1.5),rnd(-1,1),.35,JOB_COL[SES.pf.job]||CLS[S.cls].col,0);
+    emit(P.x,1,P.z,rnd(-1,1),rnd(0,1.5),rnd(-1,1),.35,JOB_COL[curJob()]||CLS[S.cls].col,0);
     if(P.dashHit)dashStrike(dt);
   }else{const k=1-Math.exp(-dt*(il>0?16:11));P.vx=lerp(P.vx,ix*sp,k);P.vz=lerp(P.vz,iz*sp,k)}
   P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r);
@@ -156,7 +157,7 @@ function tryAttackInput(){
   const want=mouse.down||keys.j||mv.atk;
   let auto=null;
   // auto attack never breaks stealth; on desktop it unlocks at AUTO_LV
-  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.cls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
+  if(save.auto&&!want&&canAuto()&&!(P.stealth>0)){const sy=CLS[S.atkCls].sty,reach=sy.t==='melee'?sy.range*S.rangeMul+1.2:13;auto=nearestMob(reach)}
   P.autoT=auto;
   if((want||auto)&&P.atkCd<=0&&P.dashT<=0&&P.spinT<=0&&!skBusy()){P.autoAim=auto;doAttack();P.autoAim=null}
 }
@@ -177,7 +178,7 @@ function doAttack(){
   const a=aimDir(),f=Math.atan2(a.x,a.z);P.face=f;
   P.atkCd=1/effAps();P.atkAnim=0;P.atkDur=Math.min(.34,P.atkCd*.92);
   const atk=effAtk()*(ambush?2.5:1);
-  const sty=CLS[S.cls].sty;
+  const sty=CLS[S.atkCls].sty;
   if(sty.t==='melee'){
     P.comboT=1.1;const step=P.combo%3;P.combo++;P.swing=-P.swing;
     const big=step===2,range=sty.range*S.rangeMul*(big?1.28:1),arc=big?sty.big:sty.arc,dmg=atk*(big?sty.bigMul:1);
@@ -211,7 +212,7 @@ function trySkill(slot){
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
-  P.cd[slot]=sk.cd*(1-S.cdr);P.cdMax[slot]=sk.cd*(1-S.cdr);P.atkAnim=0;P.atkDur=.35;
+  const cdk=sk.cd*(1-S.cdr)*(archSyn()?ARCH_SYN.cd:1);P.cd[slot]=cdk;P.cdMax[slot]=cdk;P.atkAnim=0;P.atkDur=.35;
 }
 function elemHit(e,el,atk){
   if(!el||!e||e.dead)return;
@@ -303,14 +304,14 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz,pure){   /* pure: ignores armor (meteor); buffs, shields and guard skills still apply */
   if(!P||P.dead||P.iframes>0||qAloft()||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),dgHitFloor(dmg)))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),dgHitFloor(dmg)))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.hGuard>0?.4:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
-  P.iframes=.5;
+  P.iframes=.5;P.lastHurt=G.t;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
   if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(1);cam.shake=Math.max(cam.shake,.6);hitStop(.06);
     if(sx!=null){const dx=P.x-sx,dz=P.z-sz,l=Math.hypot(dx,dz)||1;P.vx+=dx/l*6;P.vz+=dz/l*6;camKick(dx,dz,.3)}}
   burst(P.x,1.2,P.z,10,0xff5a6a,6,.4,10);
-  if(P.hp<=0)playerDown();
+  if(P.hp<=0){if(P.reviveT>G.t){P.reviveT=0;P.hp=Math.round(S.maxHp*.3);P.iframes=2;dmgNum(P.x,3.6,P.z,'구원','info');pillar(P.x,P.z,0xfff4c2,16,.8);sfx('level')}else playerDown()}
   return true;
 }
 function playerDown(){

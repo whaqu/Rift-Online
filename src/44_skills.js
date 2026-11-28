@@ -135,7 +135,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.glide=null;P.qArm=null;P.qNext=0;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.hGuard=0;P.reviveT=0;P.leap=null;P.glide=null;P.qArm=null;P.qNext=0;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.glide||P.hidden||P.chan>0||P.stunT>0);
@@ -692,7 +692,7 @@ function healTick(dt){
 }
 /* right mouse button: heal yourself */
 function rightClickSkill(){
-  if(!P||P.dead||UI.modal||!S||S.cls!=='cleric'||!skillOf('q'))return;
+  if(!P||P.dead||UI.modal||!S||S.cls!=='cleric'||S.hidden||!skillOf('q'))return;
   P.selfHeal=true;P.hs=null;try{trySkill('q')}finally{P.selfHeal=false}
 }
 const HBF={el:null,t:0,last:''};
@@ -820,7 +820,7 @@ const qCharge=()=>P.cdMax.q>0?clamp(1-P.cd.q/P.cdMax.q,0,1):1;
 const qPower=ch=>ch>=1?1.4:.08+.82*ch;
 /* returns false when the skill could not be used */
 function castFx(sk){
-  const atk=effAtk(),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
+  const atk=effAtk()*(archSyn()?ARCH_SYN.atk:1),a=aimDir(),c={atk,a:{x:a.x,z:a.z},col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk,charge:sk.fx==='r_q'?qCharge():1};
   const ambush=P.stealth>0&&sk.fx!=='r_q'&&sk.fx!=='r_e';
   if(ambush)c.atk*=2.5;
   if(SK[sk.fx](c)===false)return false;

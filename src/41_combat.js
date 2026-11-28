@@ -34,7 +34,7 @@ function burnMob(m,dps){if(m.duel){duelBurnOut(dps);return}if(m.ghost){netSendHi
 function dealMob(m,base,o){
   if(m.dead)return;o=o||{};
   const crit=o.crit!==undefined?o.crit:Math.random()<S.crit;
-  const d=Math.max(1,Math.round(base*(crit?S.critDmg:1)*(.92+Math.random()*.16)));
+  const d=Math.max(1,Math.round(base*(m.brand>G.t?1.3:1)*(crit?S.critDmg:1)*(.92+Math.random()*.16)));
   dmgNum(m.x,m.r*1.5+1.2,m.z,fmtN(d),crit?'crit':'');
   const mat=m.def&&m.def.mat||'flesh',heavy=!!o.big||base>S.atk*2.2,kxn=o.kx||0,kzn=o.kz||0,ic=crit?0xffd24a:0xfff4e0;
   if(crit){sfx('crit');sfx('hit_'+mat,.8);sfx('sparkle')}else sfx('hit_'+mat);

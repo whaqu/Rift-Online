@@ -33,6 +33,7 @@ function openGM(){
       h+='<div class="card" style="margin-top:10px"><b>인벤토리 초기화</b><div class="row sp" style="margin-top:6px;gap:8px"><span class="dim">무기·방어구·물약·재료를 모두 지우고 기본 무기와 하급 물약 5개만 남깁니다. 골드와 성장은 유지됩니다.</span><button class="btn" data-a="gminv" style="flex:none;white-space:nowrap">초기화</button></div></div>';
     }else if(tab==='job'){
       const job=id=>btn('gmjob',id,JOBS[id].name,SES.pf.job===id);
+      if(SES.pf.admin&&!SES.pf.semi)h+=line('히든 클래스 (테스트)',Object.keys(HIDDEN).map(k=>btn('gmhid',k,HIDDEN[k].name,SES.pf.hidden===k)).join('')+btn('gmhid','','없음',!SES.pf.hidden));
       h+=line('기본 직업',job(cls))+line('1차 전직',JOB_KIDS(cls).map(job).join(''));
       for(const p of JOB_KIDS(cls))h+=line('2차 전직 · '+JOBS[p].name,JOB_KIDS(p).map(job).join(''));
       h+='<div class="dim" style="margin-top:8px">지금 직업: '+JOBS[SES.pf.job].name+' · 누르면 바로 바뀝니다.</div>';
@@ -52,6 +53,7 @@ function openGM(){
   UI.handlers.gmenh=v=>{enh=+v;UI.rerender()};
   UI.handlers.gmenhd=v=>{enh=clamp(enh+(+v),0,20);UI.rerender()};
   UI.handlers.gmench=v=>{ench=ench.includes(v)?ench.filter(k=>k!==v):ench.concat(v).slice(-3);UI.rerender()};
+  UI.handlers.gmhid=v=>run(()=>gmApply('gmHidden',v),v?HIDDEN[v].name+'(으)로 바꿨습니다':'히든 클래스를 없앴습니다');
   UI.handlers.gmjob=v=>run(()=>gmApply('gmJob',v),JOBS[v].name+'(으)로 바꿨습니다');
   UI.handlers.gmgrow=v=>run(()=>gmApply('gmGrowth',v==='1'),v==='1'?'강화·벌목 숙련 만렙':'강화를 초기화했습니다');
   UI.handlers.gmpass=async()=>{

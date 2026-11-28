@@ -321,6 +321,40 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     }
     localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
   }
+  // ---- hidden classes ----
+  {
+    await g.API.register('히든시험','pw1234','warrior');g.enterGame();step(3);g.UI.close&&g.UI.close();
+    const K='rw_local_db_v1',me='히든시험',up=async f=>{const d=JSON.parse(localStorage.getItem(K));f(d);localStorage.setItem(K,JSON.stringify(d));await g.API.resume(me,g.SES.token)};
+    const give=(d,kind,base)=>{const id=d.nid++;d.items.push({id,owner:me,kind,base,enh:0,ench:[],qty:1,eq:false,listed:false,gone:false});return id};
+    let it,bow;await up(d=>{it=give(d,'potion','hc_arch');give(d,'potion','hc_angel');bow=give(d,'weapon','archer_3')});
+    const err=async f=>{try{await f();return''}catch(e){return e.message}};
+    T(await err(()=>g.API.call('hiddenLearn',it))==='LOW_LEVEL','hidden class needs Lv.99');
+    T(await err(()=>g.API.call('sell',it,1))==='BOUND_ITEM','the scroll cannot be sold');
+    T(await err(()=>g.API.call('equip',bow))==='WRONG_CLASS','a warrior cannot hold a bow');
+    await up(d=>{d.acc[me].level=99});
+    await g.API.call('hiddenLearn',it);g.derive();g.buildPlayerModel();
+    T(g.SES.pf.hidden==='arch'&&g.curJob()==='h_arch'&&g.S.hidden==='arch','learning switches to the hidden class');
+    T(!g.SES.pf.items.some(i=>g.isBound(i)),'other scrolls vanish once a class is learned');
+    await g.API.call('equip',bow);g.derive();g.buildPlayerModel();T(g.S.atkCls==='archer','any weapon, fighting the weapon\'s way');
+    for(const k of Object.keys(g.HIDDEN)){
+      await up(d=>{d.acc[me].hidden=k;d.acc[me].hiddenOn=true});g.derive();g.buildPlayerModel();
+      for(const c of['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight']){const o=g.makeHeroFor(c,'h_'+k,0xffffff);g.applyWeaponLook(o,c+'_3');g.animHeroFor(o,1.3,1,-1,false,1);g.omniApply(o,2);g.omniApply(o,1);g.omniApply(o,0);if(o.hid!==k||!o.hw)T(false,'hidden model '+k+' '+c)}
+      for(const sl of['q','e','r','f']){
+        const keep=g.MOBS.splice(0);g.P.x=60;g.P.z=0;g.P.dead=false;g.P.hp=g.S.maxHp;g.skReset();g.P.cd[sl]=0;
+        const m=g.makeMobObj(88000,'slime',60,5,5,false,false,false);if(!g.MOBS.includes(m))g.MOBS.push(m);m.spawning=false;m.hp=m.maxHp=1e12;m.x=60;m.z=4;g.P.face=0;g.mouse.x=0;
+        const sk=g.skillOf(sl);let okc=true;try{g.trySkill(sl);for(let i=0;i<150;i++){g.P.iframes=1;step(1)}}catch(e){okc=false;console.log(e.stack)}
+        T(sk&&okc&&g.P.cd[sl]>0,'skill '+k+' '+sl+' casts');
+        g.MOBS.splice(0);g.MOBS.push(...keep);g.skReset();g.P.buff=null;
+      }
+    }
+    {const w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);await up(d=>{d.acc[me].hidden='arch';d.items.find(i=>i.id===w.id).rune='angel:1'});g.derive();g.buildPlayerModel();T(g.archSyn(),'archangel + angel rune synergy');
+      await up(d=>{d.acc[me].hidden='fallen'});g.derive();T(!g.archSyn(),'no synergy for other hidden classes')}
+    let okw=true;try{g.openHidden();g.UI.close()}catch(e){okw=false}T(okw,'hidden window opens');
+    await up(d=>{d.acc[me].hiddenAt=0});await g.API.call('hiddenSwap',false);g.derive();
+    T(g.curJob()==='warrior'&&!g.S.hidden&&g.skillOf('q').id==='w_q'&&g.SES.pf.items.some(i=>i.eq&&i.kind==='weapon'&&g.canUse(i.base)),'swapping back restores class, skills and a usable weapon');
+    T(await err(()=>g.API.call('hiddenSwap',true))==='HIDDEN_WAIT','swap has a short wait');
+    await g.API.call('hiddenDrop');T(!g.SES.pf.hidden&&await err(()=>g.API.call('hiddenSwap',true))==='BAD_ARGS','giving up removes the hidden class');
+  }
   // ---- dungeon ----
   {
     const K='rw_local_db_v1';const lv=g.SES.pf.level;

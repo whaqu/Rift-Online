@@ -50,7 +50,7 @@ function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="colo
 function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+(runeMatch(it.base,it.rune)?' ★짝 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</span>':''}
 function itemRow(it,o){
   o=o||{};const col=isGear(it)?gcol(it.base):it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
-  if(it.kind==='weapon'){const ok=wCan(it.base,SES.pf.cls),ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wGrade(it.base)+' · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
+  if(it.kind==='weapon'){const ok=canUse(it.base),ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wGrade(it.base)+' · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
   else if(it.kind==='armor'){sub=(UARMOR[it.base]?'전설 ':'')+ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
   else if(it.kind==='rune'){sub=(runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d)+(RUNES[it.base]?'<br>지역: '+runeFrom(it.base):'')}
@@ -109,13 +109,14 @@ function openInventory(){
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
           +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 9개 지역의 룬('+REGION_RUNE.map(k=>RUNES[k].name.replace('의 룬','')).join('·')+')을 Ⅱ 이상으로 모두 모으면 대장간 제작대에서 ‘만물의 룬’을 만들 수 있습니다.</div>';
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">'+(MATS[sel.base].mob?'몬스터에게서 얻은 전리품입니다. 상점에 팔거나 경매·교환할 수 있습니다.':'강화 재료로 쓰일 수 있는 채집 재료입니다.')+'</div>'}
+      else if(isBound(sel))det+='<div class="dim" style="margin:6px 0">'+POTIONS[sel.base].desc+'</div><div class="row wrap"><button class="btn sm" data-a="hlearn" data-v="'+sel.id+'">히든 전직</button></div>';
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
-    const msel=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed),mtot=msel.reduce((s,i)=>s+itemPrice(i)*((i.kind==='potion'||i.kind==='mat'||i.kind==='rune')?i.qty:1),0);
+    const msel=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed&&!isBound(i)),mtot=msel.reduce((s,i)=>s+itemPrice(i)*((i.kind==='potion'||i.kind==='mat'||i.kind==='rune')?i.qty:1),0);
     if(msel.length)det='<div class="row sp"><b>선택 '+msel.length+'개</b><span class="gold">'+fmtG(mtot)+'</span></div><div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="msell">선택 판매</button><button class="btn sm sec" data-a="mclear">선택 해제</button></div><div class="dim" style="margin-top:6px">포션·재료는 묶음 전체가 판매됩니다.</div>';
     else det+='<div class="dim" style="margin-top:8px">드래그로 여러 개를 한 번에 선택해 팔 수 있습니다.</div>';
     det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm '+(UI.multiMode?'':'sec')+'" data-a="mmode">다중 선택 '+(UI.multiMode?'켜짐':'(터치용)')+'</button></div>';
-    const pf=SES.pf,jn=JOBS[pf.job].name;
+    const pf=SES.pf,jn=jobDef(curJob(pf)).name;
     return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
       +'<div><div class="tabs" style="gap:4px;margin-bottom:8px">'+INV_TABS.map(t=>'<div class="tab '+(t===tab?'on':'')+'" style="padding:6px 11px" data-a="itab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div><div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
   });
@@ -129,7 +130,7 @@ UI.handlers.itab=v=>{UI.invTab=v;UI.sel=null;UI.multi.clear();UI.rerender()};
 UI.handlers.mmode=()=>{UI.multiMode=!UI.multiMode;UI.rerender()};
 UI.handlers.mclear=()=>{UI.multi.clear();UI.rerender()};
 UI.handlers.msell=async()=>{
-  const list=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed);if(!list.length)return;
+  const list=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed&&!isBound(i));if(!list.length)return;
   if(list.some(i=>isGear(i)&&(i.enh>=5||(i.ench||[]).length))&&!(await UI.confirm('강화·인첸트된 장비가 포함되어 있습니다.\n선택한 '+list.length+'개를 정말 판매할까요?')))return;
   sfx('coin');UI.multi.clear();
   await guarded(async()=>{for(const i of list)await API.call('sell',i.id,(i.kind==='potion'||i.kind==='mat'||i.kind==='rune')?i.qty:1)},list.length+'개를 판매했습니다');
@@ -199,6 +200,7 @@ UI.handlers.wrpick=async v=>{
     await guarded(async()=>{await API.call('weaponRestore',w.id);sfx('level')},nm+'을(를) 재료로 되돌렸습니다');derive();netPresence();
   }finally{wrBusy=false}
 };
+UI.handlers.hlearn=v=>hidLearn(v);
 UI.handlers.usep=v=>{usePotionKey(v);setTimeout(()=>UI.rerender&&UI.rerender(),50)};
 UI.handlers.toauc=v=>{UI.close();openAuction('post',+v)};
 
@@ -219,7 +221,7 @@ function openShop(){
       for(const sl of ASLOTS){const b=sl+'_'+atier+'_'+aset,pr=AVALUE[atier-1],cl=TIER_COL[atier-1];h+='<div class="item" style="--tc:'+cl+'">'+ico(ic(sl,cl,26),cl)+'<div><div class="nm" style="color:'+cl+'">'+armorName(b)+'</div><div class="sub">방어 '+armorDef(b,0)+' · 체력 +'+armorHp(b,0)+'</div></div><div class="rt"><div class="gold">'+fmtG(pr)+'</div><button class="btn sm" data-a="buy" data-v="'+b+'" '+(pf.gold<pr?'disabled':'')+'>구매</button></div></div>'}
       h+='</div>';
     }else{
-      const items=myItems().filter(i=>!i.eq).sort(byValue);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
+      const items=myItems().filter(i=>!i.eq&&!isBound(i)).sort(byValue);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
       if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
       h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(itemPrice(i))+'</div>'+(i.kind==='potion'||i.kind==='mat'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }
@@ -343,7 +345,7 @@ function openAuction(tab0,preItem){
       h+='<div class="row wrap" style="margin-bottom:6px">'+[['','전체'],['weapon','무기'],['armor','방어구'],['potion','물약']].map(t=>'<button class="btn sm '+(kind===t[0]?'':'sec')+'" data-a="akind" data-v="'+t[0]+'">'+t[1]+'</button>').join('')+'<label class="row" style="margin-left:8px"><input type="checkbox" id="amine" '+(mine?'checked':'')+' data-a="amine"> 내 직업 무기만</label><button class="btn sm sec" data-a="arefresh" style="margin-left:auto">새로고침</button></div>';
       h+='<div class="list" style="max-height:54vh">'+(loading?'<div class="dim">불러오는 중…</div>':rows.length?rows.map(r=>itemRow(r.item,{a:'none',rt:'<div class="gold">'+fmtG(r.price)+'</div><div class="dim">'+esc(r.seller)+'</div><button class="btn sm" data-a="abuy" data-v="'+r.id+'" '+(r.seller===SES.name||pf.gold<r.price?'disabled':'')+'>구매</button>'})).join(''):'<div class="dim">등록된 물품이 없습니다.</div>')+'</div>';
     }else if(tab==='post'){
-      const items=myItems().filter(i=>!i.eq);const it=sel&&items.find(i=>i.id===sel);
+      const items=myItems().filter(i=>!i.eq&&!isBound(i));const it=sel&&items.find(i=>i.id===sel);
       h+='<div class="two"><div><div class="dim" style="margin-bottom:4px">등록할 아이템 (포션은 보유 묶음 전체가 등록됩니다)</div><div class="list" style="max-height:50vh">'+(items.length?items.map(i=>itemRow(i,{sel:sel===i.id,a:'apick'})).join(''):'<div class="dim">등록할 수 있는 아이템이 없습니다.</div>')+'</div></div>'
         +'<div><div class="card">'+(it?itemRow(it,{a:'none'}):'<div class="dim">아이템을 선택하세요.</div>')+'<div style="margin-top:8px"><input class="tx" id="aprice" type="number" min="1" placeholder="판매 가격 (G)" value="'+esc(price)+'"></div><div class="dim" style="margin:6px 0">판매 시 수수료 5%가 차감됩니다. 최대 20개까지 등록할 수 있습니다.</div><button class="btn" style="width:100%" data-a="apost" '+(it?'':'disabled')+'>등록</button></div></div></div>';
     }else{
@@ -370,11 +372,11 @@ function openParty(){
     if(!NET.on)return '<div class="card">오프라인 모드에서는 파티와 거래를 사용할 수 없습니다.<br><span class="dim">온라인 서버에 접속하면 다른 플레이어와 함께 사냥할 수 있습니다.</span></div>';
     {const r=SES.pf.duel||{w:0,l:0,pt:0};h+='<div class="card" style="margin-bottom:10px"><b>결투 전적</b> '+r.w+'승 '+r.l+'패 · <span class="gold">결투 포인트 '+fmtG(r.pt)+'</span></div>'}
     h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><b>내 파티</b>'+(NET.party?'<button class="btn sm red" data-a="pleave">탈퇴</button>':'')+'</div>';
-    if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+(p.lv||'?')+' '+(JOBS[p.job]?JOBS[p.job].name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
+    if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+(p.lv||'?')+' '+(jobDef(p.job)?jobDef(p.job).name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
     else h+='<div class="dim" style="margin-top:4px">파티가 없습니다. 아래 플레이어를 초대하세요.</div>';
     h+='</div><div class="card"><b>접속 중인 플레이어</b><div class="list" style="margin-top:6px;max-height:34vh">';
     const names=Object.keys(NET.peers);
-    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:'')+(p.du?' · <span class="gold">결투 중 vs '+esc(p.du.vs)+'</span>':'')+'</div></div><div class="rt">'+(p.du?'<button class="btn sm" data-a="dspec" data-v="'+esc(n)+'">관전</button>':'<button class="btn sm" data-a="duel" data-v="'+esc(n)+'">결투</button>')+'<button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
+    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(jobDef(p.job)?jobDef(p.job).name:'')+(p.du?' · <span class="gold">결투 중 vs '+esc(p.du.vs)+'</span>':'')+'</div></div><div class="rt">'+(p.du?'<button class="btn sm" data-a="dspec" data-v="'+esc(n)+'">관전</button>':'<button class="btn sm" data-a="duel" data-v="'+esc(n)+'">결투</button>')+'<button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
     return h+'</div></div>';
   });
   UI.handlers.pinv=v=>partyInvite(v);
@@ -408,7 +410,7 @@ function openTrade(tid,other){
     if(!T)return '<div class="dim">거래 정보를 불러오는 중…</div>';
     const meA=T.a===SES.name,my={gold:meA?T.a_gold:T.b_gold,items:meA?T.a_items:T.b_items,ok:meA?T.a_ok:T.b_ok},th={gold:meA?T.b_gold:T.a_gold,items:meA?T.b_items:T.a_items,ok:meA?T.b_ok:T.a_ok};
     if(T.status!=='open')return '<div class="card" style="text-align:center;padding:20px"><b>'+(T.status==='done'?'거래가 완료되었습니다.':'거래가 취소되었습니다.')+'</b></div>';
-    const inv=myItems().filter(i=>!i.eq);
+    const inv=myItems().filter(i=>!i.eq&&!isBound(i));
     return '<div class="two"><div><b>내 제안</b> '+(my.ok?'<span class="grn">[확인함]</span>':'')+'<div class="card" style="margin:6px 0"><div class="row"><span class="dim">골드</span><input class="tx" id="tgold" type="number" min="0" value="'+UI.trade.myGold+'" style="width:140px"><button class="btn sm sec" data-a="tset">반영</button></div></div><div class="list" style="max-height:34vh">'+inv.map(i=>itemRow(i,{sel:UI.trade.myItems.includes(i.id),a:'ttoggle'})).join('')+'</div><div class="dim" style="margin-top:4px">선택한 아이템이 제안에 올라갑니다 (최대 8개).</div></div>'
       +'<div><b>'+esc(other)+'님의 제안</b> '+(th.ok?'<span class="grn">[확인함]</span>':'')+'<div class="card" style="margin:6px 0"><span class="dim">골드</span> <b class="gold">'+fmtG(th.gold)+'</b></div><div class="list" style="max-height:34vh">'+(th.items.length?th.items.map(i=>itemRow(i,{a:'none'})).join(''):'<div class="dim">아이템 없음</div>')+'</div></div></div>'
       +'<hr><div class="row sp"><span class="dim">조건이 바뀌면 양쪽 확인이 초기화됩니다. 상대 제안을 꼭 확인하세요.</span><span><button class="btn" data-a="tok" '+(my.ok?'disabled':'')+'>확인</button> <button class="btn sec" data-a="tcancel">취소</button></span></div>';
@@ -491,7 +493,7 @@ function updateAutoBtn(){
 }
 UI.refreshHud=function(){
   if(!SES.pf||!P)return;const pf=SES.pf;
-  $('pname').textContent=pf.name;$('pjob').textContent=JOBS[pf.job].name;$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
+  $('pname').textContent=pf.name;$('pjob').textContent=jobDef(curJob(pf)).name;hidHud();$('plv').textContent='경험치 '+fmtN(pf.xp)+' / '+fmtN(pf.need);$('plvn').textContent=pf.level;$('pgold').textContent=fmtG(pf.gold);
   $('xpfill').style.width=Math.min(100,pf.xp/pf.need*100)+'%';
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],it=pf.items.find(x=>x.kind==='potion'&&x.base===b&&!x.listed),n=it?it.qty:0;qs[i].classList.toggle('off',!n);qs[i].querySelector('.ct').textContent=n||''}
   for(const k of['q','e','r','f']){const sk=skillOf(k),el=$('sk-'+k);if(!el)continue;el.style.display=sk?'grid':'none';if(sk){el.title=sk.desc||'';el.querySelector('.nm').textContent=sk.name;el.querySelector('.ic0').innerHTML=skIcon(sk,30)}}

@@ -397,6 +397,7 @@ async function dgOnEnd(st){
 }
 function dgRwText(r){
   if(r.t==='gold')return '골드 +'+fmtN(r.n);
+  if(r.t==='hidden')return '히든 · '+(POTIONS[r.base]?POTIONS[r.base].name:r.base);
   if(r.t==='weapon')return '무기 · '+wName(r.base);
   if(r.t==='potion')return (POTIONS[r.base]?POTIONS[r.base].name:r.base)+' x'+r.n;
   if(r.t==='rune')return (RUNES[r.base]?RUNES[r.base].name:r.base)+(r.base==='all'?'':' '+(RUNE_G[r.g]||''))+' x'+r.n;
@@ -405,6 +406,7 @@ function dgRwText(r){
 function dgRwCard(r){
   let col='#ffd24a',ico=ic('star',col,26),nm='',sub='';
   if(r.t==='gold'){nm=fmtN(r.n)+' G';sub='골드'}
+  else if(r.t==='hidden'){const p=POTIONS[r.base]||{};col=p.col||'#ffd24a';ico=ic('star',col,26);nm=p.name||r.base;sub='히든 전직서'}
   else if(r.t==='weapon'){col=gcol(r.base);ico=ic(WICON[wCls(r.base)],col,26);nm=wName(r.base);sub='무기'}
   else if(r.t==='potion'){const p=POTIONS[r.base]||{};col=p.col||'#ff5a6a';ico=ic('potion',col,26);nm=(p.name||r.base)+' x'+r.n;sub='물약'}
   else if(r.t==='rune'){const q=RUNES[r.base]||{};col=q.col||'#fff';ico=ic('gem',col,26);nm=(q.name||r.base)+(r.base==='all'?'':' '+(RUNE_G[r.g]||''))+' x'+r.n;sub='룬'}
