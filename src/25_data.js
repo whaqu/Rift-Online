@@ -219,14 +219,14 @@ const ENCH={
   pierce:{name:'관통',d:'관통 +{v} · 근접 범위 +{v2}%',per:1,col:'#9fc8ff'},
   armor:{name:'수호',d:'받는 피해 -{v}%',per:4,col:'#b0b8d8'}
 };
-/* runes: attach 1 to a weapon (socket). grade 1..3 (3 same -> next grade). 8 kinds + 만물의 룬(all) */
+/* runes: attach 1 to a weapon (socket). grade 1..3 (3 same -> next grade). 만물의 룬(all) is fused from the 9 region runes (REGION_RUNE); RUNE_KEYS are the 8 effects it carries */
 const RUNES={
   fire:{name:'화염의 룬',col:'#ff7a2a',d:'화상 · 폭발'},ice:{name:'냉기의 룬',col:'#7fd8ff',d:'수호 · 가속'},thunder:{name:'번개의 룬',col:'#ffe27a',d:'연쇄 번개 · 가속'},
   dark:{name:'암흑의 룬',col:'#b07aff',d:'흡혈 · 치명'},holy:{name:'성광의 룬',col:'#fff1a8',d:'체력 · 재생'},
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
   forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
   snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'기본 8종 룬의 힘 ×2 · 황금 오라'}
+  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 황금 오라'}
 };
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];

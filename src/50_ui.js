@@ -106,8 +106,8 @@ function openInventory(){
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
           +(pot?'<button class="btn sm sec" data-a="rbrew" data-v="'+sel.id+'">물약으로 (+'+pot[1]*sel.enh+' '+POTIONS[pot[0]].name+')</button>':'')
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
-          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 화염·냉기·번개·암흑·성광·초원·수정·폭풍 룬(Ⅱ 이상)을 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
-          +(RUNE_KEYS.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
+          +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 9개 지역의 룬('+REGION_RUNE.map(k=>RUNES[k].name.replace('의 룬','')).join('·')+')을 Ⅱ 이상으로 모두 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
+          +(REGION_RUNE.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
       }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }

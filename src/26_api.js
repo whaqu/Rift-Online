@@ -176,7 +176,7 @@ const LocalAPI=(()=>{
       if(mode==='up'){
         if(base==='all'||!RUNES[base]||(grade!==1&&grade!==2))E('BAD_ARGS');if(have(base,grade)<3)E('NO_RUNE');take(base,grade,3);give(n,'rune',base,1,grade+1);
       }else if(mode==='all'){
-        const gs=RUNE_KEYS.map(b=>have(b,2)?2:have(b,3)?3:0);if(gs.some(g=>!g))E('NO_RUNE');RUNE_KEYS.forEach((b,i)=>take(b,gs[i],1));give(n,'rune','all',1,1);
+        const gs=REGION_RUNE.map(b=>have(b,2)?2:have(b,3)?3:0);if(gs.some(g=>!g))E('NO_RUNE');REGION_RUNE.forEach((b,i)=>take(b,gs[i],1));give(n,'rune','all',1,1);
       }else E('BAD_ARGS');
       wr();return pf(a);
     },
