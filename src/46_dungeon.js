@@ -284,7 +284,7 @@ function dgEnter(id){
 }
 function dgLeave(msg){
   if(!DG.on)return;
-  const id=DG.id;DG.on=false;DG.ph='idle';DG.boss=null;
+  const id=DG.id;DG.on=false;DG.ph='idle';DG.boss=null;dgExitBtn(false);
   if(DG.arena)DG.arena.g.visible=false;worldG.visible=true;DG.atmo=null;if(DG.lamp&&DG.lamp.parent)scene.remove(DG.lamp);
   resetMobs();
   const pt=DGP.find(p=>p.dg===id);
@@ -325,6 +325,7 @@ async function openPortal(p){
 }
 const dgInParty=()=>!!(NET.party&&NET.party.members.length>1);   /* parties ignore dungeon level limits */
 async function dgStart(id){
+  if(DG.pending){UI.toast('이전 던전 보상을 정산 중입니다. 잠시 뒤 입장해주세요');return}
   try{await API.call('dgBegin',id,dgInParty())}catch(e){UI.toast(errKo(e.message));return}
   flushKills();flushGather();
   dgEnter(id);
@@ -332,6 +333,7 @@ async function dgStart(id){
 }
 async function dgJoin(id){
   if(DG.on)return;
+  if(DG.pending){UI.toast('이전 던전 보상을 정산 중입니다. 잠시 뒤 입장해주세요');return}
   try{await API.call('dgBegin',id,dgInParty())}catch(e){UI.toast(errKo(e.message));return}
   flushKills();flushGather();dgEnter(id);
 }
@@ -384,16 +386,17 @@ function dgClear(){
 
 /* ---------- results & rewards (every client in the dungeon) ---------- */
 async function dgOnEnd(st){
-  DG.ph='clear';DG.st=st;sfx('level');cam.shake=Math.max(cam.shake,.5);
+  DG.ph='clear';DG.st=st;const run=DG.begin,gone=()=>!DG.on||DG.begin!==run;DG.pending=true;dgExitBtn(true);sfx('level');cam.shake=Math.max(cam.shake,.5);
   const idx=st.findIndex(s=>s[0]===SES.name),rank=Math.min(5,idx<0?st.length+1:idx+1),id=DG.id;
   // server needs the run to be at least 45 s old
   const wait=Math.max(0,46500-(Date.now()-DG.begin));if(wait>0)await new Promise(r=>setTimeout(r,wait));
-  if(!DG.on||DG.id!==id)return;
   let rw=null,err=null;
   try{const r=await API.call('dgEnd',id,rank);rw=r.rewards}catch(e){err=e.message}
+  DG.pending=false;
   DG.res={st,rank,rw,err};
   try{derive();UI.refreshHud()}catch(e){}
-  dgResults();
+  if(gone())UI.toast(err?errKo(err):'던전 보상: '+rw.map(dgRwText).join(', '),4200);   // left early: the reward still arrives
+  else dgResults();
 }
 function dgRwText(r){
   if(r.t==='gold')return '골드 +'+fmtN(r.n);
@@ -421,6 +424,14 @@ function dgResults(){
     return h;
   });
   clearTimeout(DG.autoT);DG.autoT=setTimeout(()=>{if(DG.on&&DG.ph==='clear'){UI.close();dgLeave('던전을 나왔습니다')}},30000);
+}
+/* leave as soon as the boss is down, even while rewards are still being settled or after the result window was closed */
+function dgExitBtn(on){
+  if(!DG.exitEl){
+    if(!on)return;
+    const b=DG.exitEl=document.createElement('button');b.id='dgexit';b.className='btn';b.textContent='마을 입구로 나가기 ▶';b.onclick=()=>dgOut();document.body.appendChild(b);
+  }
+  DG.exitEl.style.display=on?'block':'none';
 }
 function dgOut(){clearTimeout(DG.autoT);UI.close();dgLeave('던전을 나왔습니다')}
 
@@ -481,6 +492,7 @@ const DG_CSS=`
 #dgban .s{font-size:14px;letter-spacing:2px;opacity:.9;margin-top:2px}
 @keyframes dgban{0%{opacity:0;transform:scale(1.5)}12%{opacity:1;transform:scale(1)}78%{opacity:1}100%{opacity:0;transform:translateY(-12px)}}
 @keyframes dgpulse{50%{opacity:.55}}
+#dgexit{position:fixed;top:132px;left:50%;transform:translateX(-50%);z-index:19;pointer-events:auto;padding:10px 24px;font-size:15px;white-space:nowrap;display:none}
 #dgres .rk{text-align:center;margin:2px 0 10px}
 #dgres .rk b{display:inline-block;font-size:34px;font-weight:900;line-height:1;padding:10px 22px;border-radius:50%;border:3px solid var(--mc,#ffd24a);color:var(--mc,#ffd24a);box-shadow:0 0 18px var(--mc,#ffd24a);text-shadow:0 0 10px var(--mc,#ffd24a)}
 #dgres .rk div{margin-top:6px;font-size:13px;opacity:.85}

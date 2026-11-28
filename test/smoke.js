@@ -254,6 +254,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.DG.begin-=60000;const gold0=g.SES.pf.gold;
     g.applyMobDmg(boss,1e12,null,g.SES.name);step(5);
     T(g.DG.ph==='clear','boss kill clears the dungeon');
+    T(g.DG.exitEl&&g.DG.exitEl.style.display==='block','exit button appears as soon as the boss falls');
     for(let i=0;i<50&&!g.DG.res;i++)await sleep(20);
     T(g.DG.res&&g.DG.res.rank===1&&g.DG.res.rw&&g.DG.res.rw.length>=2,'rank 1 reward received '+JSON.stringify(g.DG.res&&g.DG.res.rw));
     T(g.SES.pf.gold>gold0,'dungeon gold paid');
