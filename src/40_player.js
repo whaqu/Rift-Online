@@ -189,7 +189,7 @@ function doAttack(){
 function trySkill(slot){
   if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy())return;
   const sk=skillOf(slot);if(!sk)return;
-  if(sk.fx==='r_q'?qCharge()<Q_MIN:P.cd[slot]>0)return;
+  if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
   P.cd[slot]=sk.cd*(1-S.cdr);P.cdMax[slot]=sk.cd*(1-S.cdr);P.atkAnim=0;P.atkDur=.35;
 }

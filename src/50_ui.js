@@ -453,7 +453,7 @@ UI.hudTick=function(dt){
     const sk=k==='q'?skillOf('q'):null,tb=$('tb-'+k);
     if(sk&&sk.fx==='r_q'){   // round charge gauge
       const ch=qCharge(),deg=Math.round(ch*360),full=ch>=1,
-        bg='conic-gradient(rgba(255,74,122,.28) '+deg+'deg, rgba(4,5,10,'+(ch<Q_MIN?.82:.62)+') '+deg+'deg)';
+        bg='conic-gradient(rgba(255,74,122,.28) '+deg+'deg, rgba(4,5,10,.62) '+deg+'deg)';
       for(const b of[el,tb]){if(!b)continue;const m=domQ(b,'.cdm');if(!m)continue;if(m._bg!==bg){m._bg=bg;m.style.background=bg}domX(m,full?'scaleY(0)':'scaleY(1)')}
       domT(domQ(el,'.cdt'),full?'':Math.floor(ch*100)+'%');continue;
     }
