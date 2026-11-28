@@ -1,7 +1,7 @@
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
 const UI={modal:null,rerender:null,sel:null,toastT:0,vgT:0,lastHud:0,lastMini:0,chatLines:[],trade:null,tradeTimer:0};
-const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;return o})();
+const KCLS=(()=>{const o={};for(const k of CLASSES)o[k]=CLS[k].name;o.sword='전사·암살자·암흑기사';return o})();
 
 UI.toast=function(msg,ms){const t=$('toast');t.textContent=msg;t.classList.add('show');clearTimeout(UI.toastT);UI.toastT=setTimeout(()=>t.classList.remove('show'),ms||2200)};
 function vignette(){const v=$('vign');v.style.opacity='1';clearTimeout(UI.vgT);UI.vgT=setTimeout(()=>{v.style.opacity=(P&&!P.dead&&P.hp<S.maxHp*.25)?'.5':'0'},180)}
@@ -50,7 +50,7 @@ function enchTags(it){return(it.ench||[]).map(e=>'<span class="ench" style="colo
 function runeTag(it){if(!it.rune)return '';const p=it.rune.split(':'),r=RUNES[p[0]];return r?'<span class="ench" style="color:'+r.col+'">◆'+r.name.replace('의 룬','')+(p[0]==='all'?'':' '+(RUNE_G[+p[1]]||''))+(runeMatch(it.base,it.rune)?' ★짝 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</span>':''}
 function itemRow(it,o){
   o=o||{};const col=isGear(it)?TIER_COL[wTier(it.base)-1]:it.kind==='mat'&&MATS[it.base]?MATS[it.base].col:it.kind==='rune'&&RUNES[it.base]?RUNES[it.base].col:'#e4e6ec';let sub;
-  if(it.kind==='weapon'){const ok=wCls(it.base)===SES.pf.cls,ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wTier(it.base)+'등급('+ZONES[wTier(it.base)].name+') · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
+  if(it.kind==='weapon'){const ok=wCan(it.base,SES.pf.cls),ty=wType(it.base);sub='<span class="'+(ok?'':'red')+'">'+KCLS[wCls(it.base)]+'</span> · '+wGrade(it.base)+' · '+(ty?WTMOD[ty].n+' · ':'')+wStat(it)+' '+enchTags(it)+runeTag(it)}
   else if(it.kind==='armor'){sub=ASETS[aSet(it.base)].n+' '+ASLOT_N[aSlot(it.base)]+' · '+wStat(it)}
   else if(it.kind==='mat'){const m=MATS[it.base];sub=m?m.desc:''}
   else if(it.kind==='rune'){sub=(runeDesc(it.base==='all'?'all':it.base,it.enh)||(RUNES[it.base]||{}).d)+(RUNES[it.base]?'<br>지역: '+runeFrom(it.base):'')}
@@ -214,13 +214,31 @@ function openShop(){
 }
 
 /* ---------- blacksmith ---------- */
+const craftHave=k=>{const[t,b]=k.split(':');return myItems().filter(i=>i.kind===t&&i.base===b&&!i.listed).reduce((s,i)=>s+i.qty,0)};
+const craftable=r=>Object.entries(recipeNeed(r)).every(([k,n])=>craftHave(k)>=n);
+/* left: recipes you have every material for · middle: 5x5 table and result · bottom: your materials */
+function craftHtml(grid,pick,msg){
+  for(let i=0,used={};i<grid.length;i++){const k=grid[i];if(k&&(used[k]=(used[k]||0)+1)>craftHave(k))grid[i]=null}
+  const list=RECIPES.filter(craftable),hit=craftMatch(grid),can=hit&&craftable(hit);
+  const cell=(k,i)=>'<div data-a="ccell" data-v="'+i+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2;word-break:keep-all;overflow:hidden;background:#232940;border:2px solid '+(k?matCol(k):'#4a5274')+';color:'+(k?matCol(k):'#fff')+'">'+(k?matName(k):'')+'</div>';
+  const keys=['rune:all',...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
+  let h='<div style="display:flex;gap:8px;align-items:flex-start">';
+  h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic('sword',TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
+  h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+TIER_COL[wTier(hit.base)-1]+'">'+wName(hit.base)+'</b> <span class="dim">'+hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · 전사·암살자·암흑기사</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+    +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
+  h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
+  return h;
+}
 function openSmith(){
+  flushGather();const grid=Array(CRAFT_N*CRAFT_N).fill(null);let pick=null,crafting=false;
   let tab='enh',selId=null,msg='';
   const weapons=()=>myItems().filter(isGear).sort((a,b)=>(b.eq-a.eq)||(wTier(b.base)-wTier(a.base)));
   UI.page('대장간',()=>{
     const pf=SES.pf,ws=weapons();if(!selId||!byId(selId)||byId(selId).listed){const eq=ws.find(w=>w.eq);selId=eq?eq.id:(ws[0]?ws[0].id:null)}
     const it=selId?byId(selId):null;
-    let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='enh'?'on':'')+'" data-a="mtab" data-v="enh">강화</div><div class="tab '+(tab==='ench'?'on':'')+'" data-a="mtab" data-v="ench">인첸트</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
+    let h='<div class="row sp" style="margin-bottom:8px"><div class="tabs" style="margin:0"><div class="tab '+(tab==='enh'?'on':'')+'" data-a="mtab" data-v="enh">강화</div><div class="tab '+(tab==='ench'?'on':'')+'" data-a="mtab" data-v="ench">인첸트</div><div class="tab '+(tab==='craft'?'on':'')+'" data-a="mtab" data-v="craft">제작대</div></div><span class="gold">'+fmtG(pf.gold)+'</span></div>';
+    if(tab==='craft')return h+craftHtml(grid,pick,msg);
     h+='<div class="two"><div><div class="list" style="max-height:58vh">'+ws.map(w=>itemRow(w,{sel:w.id===selId,a:'wsel'})).join('')+'</div></div><div>';
     if(!it)h+='<div class="dim">장비가 없습니다.</div>';
     else if(tab==='enh'){
@@ -244,6 +262,18 @@ function openSmith(){
     return h+'</div></div>';
   });
   UI.handlers.mtab=v=>{tab=v;msg='';UI.rerender()};
+  UI.handlers.cpick=v=>{pick=pick===v?null:v;msg='';UI.rerender()};
+  UI.handlers.ccell=v=>{const i=+v;msg='';if(grid[i])grid[i]=null;else if(pick&&craftHave(pick)>grid.filter(k=>k===pick).length)grid[i]=pick;else if(!pick)msg='<span class="dim">아래에서 재료를 먼저 고르세요.</span>';UI.rerender()};
+  UI.handlers.crec=v=>{const r=RECIPES.find(r=>r.id===v);if(!r)return;recipeCells(r).forEach((k,i)=>{grid[i]=k});msg='';UI.rerender()};
+  UI.handlers.cclear=()=>{grid.fill(null);msg='';UI.rerender()};
+  UI.handlers.cmake=async()=>{
+    const r=craftMatch(grid);if(!r||crafting||!craftable(r))return;crafting=true;
+    try{
+      if(!(await UI.confirm('재료를 모두 사용해 '+wName(r.base)+'을(를) 제작할까요?')))return;
+      await API.call('craft',r.id);grid.fill(null);pick=null;msg='<b style="color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+' 제작 완료! 가방에서 장착하세요.</b>';
+      sfx('level');UI.refreshHud();if(P)shockRing(P.x,P.z,5,0xff4fd8,.8);UI.rerender();
+    }catch(e){UI.toast(errKo(e.message))}finally{crafting=false}
+  };
   UI.handlers.wsel=v=>{selId=+v;msg='';UI.rerender()};
   UI.handlers.enh=async()=>{
     const it=byId(selId);if(!it)return;

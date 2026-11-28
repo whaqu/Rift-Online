@@ -138,10 +138,14 @@ const WNAMES={
   summoner:['낡은 토템','나무 토템','정령의 토템','룬 토템','현자의 토템','용혼 토템','별의 토템','세계수 토템','천공의 토템'],
   darknight:['녹슨 대검','어둠의 검','흑철 대검','룬 대검','암흑 대검','용아 대검','폭풍의 대검','영겁의 대검','타락천사의 대검']
 };
-const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword'};
-const WATK=[10,22,40,70,115,180,280,420,620];
-const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef'];
-const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a,0x8affef];
+const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'staff',lancer:'spear',monk:'fist',gunner:'gun',summoner:'staff',darknight:'sword',sword:'sword'};
+/* shared weapons: base 'sword_10' is usable by every sword class. Must match rw_wcan */
+const SWORD_CLS=['warrior','rogue','darknight'];
+const wCan=(b,c)=>wCls(b)==='sword'?SWORD_CLS.includes(c):wCls(b)===c;
+const wGrade=b=>wTier(b)>9?'유니크':wTier(b)+'등급('+ZONES[wTier(b)].name+')';
+const WATK=[10,22,40,70,115,180,280,420,620,880];   // 10th = unique (crafted)
+const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef','#ff4fd8'];
+const TIER_HEX=[0x9aa0a8,0xe8e8e8,0x5fd26a,0x4aa8ff,0xb86bff,0xff9a3a,0xff5a5a,0xffd24a,0x8affef,0xff4fd8];
 const wTier=b=>+(String(b).split('_')[1]||1);
 const wCls=b=>String(b).split('_')[0];
 const wType=b=>{const p=String(b).split('_')[2];return p&&/^[12]$/.test(p)?+p:0};
@@ -181,14 +185,14 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const wName=b=>{if(wCls(b)==='sword')return'만물의 검';const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
 const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
-const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000];
+const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000,6000000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
 /* base resale price by tier (30% of value, top tiers capped around 70-90k) */
-const WSELL=[30,270,1050,3600,11400,33000,70000,80000,90000],ASELL=[18,150,600,2100,6600,18000,51000,75000];
+const WSELL=[30,270,1050,3600,11400,33000,70000,80000,90000,90000],ASELL=[18,150,600,2100,6600,18000,51000,75000];
 const sellValue=it=>it.kind==='armor'?Math.floor(ASELL[wTier(it.base)-1]*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WSELL[wTier(it.base)-1]*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
 
 const POTIONS={
@@ -201,6 +205,25 @@ const POTIONS={
   tp:{name:'텔레포트의 서',kind:'tp',price:1000,col:'#c79bff',desc:'사용하면 지도가 열리고 누른 곳으로 순간이동합니다'},
   rr:{name:'룬의 복원서',kind:'restore',price:100000,col:'#7dffd0',desc:'사용해 무기를 고르면 그 무기의 룬이 사라지지 않고 가방으로 돌아옵니다'}
 };
+/* crafting table: 5x5 shaped recipes (Minecraft style, the shape may sit anywhere it fits).
+   To add one: add it here AND add the same id / ingredient totals to the server function rw_recipe */
+const CRAFT_N=5;
+const RECIPES=[
+  {id:'omni_weapon',base:'sword_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood'},
+   pattern:['.....','..C..','..R..','.FWF.','..W..']}
+];
+const recipeCells=r=>{const o=[];for(const row of r.pattern)for(const ch of row)o.push(r.key[ch]||null);return o};
+const recipeNeed=r=>{const o={};for(const k of recipeCells(r))if(k)o[k]=(o[k]||0)+1;return o};
+/* shape of a grid without its empty border */
+function gridShape(g){
+  let x0=9,x1=-1,y0=9,y1=-1;
+  g.forEach((v,i)=>{if(!v)return;const x=i%CRAFT_N,y=i/CRAFT_N|0;x0=Math.min(x0,x);x1=Math.max(x1,x);y0=Math.min(y0,y);y1=Math.max(y1,y)});
+  if(x1<0)return'';const o=[];for(let y=y0;y<=y1;y++)o.push(g.slice(y*CRAFT_N+x0,y*CRAFT_N+x1+1).map(v=>v||'.').join(','));return o.join('/');
+}
+const craftMatch=g=>RECIPES.find(r=>gridShape(recipeCells(r))===gridShape(g))||null;
+const matName=k=>{const[t,b]=k.split(':');return t==='rune'?(RUNES[b]?RUNES[b].name:b):(MATS[b]?MATS[b].name:b)};
+const matCol=k=>{const[t,b]=k.split(':');const o=t==='rune'?RUNES[b]:MATS[b];return o?o.col:'#ccc'};
+
 /* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
   /* monster drops (m1..m9 by region, core from elites). Prices must match rw_mat_price */
@@ -412,5 +435,5 @@ function itemName(it){
 }
 function enchText(e){const d=ENCH[e.k];if(!d)return e.k;return d.name+' '+'I'.repeat(e.l)}
 function enchDesc(k,l){const d=ENCH[k];return d.d.replace('{v}',d.per*l).replace('{v2}',10*l)}
-const ERR_KO={QUEST_ACTIVE:'이미 진행 중인 퀘스트입니다.',QUEST_LIMIT:'오늘 받을 수 있는 의뢰를 모두 마쳤습니다.',QUEST_DONE:'모든 이야기를 끝냈습니다.',SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
+const ERR_KO={NO_MAT:'재료가 부족합니다.',QUEST_ACTIVE:'이미 진행 중인 퀘스트입니다.',QUEST_LIMIT:'오늘 받을 수 있는 의뢰를 모두 마쳤습니다.',QUEST_DONE:'모든 이야기를 끝냈습니다.',SEMI_NO_ASSASSIN:'이 계정은 암살자를 선택할 수 없습니다.',SEMI_LOCKED:'세미 개발자 계정은 아이템을 얻거나 거래·변경할 수 없습니다.',NO_RUNE:'룬이 부족합니다.',LOW_LEVEL:'레벨이 부족해 입장할 수 없습니다.',TOO_FAST:'너무 빨리 끝났습니다. 보상이 지급되지 않았습니다.',NO_RUN:'진행 중인 던전 기록이 없습니다.',LIMIT:'오늘 던전 보상 한도에 도달했습니다.',NO_POINTS:'사용할 수 있는 포인트가 없습니다.',ALREADY:'이미 받았습니다.',NOT_READY:'아직 받을 수 없습니다.',BAD_AUTH:'로그인이 만료되었습니다. 다시 로그인해주세요.',BAD_LOGIN:'이름 또는 비밀번호가 틀렸습니다.',LOCKED:'로그인 시도가 너무 많습니다. 잠시 후 다시 시도해주세요.',BAD_NAME:'이름은 한글·영문·숫자 2~10자만 가능합니다.',BAD_PASS:'비밀번호는 4자 이상이어야 합니다.',NAME_TAKEN:'이미 사용 중인 이름입니다.',BAD_CLASS:'직업을 선택해주세요.',NO_GOLD:'골드가 부족합니다.',NOT_SOLD:'판매하지 않는 물품입니다.',BAD_ITEM:'사용할 수 없는 아이템입니다.',WRONG_CLASS:'다른 직업의 무기입니다.',LOW_LEVEL:'레벨이 부족합니다.',NO_POTION:'물약이 없습니다.',MAX_ENH:'더 이상 강화할 수 없습니다.',SLOTS_FULL:'인첸트 슬롯이 가득 찼습니다.',MAX_ENCH:'최대 단계입니다.',BAD_SLOT:'잘못된 슬롯입니다.',BAD_JOB:'전직할 수 없는 직업입니다.',BAD_PRICE:'가격이 올바르지 않습니다.',TOO_MANY:'더 이상 등록할 수 없습니다.',SOLD_OUT:'이미 판매되었거나 취소된 물품입니다.',OWN_LISTING:'내 물품은 구매할 수 없습니다.',BAD_LISTING:'등록 정보를 찾을 수 없습니다.',BAD_TARGET:'거래 상대를 찾을 수 없습니다.',ALREADY_TRADING:'이미 거래 중입니다.',BAD_TRADE:'거래가 종료되었습니다.',TRADE_INVALID:'거래 조건이 변경되어 취소되었습니다.',BAD_ARGS:'잘못된 요청입니다.',NET:'서버에 연결할 수 없습니다.',DELETED:'삭제된 계정입니다.',NOT_ADMIN:'권한이 없습니다.',BAD_OLD_PASS:'현재 비밀번호가 틀렸습니다.',BAD_NEW_PASS:'새 비밀번호는 8~40자이고 현재 비밀번호와 달라야 합니다.'};
 const errKo=m=>{m=String(m||'');for(const k in ERR_KO)if(m.indexOf(k)>=0)return ERR_KO[k];return '요청에 실패했습니다.'};

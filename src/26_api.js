@@ -222,10 +222,17 @@ const LocalAPI=(()=>{
     },
     equip(n,t,id){
       rd();const a=auth(n,t);const it=db.items.find(i=>i.id===id&&i.owner===n&&(i.kind==='weapon'||i.kind==='armor')&&!i.gone);if(!it||it.listed)E('BAD_ITEM');
-      if(it.kind==='weapon'){if(wCls(it.base)!==a.cls)E('WRONG_CLASS');db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});it.eq=true}
+      if(it.kind==='weapon'){if(!wCan(it.base,a.cls))E('WRONG_CLASS');db.items.forEach(i=>{if(i.owner===n&&i.kind==='weapon')i.eq=false});it.eq=true}
       else if(it.eq)it.eq=false;
       else{db.items.forEach(i=>{if(i.owner===n&&i.kind==='armor'&&aSlot(i.base)===aSlot(it.base))i.eq=false});it.eq=true}
       wr();return pf(a);
+    },
+    craft(n,t,id){semiLock(n);
+      rd();const a=auth(n,t),r=RECIPES.find(r=>r.id===id);if(!r)E('BAD_ARGS');
+      const need=Object.entries(recipeNeed(r)),own=k=>{const[kd,b]=k.split(':');return db.items.filter(i=>i.owner===n&&i.kind===kd&&i.base===b&&!i.listed&&!i.gone)};
+      if(need.some(([k,c])=>own(k).reduce((s,i)=>s+i.qty,0)<c))E('NO_MAT');
+      for(let[k,c]of need)for(const i of own(k)){const x=Math.min(i.qty,c);i.qty-=x;c-=x;if(i.qty<=0)i.gone=true}
+      give(n,'weapon',r.base,1);wr();return{base:r.base,profile:pf(a)};
     },
     runeRestore(n,t,wid){semiLock(n);
       rd();const a=auth(n,t);const w=db.items.find(i=>i.id===wid&&i.owner===n&&i.kind==='weapon'&&!i.gone&&!i.listed);if(!w||!w.rune)E('BAD_ITEM');
@@ -261,7 +268,7 @@ const LocalAPI=(()=>{
     },
     aucList(kind,cls){
       rd();seedMarket();
-      return db.auc.filter(x=>x.status==='active').map(x=>({x,i:db.items.find(i=>i.id===x.item_id)})).filter(o=>o.i&&(!kind||o.i.kind===kind)&&(!cls||(o.i.kind==='weapon'&&wCls(o.i.base)===cls)))
+      return db.auc.filter(x=>x.status==='active').map(x=>({x,i:db.items.find(i=>i.id===x.item_id)})).filter(o=>o.i&&(!kind||o.i.kind===kind)&&(!cls||(o.i.kind==='weapon'&&wCan(o.i.base,cls))))
         .sort((a,b)=>b.x.created-a.x.created).slice(0,60).map(o=>({id:o.x.id,seller:o.x.seller,price:o.x.price,item:{id:o.i.id,kind:o.i.kind,base:o.i.base,enh:o.i.enh,ench:o.i.ench,qty:o.i.qty}}));
     },
     aucMine(n,t){rd();auth(n,t);return db.auc.filter(x=>x.seller===n).sort((a,b)=>b.id-a.id).slice(0,30).map(x=>{const i=db.items.find(i=>i.id===x.item_id);return{id:x.id,price:x.price,status:x.status,buyer:x.buyer,item:{id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty}}})},
@@ -292,8 +299,8 @@ const LocalAPI=(()=>{
     },
     gmJob(n,t,job){
       rd();const a=auth(n,t);if(n!==LOCAL_GM&&n!==LOCAL_SEMI)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');if(n===LOCAL_SEMI&&j.cls==='rogue')E('SEMI_NO_ASSASSIN');a.cls=j.cls;a.job=job;
-      const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
-      if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCls(i.base)===j.cls).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
+      const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(!wCan(i.base,j.cls))i.eq=false});
+      if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCan(i.base,j.cls)).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
       wr();return pf(a);
     },
     gmWeapon(n,t,base,enh,ench){
@@ -309,14 +316,14 @@ const LocalAPI=(()=>{
 
 /* ---------- unified client wrapper ---------- */
 const NAMES={quest:'rw_quest',duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
-  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeRestore:'rw_rune_restore',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
+  aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',craft:'rw_craft',runeRestore:'rw_rune_restore',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
   duelLose:a=>({p_winner:a[0],p_id:a[1]}),
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
   tradeOk:a=>({p_id:a[0]}),quest:a=>({p_line:a[0],p_act:a[1]}),tradeCancel:a=>({p_id:a[0]}),gmJob:a=>({p_job:a[0]}),gmWeapon:a=>({p_base:a[0],p_enh:a[1],p_ench:a[2]}),gmGrowth:a=>({p_max:a[0]}),gmResetInv:()=>({}),
-  runeAttach:a=>({p_weapon:a[0],p_rune:a[1]}),runeRestore:a=>({p_weapon:a[0]}),runeFuse:a=>({p_mode:a[0],p_base:a[1]||'',p_grade:a[2]||0}),runeBrew:a=>({p_item:a[0]}),dgBegin:a=>a[1]?{p_dg:a[0],p_party:true}:{p_dg:a[0]},dgEnd:a=>({p_dg:a[0],p_rank:a[1]})
+  runeAttach:a=>({p_weapon:a[0],p_rune:a[1]}),runeRestore:a=>({p_weapon:a[0]}),craft:a=>({p_recipe:a[0]}),runeFuse:a=>({p_mode:a[0],p_base:a[1]||'',p_grade:a[2]||0}),runeBrew:a=>({p_item:a[0]}),dgBegin:a=>a[1]?{p_dg:a[0],p_party:true}:{p_dg:a[0]},dgEnd:a=>({p_dg:a[0],p_rank:a[1]})
 };
 const API={
   async probe(){

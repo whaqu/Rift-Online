@@ -239,6 +239,25 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(q('m1')>=20&&q('m1')<=40,'elites drop 2-4 materials of their region');T(q('m9')>0&&q('m9')<=30,'normal monsters sometimes drop a material');
     const it=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='m1'),g0=g.SES.pf.gold;await g.API.call('sell',it.id,1);T(g.SES.pf.gold===g0+4,'a monster material sells at its price');
   }
+  // ---- crafting table + shared unique sword ----
+  {
+    const K='rw_local_db_v1',me=g.SES.name,keep=localStorage.getItem(K),R=g.RECIPES[0],cells=g.recipeCells(R);
+    T(g.craftMatch(cells)===R&&cells.length===25,'recipe matches its own layout');
+    const up=cells.slice(5).concat(Array(5).fill(null));T(g.craftMatch(up)===R,'the shape may sit elsewhere on the table');
+    const bad=cells.slice();bad[0]='mat:wood';T(!g.craftMatch(bad),'an extra material does not match');
+    let ee='';try{await g.API.call('craft','omni_weapon')}catch(e){ee=e.message}T(ee==='NO_MAT','crafting needs every material');
+    T(!g.craftable(R)&&!/data-a="crec"/.test(g.craftHtml(Array(25).fill(null),null,'')),'recipe is hidden while materials are missing');
+    const d=JSON.parse(localStorage.getItem(K));
+    for(const[kind,base,qty]of[['mat','core',1],['rune','all',1],['mat','m9',3],['mat','wood',2]])d.items.push({id:d.nid++,owner:me,kind,base,enh:kind==='rune'?1:0,ench:[],qty,eq:false,listed:false,gone:false});
+    localStorage.setItem(K,JSON.stringify(d));await g.API.resume(me,g.SES.token);
+    T(g.craftable(R)&&/data-a="crec"/.test(g.craftHtml(cells.slice(),null,'')),'recipe is listed once every material is owned');
+    await g.API.call('craft','omni_weapon');
+    T(g.SES.pf.items.some(i=>i.base==='sword_10')&&g.wName('sword_10')==='만물의 검','crafting gives the unique sword');
+    T(['warrior','rogue','darknight'].every(c=>g.wCan('sword_10',c))&&!g.wCan('sword_10','mage'),'only sword classes can use it');
+    for(const c of['warrior','rogue','darknight']){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,'sword_10');T(o.wbase==='sword_10'&&o.wau&&o.wau.kind==='omni'&&o.weapon.children.length>0,'unique model and aura for '+c);o.wau.anim(1.3)}
+    {let ok2=true;try{g.openSmith();g.UI.handlers.mtab('craft');g.UI.handlers.crec('omni_weapon');g.UI.handlers.cclear();g.UI.handlers.cpick('mat:wood');g.UI.handlers.ccell('0');g.UI.close()}catch(e){ok2=false;console.log(e.message)}T(ok2,'crafting tab works')}
+    localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
+  }
   // ---- dungeon ----
   {
     const K='rw_local_db_v1';const lv=g.SES.pf.level;

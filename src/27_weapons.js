@@ -170,7 +170,7 @@ const WLOOK={
 };
 
 /* body aura for the top weapon grades: 7 storm (lightning), 8 eternity (gyro rings + clock), 9 celestial (halo + wings) */
-const AUKIND={7:'storm',8:'eternity',9:'celestial'};
+const AUKIND={7:'storm',8:'eternity',9:'celestial',10:'omni'};
 const AUMAT={};
 const aumat=(c,op)=>AUMAT[c+'_'+op]||(AUMAT[c+'_'+op]=new THREE.MeshBasicMaterial({color:c,transparent:true,opacity:op,depthWrite:false,side:THREE.DoubleSide}));
 let WINDTEX=null;
@@ -212,6 +212,29 @@ function auraBuild(kind){
     const hands=[.68,.46].map(l=>{const h=new THREE.Group();clock.add(h);add(new THREE.BoxGeometry(.09,l,.04),pale,0,l/2,0,h);return h});
     halo(0xb04cff,1.2,3.2,.45);
     anim=t=>{rings[0].rotation.y=t*1.5;rings[1].rotation.y=-t*1.1;hands[0].rotation.z=-t*2.4;hands[1].rotation.z=-t*.35;clock.position.y=1.85+Math.sin(t*1.3)*.07};
+  }else if(kind==='omni'){
+    /* 만물의 검: seven spectral blades fanned out behind the back, a rune halo, a ground seal and rising motes */
+    const mag=aumat(0xff4fd8,.9),pale=aumat(0xffe9fb,.95),gold=aumat(0xffd24a,.9),cols=OMNI_COL.map(c=>parseInt(c.slice(1),16));
+    const fan=new THREE.Group();fan.position.set(0,1.75,-.7);g.add(fan);
+    const tip=new THREE.ConeGeometry(.11,.34,4),body=new THREE.BoxGeometry(.13,.95,.035),guard=new THREE.BoxGeometry(.36,.07,.07),hilt=new THREE.BoxGeometry(.06,.24,.06);
+    const blades=[0,1,2,3,4,5,6].map(i=>{
+      const piv=new THREE.Group();fan.add(piv);const s=new THREE.Group();piv.add(s);const m=aumat(cols[i],.8);
+      add(body,m,0,.98,0,s);add(new THREE.BoxGeometry(.035,.95,.05),pale,0,.98,0,s);add(tip,pale,0,1.62,0,s).scale.z=.3;add(guard,gold,0,.47,0,s);add(hilt,mag,0,.32,0,s);
+      return{piv,s,a:(i-3)*.52}});
+    const halo1=add(new THREE.TorusGeometry(.5,.035,5,36),gold,0,0,0,fan),halo2=add(new THREE.TorusGeometry(.34,.018,4,32),mag,0,0,0,fan);
+    const seal=new THREE.Group();seal.position.y=.1;g.add(seal);
+    for(const[r,t2,m]of[[1.5,.025,mag],[1.2,.015,gold]])add(new THREE.TorusGeometry(r,t2,4,48),m,0,0,0,seal).rotation.x=Math.PI/2;
+    const mark=new THREE.BoxGeometry(.05,.02,.42);
+    for(let i=0;i<8;i++){const a=i*TAU/8,m=add(mark,i%2?gold:pale,Math.sin(a)*1.35,0,Math.cos(a)*1.35,seal);m.rotation.y=a}
+    const mote=new THREE.OctahedronGeometry(.09,0),motes=[0,1,2,3,4,5,6,7,8].map(i=>add(mote,aumat(cols[i],.95),0,0,0));
+    halo(0xff4fd8,1.5,3.6,.4);
+    anim=t=>{
+      const breathe=Math.sin(t*1.6)*.5+.5;
+      blades.forEach((b,i)=>{b.piv.rotation.z=-b.a*(.92+breathe*.12);b.s.position.y=Math.sin(t*2.4+i*.9)*.09});
+      halo1.rotation.z=t*.8;halo2.rotation.z=-t*1.4;halo1.scale.setScalar(1+breathe*.08);
+      seal.rotation.y=t*.6;
+      motes.forEach((m,i)=>{const k=(t*.35+i/9)%1,a=i*TAU/9+t*1.1,r=1.35-k*.55;m.position.set(Math.cos(a)*r,.12+k*2.5,Math.sin(a)*r);m.scale.setScalar(Math.sin(k*Math.PI)+.2);m.rotation.y=t*4});
+    };
   }else{
     const gold=aumat(0xffc21a,1),white=aumat(0xfffbe8,.95),soft=aumat(0xffd24a,.95);
     const crown=new THREE.Group();crown.position.y=2.85;g.add(crown);
@@ -305,15 +328,51 @@ function omniApply(o,on){
 const myOmni=()=>SES.pf&&SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&String(i.rune||'').startsWith('all:'))?1:0;
 
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
+/* 만물의 검 model, built along +y like every blade. 정예의 핵 = the heart in the guard, 천상의 깃 = the feathered crossguard,
+   목재 = the grip, 만물의 룬 = nine region gems down the fuller */
+function wOmniSword(o,k){
+  const white=M(0xf4f0ff,{metalness:.75,roughness:.18,emissive:0x5a3a6a,emissiveIntensity:.25}),dark=M(0x2a1638,{metalness:.7,roughness:.3}),
+    gold=M(0xffd873,{metalness:.7,roughness:.28,emissive:0x6a4a10,emissiveIntensity:.35}),mag=EM(0xff4fd8,1.4),wood=M(0x7a4a28),feather=M(0xfff8e0,{emissive:0xffe9a0,emissiveIntensity:.35});
+  const flat=(geo,mat,x,y,z,sz)=>{const m=mesh(geo,mat,x,y,z,k);if(sz!=null)m.scale.z=sz;return m};
+  // blade: dark spine, two bright edges that flare out near the tip, magenta rim, pointed end
+  BX(.13,1.84,.055,dark,0,1.19,0,k);
+  for(const s of[-1,1]){
+    BX(.085,1.5,.045,white,s*.105,1.02,0,k);BX(.018,1.5,.05,mag,s*.153,1.02,0,k);
+    const f=BX(.09,.42,.045,white,s*.13,1.93,0,k);f.rotation.z=-s*.16;
+    const barb=flat(new THREE.ConeGeometry(.07,.26,4),white,s*.2,.52,0,.35);barb.rotation.z=-s*2.3;
+  }
+  flat(new THREE.ConeGeometry(.2,.52,4),white,0,2.34,0,.2);flat(new THREE.ConeGeometry(.07,.4,4),mag,0,2.28,0,.9);
+  OMNI_COL.forEach((c,i)=>{const gem=OC(.045,EM(parseInt(c.slice(1),16),1.9),0,.52+i*.17,0,k);gem.scale.set(.9,1.5,1.5)});
+  // feathered crossguard: three layered feathers each side
+  for(const s of[-1,1])for(let i=0;i<3;i++){
+    const len=.56-i*.11,a=.16+i*.34,f=flat(new THREE.ConeGeometry(.075,len,4),i===1?gold:feather,s*(.12+Math.cos(a)*len/2),.2+Math.sin(a)*len/2,(i-1)*.012,.3);
+    f.rotation.z=-s*(Math.PI/2-a);
+  }
+  BX(.34,.14,.17,gold,0,.17,0,k);
+  const heart=OC(.13,mag,0,.19,0,k);heart.scale.set(1,1.25,1.1);
+  const ring=mesh(new THREE.TorusGeometry(.19,.018,5,24),gold,0,.19,0,k);ring.rotation.y=.5;
+  // wooden grip with golden wraps and a gem pommel
+  CY(.055,.062,.46,wood,0,-.13,0,k,8);for(let i=0;i<3;i++)CY(.068,.068,.03,gold,0,-.02-i*.13,0,k,8);
+  OC(.085,gold,0,-.41,0,k);OC(.045,mag,0,-.47,0,k);
+  for(const[y,s]of[[.2,1],[1.35,.9],[2.3,.8]]){const gl=glow(0xff4fd8,s,.4);gl.position.set(0,y,0);k.add(gl)}
+  // shards and rune sparks spiralling up the blade (moved by animHeroFor through o.wfx)
+  for(const[y,r,sp,n,col]of[[.75,.3,2.2,3,0xffd24a],[1.45,.34,-1.7,3,0xff4fd8],[2.05,.24,2.8,2,0x9ff6ff]]){
+    const list=[];for(let i=0;i<n;i++){const s=OC(.05,EM(col,1.8),0,y,0,k);s.scale.set(.6,1.7,.4);list.push(s)}
+    o.wfx.push({list,x:0,y,z:0,r,h:.18,sp});
+  }
+}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;
   const fn=WLOOK[o.cls];if(!fn)return;
-  let b=typeof base==='string'&&/^[a-z]+_[1-9](_\d+)?$/.test(base)&&base.split('_')[0]===o.cls?base:o.cls+'_1';
+  let b=typeof base==='string'&&/^[a-z]+_([1-9]|10)(_\d+)?$/.test(base)&&wCan(base,o.cls)?base:o.cls+'_1';
   const ty=wType(b),t=wTier(b);
   wclear(o.weapon);if(o.weapon2){wclear(o.weapon2);o.weapon2.visible=false}
   if(o.shield)o.shield.visible=true;
   o.orb=null;o.orbGlow=null;o.wfx=[];WCUR=o;
-  try{fn(o,ty,t,wmats(t))}catch(e){console.error('weapon look',o.cls,b,e)}
+  try{
+    if(wCls(b)==='sword'){const k=grp(0,0,0,o.weapon);k.scale.setScalar({warrior:1,rogue:.85,darknight:1.14}[o.cls]||1);wOmniSword(o,k)}
+    else fn(o,ty,t,wmats(t))
+  }catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
   try{auraApply(o,t)}catch(e){console.error('weapon aura',t,e)}
   o.wbase=b;
