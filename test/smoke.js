@@ -774,6 +774,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       N.peers['소환']={got:true,x:0,z:0,tx:0,tz:0,f:0,tf:0,hp:100,lv:40,cls:'summoner',job:'summoner',anim:0,live:true};
       g.onPos({n:'소환',x:1,z:1,f:0,m:0,h:100,d:0,gl});g.netUpdate(.05);T(N.peers['소환'].gol&&N.peers['소환'].gol.length===gl[1].length,'other players see the golems');
       g.onPos({n:'소환',x:1,z:1,f:0,m:0,h:100,d:0,gl:0});g.netUpdate(.05);T(!N.peers['소환'].gol,'golems disappear for others when gone');delete N.peers['소환'];g.skReset()}
+  {const NN=g.NET;if(NN){NN.peers['비행']={cls:'rogue',job:'rogue',w:'rogue_1',lv:10,anim:0};
+    const msg=a=>g.onPos({n:'비행',x:1,z:1,f:0,m:0,h:100,d:0,a});
+    msg([3.2,1,1]);for(let i=0;i<20;i++)g.netUpdate(.05);const p=NN.peers['비행'];
+    T(p.model.g.position.y>2.8&&p.model.body.rotation.x>.4&&!!p.cape,'others see a gliding assassin in the air with the cloak');
+    msg(0);for(let i=0;i<40;i++)g.netUpdate(.05);T(p.model.g.position.y===0&&p.model.body.rotation.x===0&&!p.cape,'and see the landing');
+    delete NN.peers['비행'];
+    const on=NN.on,ch=NN.ch,out=[];NN.on=true;NN.ch={send:m=>out.push(m)};const gl0=g.P.glide,dead0=g.P.dead;g.P.dead=false;g.P.glide={h:3.2,t:1};NN.lastPos=-1e9;g.netUpdate(.05);
+    const pk=out.find(m=>m.event==='p');T(pk&&pk.payload.a&&pk.payload.a[0]===3.2&&pk.payload.a[2]===1,'my glide height is broadcast');
+    g.P.glide=gl0;g.P.dead=dead0;NN.on=on;NN.ch=ch}else T(false,'NET not exposed to the test')}
     N.on=on0;N.ch=ch0;N.party=party0;delete N.peers['상대'];
   }
   // ---- balance mode detail for characters added later (golems, other players, NPCs, rune aura) ----

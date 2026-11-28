@@ -108,12 +108,13 @@ function movePlayer(dt){
 const STEPS=['step_stone','step_grass','step_grass','step_stone','step_stone','step_stone','step_stone','step_snow','step_sand','step_marble'];
 function footstep(){const z=zoneAt(P.x,P.z);sfx(STEPS[z.id]||'step_stone',.55)}
 /* airborne pose: lean forward, legs and arms trailing, no walk cycle (k: 0..1 blend) */
-function glidePose(o,t,k){
+function glidePose(o,t,k,atk){
+  if(atk==null)atk=P.atkAnim;
   const sway=Math.sin(t*3.2)*.07,tilt=.6*k;
   o.body.rotation.x=tilt;o.body.position.z=-1.5*Math.sin(tilt);o.body.position.y=1.5*(1-Math.cos(tilt));   // lean around the shoulders so the cloak stays attached
   o.legL.rotation.x=lerp(o.legL.rotation.x,.35+sway,k);o.legR.rotation.x=lerp(o.legR.rotation.x,.7-sway,k);
   o.armL.rotation.x=lerp(o.armL.rotation.x,.55+sway,k);o.armL.rotation.z=lerp(o.armL.rotation.z,-.85,k);
-  if(P.atkAnim<0){o.armR.rotation.x=lerp(o.armR.rotation.x,.55-sway,k);o.armR.rotation.z=lerp(o.armR.rotation.z,.85,k)}
+  if(atk<0){o.armR.rotation.x=lerp(o.armR.rotation.x,.55-sway,k);o.armR.rotation.z=lerp(o.armR.rotation.z,.85,k)}
 }
 function updatePlayerModel(dt){
   P.animT+=dt;PM.g.position.set(P.x,P.leap?(P.leap.y0!=null?P.leap.y0*(1-Math.pow(Math.min(1,P.leap.t/P.leap.dur),2)):Math.sin(Math.min(1,P.leap.t/P.leap.dur)*Math.PI)*P.leap.h):P.glide?P.glide.h:0,P.z);

@@ -739,11 +739,11 @@ function capeWave(g,t,open){
     pos.needsUpdate=true;
   }
 }
-function capeDrop(){
-  if(!P.cape)return;entG.remove(P.cape);
-  for(const c of P.cape.children||[]){if(c.geometry&&c.geometry.type==='PlaneGeometry'){c.geometry.dispose();c.material.dispose()}}
-  P.cape=null;
+function capeFree(g){
+  entG.remove(g);
+  for(const c of g.children||[]){if(c.geometry&&c.geometry.type==='PlaneGeometry'){c.geometry.dispose();c.material.dispose()}}
 }
+function capeDrop(){if(!P.cape)return;capeFree(P.cape);P.cape=null}
 /* nothing hits while airborne, including the float and the descent */
 const qAloft=()=>!!(P&&P.glide);
 const GLIDE_H=3.2,GLIDE_UP=.45,GLIDE_DOWN=.45;
