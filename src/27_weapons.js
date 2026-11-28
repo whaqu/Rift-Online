@@ -189,7 +189,27 @@ function auraBuild(kind,form){
   const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
-  if(kind==='storm'){
+  if(kind==='dark'){
+    /* 크로마이스: void seal on the ground, black blades orbiting, wisps of darkness rising, a red eclipse behind the back */
+    const black=aumat(0x14081f,.92),vio=aumat(0x8a2cff,.85),deep=aumat(0x4a0f8a,.7),red=aumat(0xff1f4a,.9);
+    const seal=new THREE.Group();seal.position.y=.09;g.add(seal);
+    for(const[r,w,m]of[[1.55,.05,deep],[1.25,.02,vio],[.75,.018,red]])add(new THREE.TorusGeometry(r,w,4,48),m,0,0,0,seal).rotation.x=Math.PI/2;
+    const spike=new THREE.ConeGeometry(.09,.55,4);
+    for(let i=0;i<9;i++){const a=i*TAU/9,s=add(spike,i%3?vio:red,Math.sin(a)*1.35,0,Math.cos(a)*1.35,seal);s.rotation.set(Math.PI/2,a,0,'YXZ');s.scale.z=.15}
+    const ecl=new THREE.Group();ecl.position.set(0,2,-.75);g.add(ecl);
+    add(new THREE.CircleGeometry(.55,32),black,0,0,0,ecl);
+    const rim=add(new THREE.TorusGeometry(.58,.045,5,40),red,0,0,0,ecl),rim2=add(new THREE.TorusGeometry(.8,.018,4,40,Math.PI*1.5),vio,0,0,0,ecl);
+    const bl=new THREE.ConeGeometry(.1,.95,4),core=new THREE.ConeGeometry(.03,.8,4);
+    const blades=[0,1,2,3,4].map(()=>{const b=new THREE.Group();g.add(b);add(bl,black,0,0,0,b).scale.z=.3;add(core,vio,0,0,.03,b);return b});
+    const wisp=new THREE.OctahedronGeometry(.12,0),wisps=[];
+    for(let i=0;i<14;i++)wisps.push(add(wisp,i%4===0?vio:i%2?deep:black,0,0,0));
+    halo(0x5a12b0,1.3,4,.5);halo(0x2a0050,.4,3.6,.55);
+    anim=t=>{
+      seal.rotation.y=-t*.5;rim.scale.setScalar(1+Math.sin(t*3)*.05);rim2.rotation.z=t*1.6;
+      blades.forEach((b,i)=>{const a=i*TAU/5+t*.9;b.position.set(Math.cos(a)*1.25,1.25+Math.sin(t*2+i*1.3)*.2,Math.sin(a)*1.25);b.rotation.set(Math.PI,-a,0)});
+      wisps.forEach((w,i)=>{const k=(t*.3+i/14)%1,a=i*2.4-t*.7,r=.45+.55*((i*7)%5)/5;w.position.set(Math.cos(a)*r,.1+k*2.8,Math.sin(a)*r);const s=Math.sin(k*Math.PI)+.1;w.scale.set(s*.7,s*1.9,s*.7)});
+    };
+  }else if(kind==='storm'){
     /* whirlwind: stacked spinning wind streaks widening upward, with leaves carried up around the body */
     const wm=new THREE.MeshBasicMaterial({map:windTex(),transparent:true,depthWrite:false,side:THREE.DoubleSide});
     const disc=new THREE.PlaneGeometry(1,1);
@@ -262,7 +282,7 @@ function auraBuild(kind,form){
   anim(0);return{kind,form,g,anim};
 }
 function auraApply(o,t,form){
-  const kind=AUKIND[t]||null;form=kind==='omni'?form:null;
+  const kind=form==='chroma'?'dark':AUKIND[t]||null;form=kind==='omni'?form:null;
   if(o.wau&&o.wau.kind===kind&&o.wau.form===form)return;
   if(o.wau){o.g.remove(o.wau.g);o.wau=null}
   if(kind&&o.g){o.wau=auraBuild(kind,form);o.g.add(o.wau.g)}
@@ -441,10 +461,32 @@ function wOmniGun(o,k){
   wOmniGlow(k,0,-.08,0,.9);wOmniGlow(k,0,-1.1,0,.9,0x9ff6ff);
   wOmniOrbit(o,k,[[-.9,.26,2.8,3,0x9ff6ff],[-.35,.3,-2,2,0xff8a3a]]);
 }
+/* 크로마이스: black serrated greatblade, violet void edge, crimson eye in a clawed guard, dark shards circling */
+function wChromaSword(o,k){
+  const black=M(0x0c0912,{metalness:.8,roughness:.25,emissive:0x1a0630,emissiveIntensity:.5}),iron=M(0x2a2434,{metalness:.7,roughness:.4}),
+    vio=EM(0x8a2cff,1.7),red=EM(0xff1f4a,1.8),grip=M(0x1a0a14);
+  BX(.24,1.8,.055,black,0,1.17,0,k);BX(.035,1.75,.065,vio,0,1.17,0,k);
+  for(const s of[-1,1]){
+    BX(.022,1.75,.04,vio,s*.128,1.15,0,k);
+    for(let i=0;i<4;i++){const p=CN(.065,.3,black,s*.16,.55+i*.4,0,k,4);p.rotation.z=-s*2.5;p.scale.z=.35}
+    const c=CN(.09,.62,black,s*.34,.36,0,k,4);c.rotation.z=-s*.85;c.scale.z=.45;
+    const c2=CN(.05,.36,iron,s*.26,.02,0,k,4);c2.rotation.z=-s*2.35;
+  }
+  const tip=CN(.17,.6,black,0,2.36,0,k,4);tip.scale.z=.22;CN(.045,.4,vio,0,2.3,0,k,4);
+  BX(.4,.15,.17,iron,0,.16,0,k);
+  const eye=OC(.13,red,0,.2,.03,k);eye.scale.set(1.1,.8,1);BX(.025,.15,.03,black,0,.2,.15,k);
+  CY(.052,.06,.5,grip,0,-.15,0,k,8);for(let i=0;i<3;i++)CY(.068,.068,.025,iron,0,-.02-i*.14,0,k,8);
+  const pm=CN(.08,.26,iron,0,-.52,0,k,4);pm.rotation.x=Math.PI;OC(.05,red,0,-.4,0,k);
+  for(const[y,s,col]of[[.2,.9,0xff1f4a],[1.0,1.3,0x6a14d8],[1.75,1.2,0x6a14d8],[2.4,.8,0x8a2cff]]){const gl=glow(col,s,.42);gl.position.set(0,y,0);k.add(gl)}
+  for(const[y,r,sp,n,col]of[[.7,.32,2.4,3,0x8a2cff],[1.5,.36,-1.9,4,0x3a0a6a],[2.1,.26,3,2,0xff1f4a]]){
+    const list=[];for(let i=0;i<n;i++){const s=OC(.055,EM(col,1.7),0,y,0,k);s.scale.set(.6,1.8,.4);list.push(s)}
+    o.wfx.push({list,x:0,y,z:0,r,h:.2,sp});
+  }
+}
 function wOmniLook(o,b){
   const c=wCls(b),one=(fn,s)=>{const k=grp(0,0,0,o.weapon);k.scale.setScalar(s||1);fn(o,k)};
   if(o.shield&&c!=='wand')o.shield.visible=false;
-  if(c==='sword'){if(o.shield)o.shield.visible=true;one(wOmniSword,{warrior:1,rogue:.85,darknight:1.14}[o.cls]||1)}
+  if(c==='sword'){if(o.shield)o.shield.visible=true;one(b==='sword_10_3'?wChromaSword:wOmniSword,{warrior:1,rogue:.85,darknight:1.14}[o.cls]||1)}
   else if(c==='archer')one(wOmniBow);
   else if(c==='wand')one(wOmniWand);
   else if(c==='lancer')one(wOmniSpear);
@@ -464,6 +506,6 @@ function applyWeaponLook0(o,base){
     else fn(o,ty,t,wmats(t))
   }catch(e){console.error('weapon look',o.cls,b,e)}
   WCUR=null;
-  try{auraApply(o,t,wCls(b))}catch(e){console.error('weapon aura',t,e)}
+  try{auraApply(o,t,b==='sword_10_3'?'chroma':wCls(b))}catch(e){console.error('weapon aura',t,e)}
   o.wbase=b;
 }

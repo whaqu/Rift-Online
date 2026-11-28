@@ -268,6 +268,15 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       for(const c of['warrior','mage','archer','rogue','cleric','lancer','monk','gunner','summoner','darknight'])if(g.wCan(base,c)!==cls.includes(c))T(false,base+' wrong class '+c);
       for(const c of cls){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,base);T(o.wbase===base&&o.wau&&o.wau.kind==='omni'&&o.weapon.children.length>0,'unique model and aura for '+c);o.wau.anim(1.3);g.applyWeaponLook(o,c+'_1');T(!o.wau,'aura removed for '+c)}
     }
+    {
+      const r=g.RECIPES.find(r=>r.id==='chromaice'),d3=JSON.parse(localStorage.getItem(K));
+      for(const[kind,b,qty]of[['mat','m3',1],['rune','all',2],['mat','m6',2],['rune','void',2]])d3.items.push({id:d3.nid++,owner:me,kind,base:b,enh:kind==='rune'?1:0,ench:[],qty,eq:false,listed:false,gone:false});
+      localStorage.setItem(K,JSON.stringify(d3));await g.API.resume(me,g.SES.token);
+      T(g.craftHtml(g.recipeCells(r),null,'').includes('data-v="rune:void"'),'region runes can be placed by hand');
+      await g.API.call('craft','chromaice');
+      T(g.SES.pf.items.some(i=>i.base==='sword_10_3')&&g.wName('sword_10_3')==='크로마이스','chromaice is crafted');
+      for(const c of['warrior','rogue','darknight']){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,'sword_10_3');T(g.wCan('sword_10_3',c)&&o.wbase==='sword_10_3'&&o.wau&&o.wau.kind==='dark','dark model and aura for '+c);o.wau.anim(1.3);g.applyWeaponLook(o,'sword_10');T(o.wau.kind==='omni','back to the omni aura for '+c)}
+    }
     localStorage.setItem(K,keep);await g.API.resume(me,g.SES.token);
   }
   // ---- dungeon ----

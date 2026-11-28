@@ -221,7 +221,7 @@ function craftHtml(grid,pick,msg){
   for(let i=0,used={};i<grid.length;i++){const k=grid[i];if(k&&(used[k]=(used[k]||0)+1)>craftHave(k))grid[i]=null}
   const list=RECIPES.filter(craftable),hit=craftMatch(grid),can=hit&&craftable(hit);
   const cell=(k,i)=>'<div data-a="ccell" data-v="'+i+'" style="aspect-ratio:1;display:flex;align-items:center;justify-content:center;text-align:center;cursor:pointer;border-radius:6px;font-size:11px;font-weight:700;line-height:1.2;word-break:keep-all;overflow:hidden;background:#232940;border:2px solid '+(k?matCol(k):'#4a5274')+';color:'+(k?matCol(k):'#fff')+'">'+(k?matName(k):'')+'</div>';
-  const keys=['rune:all',...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
+  const keys=[...Object.keys(RUNES).map(b=>'rune:'+b),...Object.keys(MATS).map(b=>'mat:'+b)].filter(k=>craftHave(k)>0);
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
   h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+TIER_COL[wTier(r.base)-1]+'">'+ic(WICON[wCls(r.base)],TIER_COL[wTier(r.base)-1],24)+'<div style="font-weight:700;color:'+TIER_COL[wTier(r.base)-1]+'">'+wName(r.base)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';

@@ -142,7 +142,9 @@ const WICON={warrior:'sword',mage:'staff',archer:'bow',rogue:'sword',cleric:'sta
 /* shared weapons: base 'sword_10' / 'wand_10' are usable by several classes. Must match rw_wcan */
 const SHARED_CLS={sword:['warrior','rogue','darknight'],wand:['cleric','summoner','mage']};
 const wCan=(b,c)=>{const s=SHARED_CLS[wCls(b)];return s?s.includes(c):wCls(b)===c};
-const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프'};
+const UNAMES={sword:'만물의 검',archer:'만물의 활',wand:'만물의 완드',lancer:'만물의 창',monk:'만물의 건틀렛',gunner:'만물의 셰리프',sword_10_3:'크로마이스'};
+/* uniques whose attack differs from WATK[9] */
+const UATK={sword_10_3:1000};
 const wGrade=b=>wTier(b)>9?'유니크':wTier(b)+'등급('+ZONES[wTier(b)].name+')';
 const WATK=[10,22,40,70,115,180,280,420,620,880];   // 10th = unique (crafted)
 const TIER_COL=['#9aa0a8','#e8e8e8','#5fd26a','#4aa8ff','#b86bff','#ff9a3a','#ff5a5a','#ffd24a','#8affef','#ff4fd8'];
@@ -186,8 +188,8 @@ const PERK={a:{n:'공격력',per:.025,col:'#ff9a7a',d:'공격력 +2.5%'},h:{n:'�
 const perkOf=pf=>Object.assign({a:0,h:0,c:0,pts:0},pf&&pf.perks||{});
 const dmgReduce=(def,lv)=>Math.min(.75,def/(def+60+lv*5));
 const wReq=b=>Math.max(1,(wTier(b)-1)*5);
-const wName=b=>{if(wTier(b)>9)return UNAMES[wCls(b)];const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
-const weaponAtk=(b,enh)=>WATK[wTier(b)-1]*(1+enh*.10+Math.max(0,enh-10)*.06);
+const wName=b=>{if(wTier(b)>9)return UNAMES[b]||UNAMES[wCls(b)];const c=wCls(b),t=wType(b),k=wTier(b)-1;return t&&WTYPES[c]?WPFX[k]+' '+WTYPES[c][t-1]:WNAMES[c][k]};
+const weaponAtk=(b,enh)=>(UATK[b]||WATK[wTier(b)-1])*(1+enh*.10+Math.max(0,enh-10)*.06);
 const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000,6000000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
@@ -221,7 +223,9 @@ const RECIPES=[
   {id:'omni_gauntlet',base:'monk_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',E:'mat:m3'},
    pattern:['.....','.....','.C.C.','.F.F.','.ERE.']},
   {id:'omni_sheriff',base:'gunner_10',grade:'유니크',key:{C:'mat:core',R:'rune:all',F:'mat:m9',W:'mat:wood',E:'mat:m3',I:'mat:m7'},
-   pattern:['.....','....C','ECRIF','...W.','...W.']}
+   pattern:['.....','....C','ECRIF','...W.','...W.']},
+  {id:'chromaice',base:'sword_10_3',grade:'유니크',key:{E:'mat:m3',R:'rune:all',V:'mat:m6',D:'rune:void'},
+   pattern:['..E..','..R..','.VRV.','..D..','..D..']}
 ];
 const recipeCells=r=>{const o=[];for(const row of r.pattern)for(const ch of row)o.push(r.key[ch]||null);return o};
 const recipeNeed=r=>{const o={};for(const k of recipeCells(r))if(k)o[k]=(o[k]||0)+1;return o};
