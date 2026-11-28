@@ -251,7 +251,7 @@ function aiMob(m,dt,nt,sp){
 }
 /* contact damage — evaluated on every client for the local player */
 function contactCheck(m){
-  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0||P.hidden)return;
+  if(m.duel||!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0||P.hidden)return;
   if(m.type==='bat'&&m.ghost&&!m.warn&&false)return;
   if(d2(m.x,m.z,P.x,P.z)<(m.r+P.r)*(m.r+P.r)){if(hurtPlayer(m.dmg,m.x,m.z)){m.hitCd=.9;if(m.type==='bat'&&!m.ghost){m.state='retreat';m.st=.8}}}
 }
@@ -310,7 +310,7 @@ function updateMobs(dt){
   const auth=isAuth();
   if(auth){
     const A=allPos(),T=targets();
-    if(DG.on)dgTick(dt,A);else updateSpawns(dt,A);
+    if(DG.on)dgTick(dt,A);else if(!DU.on)updateSpawns(dt,A);
     for(const m of MOBS){if(m.dead||m.ghost)continue;updateMobAuth(m,dt,T)}
     // soft separation
     for(let i=0;i<MOBS.length;i++){const a=MOBS[i];if(a.dead||a.fly||a.ghost)continue;
@@ -327,7 +327,7 @@ function updateMobs(dt){
   updateMobLabels();
 }
 function updateMobLabels(){
-  const near=[];for(const m of MOBS){if(m.dead||m.spawning)continue;const d=d2(m.x,m.z,P.x,P.z);if(d<20*20)near.push([d,m])}
+  const near=[];for(const m of MOBS){if(m.dead||m.spawning||m.duel)continue;const d=d2(m.x,m.z,P.x,P.z);if(d<20*20)near.push([d,m])}
   near.sort((a,b)=>a[0]-b[0]);
   const n=Math.min(10,near.length);
   while(mobLabels.length<10){const el=document.createElement('div');el.className='ml';el.innerHTML='<span class="mn"></span><i class="mb"><b></b></i>';labelsEl.appendChild(el);mobLabels.push({el,n:el.firstElementChild,b:null})}

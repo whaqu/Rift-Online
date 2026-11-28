@@ -89,7 +89,7 @@ function movePlayer(dt){
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   if(P.leap){   // fly along an arc, no steering
-    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on)pushOut(P,P.r);
+    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
   if(P.dashT>0){
@@ -121,7 +121,7 @@ function updatePlayerModel(dt){
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
   const cdk=P.hb&&hbOn('my')?1.4:1;
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;P.dashCd-=dt*cdk;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
   for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
@@ -187,7 +187,7 @@ function doAttack(){
 
 /* ----- skills ----- */
 function trySkill(slot){
-  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy())return;
+  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy()||(DU.on&&(DU.role!=='fight'||DU.ph!=='fight')))return;
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
@@ -283,7 +283,7 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz){
   if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)));
+  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
@@ -294,7 +294,7 @@ function hurtPlayer(dmg,sx,sz){
   return true;
 }
 function playerDown(){
-  P.hb=null;P.hs=null;P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
+  P.hb=null;P.hs=null;P.recall=0;P.dkGuard=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
 }
 function respawn(){
   if(DG.on){dgRespawn();return}
@@ -306,6 +306,7 @@ function respawn(){
 const RECALL_T=3;
 function startRecall(){
   if(!P||P.dead||UI.modal)return;
+  if(DU.on){duelQuit();return}
   if(P.recall>0){cancelRecall('마을 귀환을 취소했습니다');return}
   if(inTown(P.x,P.z)){UI.toast('이미 마을입니다');return}
   if(P.dashT>0||skBusy())return;
@@ -330,7 +331,8 @@ function tickRecall(dt){
 
 /* ----- potions ----- */
 function usePotionKey(base){
-  if(!P||P.dead)return;const pd=POTIONS[base];if(!pd)return;
+  if(!P||P.dead)return;
+  if(DU.on){UI.toast('결투 중에는 물약을 쓸 수 없습니다');return}const pd=POTIONS[base];if(!pd)return;
   const it=SES.pf.items.find(i=>i.kind==='potion'&&i.base===base&&!i.listed&&i.qty>0);
   if(!it){UI.toast(pd.name+' 없음');return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}

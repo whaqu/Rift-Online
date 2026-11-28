@@ -296,15 +296,18 @@ function openParty(){
   UI.page('파티 · 플레이어',()=>{
     let h='';
     if(!NET.on)return '<div class="card">오프라인 모드에서는 파티와 거래를 사용할 수 없습니다.<br><span class="dim">온라인 서버에 접속하면 다른 플레이어와 함께 사냥할 수 있습니다.</span></div>';
+    {const r=SES.pf.duel||{w:0,l:0,pt:0};h+='<div class="card" style="margin-bottom:10px"><b>결투 전적</b> '+r.w+'승 '+r.l+'패 · <span class="gold">결투 포인트 '+fmtG(r.pt)+'</span></div>'}
     h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><b>내 파티</b>'+(NET.party?'<button class="btn sm red" data-a="pleave">탈퇴</button>':'')+'</div>';
     if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+(p.lv||'?')+' '+(JOBS[p.job]?JOBS[p.job].name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
     else h+='<div class="dim" style="margin-top:4px">파티가 없습니다. 아래 플레이어를 초대하세요.</div>';
     h+='</div><div class="card"><b>접속 중인 플레이어</b><div class="list" style="margin-top:6px;max-height:34vh">';
     const names=Object.keys(NET.peers);
-    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:'')+'</div></div><div class="rt"><button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
+    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:'')+(p.du?' · <span class="gold">결투 중 vs '+esc(p.du.vs)+'</span>':'')+'</div></div><div class="rt">'+(p.du?'<button class="btn sm" data-a="dspec" data-v="'+esc(n)+'">관전</button>':'<button class="btn sm" data-a="duel" data-v="'+esc(n)+'">결투</button>')+'<button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
     return h+'</div></div>';
   });
   UI.handlers.pinv=v=>partyInvite(v);
+  UI.handlers.duel=v=>{UI.close();duelRequest(v)};
+  UI.handlers.dspec=v=>duelSpectate(v);
   UI.handlers.pleave=()=>{partyLeave();UI.rerender()};
   UI.handlers.ptrade=async v=>{
     try{const t=await API.call('tradeOpen',v);netTradeInvite(v,t.id);UI.close();openTrade(t.id,v)}catch(e){UI.toast(errKo(e.message))}
@@ -320,6 +323,8 @@ UI.renderParty=()=>{
 };
 UI.partyInvite=from=>{$('invtx').textContent=from+'님이 파티에 초대했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');partyAccept()};$('invno').onclick=()=>{NET.invite=null;$('invite').classList.remove('on')};
   setTimeout(()=>{if(NET.invite&&NET.invite.from===from){NET.invite=null;$('invite').classList.remove('on')}},20000)};
+UI.duelInvite=from=>{$('invtx').textContent=from+'님이 결투를 신청했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');duelAccept()};$('invno').onclick=()=>{$('invite').classList.remove('on');duelDecline()};
+  setTimeout(()=>{if(DU.ask&&DU.ask.from===from){DU.ask=null;$('invite').classList.remove('on')}},20000)};
 UI.tradeInvite=(from,tid)=>{$('invtx').textContent=from+'님이 거래를 신청했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');openTrade(tid,from)};$('invno').onclick=()=>{$('invite').classList.remove('on');API.call('tradeCancel',tid).catch(()=>{})};setTimeout(()=>$('invite').classList.remove('on'),20000)};
 
 /* ---------- direct trade ---------- */
@@ -376,7 +381,7 @@ function applyShadows(){renderer.shadowMap.enabled=!!save.shadows;sun.castShadow
 /* ---------- NPC interaction ---------- */
 function nearNpc(){
   if(!P||P.dead)return null;let best=null,bd=3.6*3.6;
-  if(DG.on)return null;
+  if(DG.on||DU.on)return null;
   for(const n of WORLD.npcs){const d=d2(n.x,n.z,P.x,P.z);if(d<bd){bd=d;best=n}}
   for(const n of DGP){const d=d2(n.x,n.z,P.x,P.z);if(d<bd){bd=d;best=n}}
   return best;
@@ -462,7 +467,7 @@ UI.hudTick=function(dt){
     if(tb)domX(domQ(tb,'.cdm'),sy)
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
-  {const zb=$('zone');const hide=!!DG.on;if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}
+  {const zb=$('zone');const hide=!!(DG.on||DU.on);if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
   const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
   if(n&&!UI.modal){const ph=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;if(pr._h!==ph){pr._h=ph;pr.innerHTML=ph}pr.classList.add('show');if(use){use.classList.remove('hidden');domT(domQ(use,'span'),n.name)}}

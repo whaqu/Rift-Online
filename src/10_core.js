@@ -193,7 +193,8 @@ cam={x:0,z:0,shake:0,h:21,d:15,kx:0,kz:0};resize();
 function updateCam(dt,fx,fz,snap){
   const k=snap?1:1-Math.exp(-dt*7);cam.x=lerp(cam.x,fx,k);cam.z=lerp(cam.z,fz,k);
   const sx=(Math.random()-.5)*cam.shake+cam.kx,sz=(Math.random()-.5)*cam.shake+cam.kz;cam.kx*=Math.pow(.0006,dt);cam.kz*=Math.pow(.0006,dt);
-  camera.position.set(cam.x+sx,cam.h,cam.z+cam.d+sz);camera.lookAt(cam.x+sx,0,cam.z-.5+sz);
+  const du=typeof DU==='object'&&DU.on;   // arena: lower, wider view so the arches and sky are in frame
+  camera.position.set(cam.x+sx,du?cam.h*.86:cam.h,cam.z+cam.d*(du?1.5:1)+sz);camera.lookAt(cam.x+sx,du?1.5:0,cam.z-(du?2.5:.5)+sz);
   cam.shake=Math.max(0,cam.shake-dt*Math.max(1.6,cam.shake*5));
   sun.position.set(cam.x-12,26,cam.z+10);sun.target.position.set(cam.x,0,cam.z);rim.position.set(cam.x+10,12,cam.z-18);
   camera.updateMatrixWorld();

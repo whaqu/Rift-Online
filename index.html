@@ -494,7 +494,8 @@ cam={x:0,z:0,shake:0,h:21,d:15,kx:0,kz:0};resize();
 function updateCam(dt,fx,fz,snap){
   const k=snap?1:1-Math.exp(-dt*7);cam.x=lerp(cam.x,fx,k);cam.z=lerp(cam.z,fz,k);
   const sx=(Math.random()-.5)*cam.shake+cam.kx,sz=(Math.random()-.5)*cam.shake+cam.kz;cam.kx*=Math.pow(.0006,dt);cam.kz*=Math.pow(.0006,dt);
-  camera.position.set(cam.x+sx,cam.h,cam.z+cam.d+sz);camera.lookAt(cam.x+sx,0,cam.z-.5+sz);
+  const du=typeof DU==='object'&&DU.on;   // arena: lower, wider view so the arches and sky are in frame
+  camera.position.set(cam.x+sx,du?cam.h*.86:cam.h,cam.z+cam.d*(du?1.5:1)+sz);camera.lookAt(cam.x+sx,du?1.5:0,cam.z-(du?2.5:.5)+sz);
   cam.shake=Math.max(0,cam.shake-dt*Math.max(1.6,cam.shake*5));
   sun.position.set(cam.x-12,26,cam.z+10);sun.target.position.set(cam.x,0,cam.z);rim.position.set(cam.x+10,12,cam.z-18);
   camera.updateMatrixWorld();
@@ -1606,6 +1607,7 @@ const LocalAPI=(()=>{
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
+      duel:{w:0,l:0,pt:0},
       admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
@@ -1817,9 +1819,10 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
+const NAMES={duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
+  duelLose:a=>({p_winner:a[0],p_id:a[1]}),
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),
@@ -2134,7 +2137,8 @@ function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/
 /* gatherable nodes: weeds (grass tufts) and trees; parts = [[instancedMesh,index],..] hidden while 'cut' */
 function regNode(k,x,z,parts,ob,s){const n={k,x,z,parts,ob,or:ob?ob.r:0,mats:null,cut:0,s:s||1};WORLD.nodes.push(n);const g=Math.floor(x/8)+','+Math.floor(z/8);(WORLD.ngrid[g]||(WORLD.ngrid[g]=[])).push(n);return n}
 function pushOut(e,r){
-  if(DG.on&&e.x>600)dgClampXZ(e);
+  if(DU.on&&e.x>1200)duelClampXZ(e);
+  else if(DG.on&&e.x>600)dgClampXZ(e);
   else{const d=Math.hypot(e.x,e.z),lim=WORLD_R-1.2;if(d>lim){e.x*=lim/d;e.z*=lim/d}}
   const cx=Math.floor(e.x/WORLD.cell),cz=Math.floor(e.z/WORLD.cell);
   for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
@@ -2657,10 +2661,10 @@ const ATMO=[
 const _ac={bg:new THREE.Color(0x8fb4d8),sky:new THREE.Color(0xdfeeff),gr:new THREE.Color(0x6a7a5a),sc:new THREE.Color(0xfff0d0),rc:new THREE.Color(0x9ab8ff),hi:1,sun:1,ri:.4,fd:.0046},_ct=new THREE.Color();
 const _nb=new THREE.Color(),_ns=new THREE.Color(),_ng=new THREE.Color(),_nsc=new THREE.Color(),_nrc=new THREE.Color();
 function updateAtmo(dt,zi){
-  const a=(DG.on&&DG.atmo)?DG.atmo:ATMO[zi],k=1-Math.exp(-dt*(DG.on?4:1.5));
+  const a=(DG.on&&DG.atmo)?DG.atmo:DU.on?DUATMO:ATMO[zi],k=1-Math.exp(-dt*(DG.on?4:1.5));
   _ct.set(a.bg);_ac.bg.lerp(_ct,k);_ct.set(a.sky);_ac.sky.lerp(_ct,k);_ct.set(a.gr);_ac.gr.lerp(_ct,k);_ct.set(a.sc);_ac.sc.lerp(_ct,k);_ct.set(a.rc);_ac.rc.lerp(_ct,k);
   _ac.hi+=(a.hi-_ac.hi)*k;_ac.sun+=(a.sun-_ac.sun)*k;_ac.ri+=(a.ri-_ac.ri)*k;_ac.fd+=(a.fd-_ac.fd)*k;
-  const nk=DG.on?0:nightK();   // 0 = day .. 1 = deep night, follows the shared 16 min clock
+  const nk=DG.on||DU.on?0:nightK();   // 0 = day .. 1 = deep night, follows the shared 16 min clock
   _nb.copy(_ac.bg).lerp(_ct.set(0x0b1233),nk*.8);_ns.copy(_ac.sky).lerp(_ct.set(0x34478c),nk*.8);_ng.copy(_ac.gr).lerp(_ct.set(0x0e1530),nk*.7);
   _nsc.copy(_ac.sc).lerp(_ct.set(0x93a8ff),nk*.85);_nrc.copy(_ac.rc).lerp(_ct.set(0xb4c4ff),nk*.5);
   if(scene.background&&scene.background.copy)scene.background.copy(_nb);
@@ -2714,7 +2718,7 @@ function postSize(){
 }
 function postPass(mat,target){POST.quad.material=mat;renderer.setRenderTarget(target);renderer.render(POST.scene,POST.cam)}
 function renderFrame(){
-  if(balOn()&&!DG.on)balCull();
+  if(balOn()&&!DG.on&&!DU.on)balCull();
   if(!save.fx||balOn()||POST.bad||!renderer.getDrawingBufferSize){renderer.render(scene,camera);return}
   try{
     if(!POST.ok)postInit();postSize();
@@ -3038,7 +3042,7 @@ function movePlayer(dt){
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
   if(P.leap){   // fly along an arc, no steering
-    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on)pushOut(P,P.r);
+    const L=P.leap;L.t+=dt;const u=Math.min(1,L.t/L.dur);P.x=lerp(L.x0,L.x1,u);P.z=lerp(L.z0,L.z1,u);P.vx=P.vz=0;if(DG.on||DU.on)pushOut(P,P.r);
     if(u>=1){P.leap=null;pushOut(P,P.r);if(L.done)L.done()}return;
   }
   if(P.dashT>0){
@@ -3070,7 +3074,7 @@ function updatePlayerModel(dt){
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
   const cdk=P.hb&&hbOn('my')?1.4:1;
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;P.dashCd-=dt*cdk;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
   for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
@@ -3136,7 +3140,7 @@ function doAttack(){
 
 /* ----- skills ----- */
 function trySkill(slot){
-  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy())return;
+  if(!P||P.dead||UI.modal||inTown(P.x,P.z)||P.spinT>0||skBusy()||(DU.on&&(DU.role!=='fight'||DU.ph!=='fight')))return;
   const sk=skillOf(slot);if(!sk)return;
   if(sk.fx!=='r_q'&&P.cd[slot]>0)return;   // r_q has no lockout: its gauge only scales the power
   if(castSkill(sk,slot)===false)return;
@@ -3232,7 +3236,7 @@ function healP(n){
 }
 function hurtPlayer(dmg,sx,sz){
   if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)));
+  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
@@ -3243,7 +3247,7 @@ function hurtPlayer(dmg,sx,sz){
   return true;
 }
 function playerDown(){
-  P.hb=null;P.hs=null;P.recall=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
+  P.hb=null;P.hs=null;P.recall=0;P.dkGuard=0;P.dead=true;P.hp=0;P.deadT=3.5;P.shield=0;P.buff=null;skReset();sfx('lose');UI.deadOn(true);
 }
 function respawn(){
   if(DG.on){dgRespawn();return}
@@ -3255,6 +3259,7 @@ function respawn(){
 const RECALL_T=3;
 function startRecall(){
   if(!P||P.dead||UI.modal)return;
+  if(DU.on){duelQuit();return}
   if(P.recall>0){cancelRecall('마을 귀환을 취소했습니다');return}
   if(inTown(P.x,P.z)){UI.toast('이미 마을입니다');return}
   if(P.dashT>0||skBusy())return;
@@ -3279,7 +3284,8 @@ function tickRecall(dt){
 
 /* ----- potions ----- */
 function usePotionKey(base){
-  if(!P||P.dead)return;const pd=POTIONS[base];if(!pd)return;
+  if(!P||P.dead)return;
+  if(DU.on){UI.toast('결투 중에는 물약을 쓸 수 없습니다');return}const pd=POTIONS[base];if(!pd)return;
   const it=SES.pf.items.find(i=>i.kind==='potion'&&i.base===base&&!i.listed&&i.qty>0);
   if(!it){UI.toast(pd.name+' 없음');return}
   if(pd.kind==='hp'){if(P.pot.hp>0)return;if(P.hp>=S.maxHp){UI.toast('체력이 가득 찼습니다');return}P.pot.hp=2.5;healP(Math.round(S.maxHp*pd.pct));sfx('level')}
@@ -3336,6 +3342,7 @@ function dealMob(m,base,o){
   if(crit){shockRing(m.x,m.z,2.1,0xffd24a,.24);burst(m.x,1.5,m.z,6,0xfff3b0,9,.3,4,.2);cam.shake=Math.max(cam.shake,.28);hitStop(.04)}else cam.shake=Math.max(cam.shake,heavy?.2:.06);
   if(heavy)hitStop(.055);
   const kk={kx:o.kx||0,kz:o.kz||0,kb:o.noKb?0:(o.kb||0)};
+  if(m.duel){duelHitOut(m,d);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
   if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
@@ -3696,7 +3703,7 @@ function aiMob(m,dt,nt,sp){
 }
 /* contact damage — evaluated on every client for the local player */
 function contactCheck(m){
-  if(!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0||P.hidden)return;
+  if(m.duel||!m.def.contact||m.hitCd>0||m.spawning||P.dead||P.stealth>0||P.hidden)return;
   if(m.type==='bat'&&m.ghost&&!m.warn&&false)return;
   if(d2(m.x,m.z,P.x,P.z)<(m.r+P.r)*(m.r+P.r)){if(hurtPlayer(m.dmg,m.x,m.z)){m.hitCd=.9;if(m.type==='bat'&&!m.ghost){m.state='retreat';m.st=.8}}}
 }
@@ -3755,7 +3762,7 @@ function updateMobs(dt){
   const auth=isAuth();
   if(auth){
     const A=allPos(),T=targets();
-    if(DG.on)dgTick(dt,A);else updateSpawns(dt,A);
+    if(DG.on)dgTick(dt,A);else if(!DU.on)updateSpawns(dt,A);
     for(const m of MOBS){if(m.dead||m.ghost)continue;updateMobAuth(m,dt,T)}
     // soft separation
     for(let i=0;i<MOBS.length;i++){const a=MOBS[i];if(a.dead||a.fly||a.ghost)continue;
@@ -3772,7 +3779,7 @@ function updateMobs(dt){
   updateMobLabels();
 }
 function updateMobLabels(){
-  const near=[];for(const m of MOBS){if(m.dead||m.spawning)continue;const d=d2(m.x,m.z,P.x,P.z);if(d<20*20)near.push([d,m])}
+  const near=[];for(const m of MOBS){if(m.dead||m.spawning||m.duel)continue;const d=d2(m.x,m.z,P.x,P.z);if(d<20*20)near.push([d,m])}
   near.sort((a,b)=>a[0]-b[0]);
   const n=Math.min(10,near.length);
   while(mobLabels.length<10){const el=document.createElement('div');el.className='ml';el.innerHTML='<span class="mn"></span><i class="mb"><b></b></i>';labelsEl.appendChild(el);mobLabels.push({el,n:el.firstElementChild,b:null})}
@@ -3884,9 +3891,9 @@ const MAXLV=99;
 const sd=(id,name,cd,col,icon,desc,extra)=>Object.assign({id,fx:id,type:'x',name,cd,col,icon,desc},extra||{});
 /* [Q, E, F] per class */
 const KITDEF={
-  warrior:[sd('w_q','갈고리 사슬',9,0xffd24a,'swap','주변 적을 사슬로 끌어와 기절시킵니다.'),
-    sd('w_e','대지 가르기',8,0xc89a5a,'arrowup','앞으로 바위가 연달아 솟아오릅니다.'),
-    sd('w_f','천지 붕괴',60,0xffb02a,'burst','높이 뛰어 내려찍어 거대한 충격파 3겹을 퍼뜨립니다.')],
+  warrior:[sd('w_q','사슬 폭풍',7,0xffd24a,'swap','적을 사슬로 끌어와 기절시킨 뒤 회전 베기로 휩쓸며 움직입니다. 끌어온 수만큼 보호막.'),
+    sd('w_e','대지 가르기',6,0xc89a5a,'arrowup','세 갈래로 바위가 연달아 솟아 적을 기절시킵니다.'),
+    sd('w_f','천지 붕괴',50,0xffb02a,'burst','적에서 적으로 세 번 도약하고 마지막에 충격파 3겹. 보호막을 얻습니다.')],
   mage:[sd('m_q','블랙홀',12,0x9a6aff,'burst','적을 빨아들이는 구멍을 만든 뒤 터뜨립니다.'),
     sd('m_e','얼음 장벽',10,0x9fe8ff,'snow','앞에 얼음벽을 세워 적을 막고 얼립니다.'),
     sd('m_f','종말의 운석',60,0xff6a2a,'flame','화면을 뒤덮는 거대한 운석을 떨어뜨립니다.')],
@@ -3911,9 +3918,9 @@ const KITDEF={
   summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1(최대 5). 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
     sd('s_e','정령 벌떼',9,0x6bffd0,'star','적을 쫓아가는 도깨비불 14개를 풉니다.'),
     sd('s_f','고대 거신',70,0x9fffe8,'burst','거신이 나타나 적진을 네 번 짓밟습니다.')],
-  darknight:[sd('d_q','피의 낫',8,0xff3a6a,'swap','돌아오는 거대한 낫을 던져 맞힌 만큼 회복합니다.'),
-    sd('d_e','어둠의 손아귀',11,0xa070ff,'fist','주변 적의 발밑에서 손이 솟아 붙잡고 생명을 빱니다.'),
-    sd('d_f','일식',60,0x7a3aff,'burst','검은 태양이 5초간 주변의 생명을 빨아들입니다.')]
+  darknight:[sd('d_q','피의 낫',7,0xff3a6a,'swap','낫 세 자루가 주위를 휘돌며 벨 때마다 회복합니다.'),
+    sd('d_e','어둠의 손아귀',9,0xa070ff,'fist','지정한 곳으로 적을 모아 흡혈한 뒤 으스러뜨립니다. 보호막을 얻습니다.'),
+    sd('d_f','일식',50,0x7a3aff,'burst','6초간 검은 태양이 적을 끌어당기며 흡혈하고 받는 피해 40% 감소, 끝에 붕괴합니다.')]
 };
 /* 성직자 Q: 레벨에 따라 스몰 힐(10) → 힐(20) → 홀리 힐(30) */
 const CLQ=[null,
@@ -4038,7 +4045,7 @@ function shove(m,dx,dz,dist){
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
 function boom(x,z,r,col,shake){shockRing(x,z,r+.8,col,.45);flashDisc(x,z,r,col,.35);burst(x,1,z,24,col,10,.55,8);sfx('boom');cam.shake=Math.max(cam.shake,shake||.4)}
-function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
+function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&!DU.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
 function leapTo(x,z,dur,h,done){P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h,done};P.iframes=Math.max(P.iframes,dur+.2);sfx('dash')}
 const clearShots=(x,z,r)=>{for(const b of EB)if(d2(b.x,b.z,x,z)<r*r)b.life=0};
 function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.set(x,22,z);entG.add(g);act(dur,t=>{const k=t/dur;g.position.y=22*(1-k*k)+1},done,g)}
@@ -4046,32 +4053,44 @@ function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.se
 /* ---------- the skills ---------- */
 const SK={
   /* 전사 */
-  w_q(c){
-    const r=10,list=mobsIn(P.x,P.z,r),g=grp(P.x,0,P.z),links=[];
-    for(const m of list){links.push({m,o:part(g,'box',0xd0b060,.14,.14,1,0,1,0,.7)});const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,d-2.2));freezeMob(m,1.6)}
-    act(.45,()=>{g.position.set(P.x,0,P.z);for(const k of links){const dx=k.m.x-P.x,dz=k.m.z-P.z,d=Math.hypot(dx,dz)||.1;k.o.position.set(dx/2,1,dz/2);k.o.scale.z=d;k.o.rotation.y=Math.atan2(dx,dz)}},
-      ()=>{sArea(c,P.x,P.z,4,2.2,{big:true});boom(P.x,P.z,4,c.col)},g);
+  w_q(c){   // drag them in, then wade through them as a whirlwind
+    const r=11,list=mobsIn(P.x,P.z,r),g=grp(P.x,0,P.z),links=[];
+    for(const m of list){links.push({m,o:part(g,'box',0xd0b060,.14,.14,1,0,1,0,.7)});const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,d-2.2));freezeMob(m,1.8)}
+    if(list.length)P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*Math.min(.3,.05*list.length));
+    act(.35,()=>{g.position.set(P.x,0,P.z);for(const k of links){const dx=k.m.x-P.x,dz=k.m.z-P.z,d=Math.hypot(dx,dz)||.1;k.o.position.set(dx/2,1,dz/2);k.o.scale.z=d;k.o.rotation.y=Math.atan2(dx,dz)}},
+      ()=>{const w=grp(P.x,1.2,P.z),bl=grp(0,0,0,w);for(let i=0;i<2;i++){const t=part(bl,'arc',c.col,4.2,4.2,3,0,i*.5,0,.9);t.rotation.set(Math.PI/2,0,i*Math.PI)}let n=0;
+        act(1.7,(t,dt)=>{w.position.set(P.x,1.2,P.z);bl.rotation.y+=dt*18;if(n<7&&t>=n*.23){n++;sArea(c,P.x,P.z,4.6,1.15,{kb:1});ringBurst(P.x,.7,P.z,14,c.col,9,.3);sfx('slash')}},
+          ()=>{sArea(c,P.x,P.z,5.5,3,{kb:12,freeze:.8,big:true});boom(P.x,P.z,5,c.col)},w)},g);
     shockRing(P.x,P.z,r,c.col,.4);sfx('slash');
   },
-  w_e(c){
-    const hit=new Set();
-    for(let i=1;i<=9;i++)later(i*.07,()=>{
-      const x=P.x+c.a.x*i*1.6,z=P.z+c.a.z*i*1.6;   // follows the caster slightly, like a running fissure
-      const g=grp(x,-2,z);for(let j=0;j<3;j++){const s=part(g,'cone',0x8a6a4a,rnd(.8,1.4),rnd(1.8,3.2),rnd(.8,1.4),rnd(-.8,.8),0,rnd(-.8,.8));s.rotation.z=rnd(-.3,.3)}
+  w_e(c){   // three fissures in a fan
+    const hit=new Set(),base=Math.atan2(c.a.x,c.a.z);
+    for(const off of[-.42,0,.42])for(let i=1;i<=10;i++)later(i*.06,()=>{
+      const ax=Math.sin(base+off),az=Math.cos(base+off),x=P.x+ax*i*1.6,z=P.z+az*i*1.6;
+      const g=grp(x,-2,z);for(let j=0;j<2;j++){const s=part(g,'cone',0x8a6a4a,rnd(.8,1.4),rnd(1.8,3.4),rnd(.8,1.4),rnd(-.7,.7),0,rnd(-.7,.7));s.rotation.z=rnd(-.3,.3)}
       act(.8,t=>{g.position.y=t<.12?-2+t/.12*3:t>.55?1-(t-.55)*12:1},null,g);
-      for(const m of mobsIn(x,z,2.1))if(!hit.has(m)){hit.add(m);sHit(c,m,3,{kb:6,freeze:1,big:true})}
-      burst(x,.4,z,10,0xc89a5a,7,.4,14);sfx('hit_stone',.8);cam.shake=Math.max(cam.shake,.25);
+      for(const m of mobsIn(x,z,2.1))if(!hit.has(m)){hit.add(m);sHit(c,m,4.2,{kb:5,freeze:1.6,big:true})}
+      burst(x,.4,z,6,0xc89a5a,7,.4,14);if(!off){sfx('hit_stone',.8);cam.shake=Math.max(cam.shake,.25)}
     });
   },
-  w_f(c){
-    const a=c.a;
-    leapTo(P.x+a.x*4,P.z+a.z*4,.7,8,()=>{
-      const x=P.x,z=P.z;hitStop(.12);
-      [[6,0],[11,.28],[16,.56]].forEach(([r,d],i)=>later(d+.01,()=>{
-        for(const m of mobsIn(x,z,r)){const dist=Math.hypot(m.x-x,m.z-z);if(!i||dist>[6,11][i-1]-m.r)sHit(c,m,6-i,{x,z,kb:12,freeze:1.5,big:true})}
-        clearShots(x,z,r);boom(x,z,r-1,c.col,1);ringBurst(x,.6,z,50,c.col,r*2,.6)}));
-      pillar(x,z,c.col,22,.7);
-    });
+  w_f(c){   // three leaps from enemy to enemy, the last one shakes the whole field
+    P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*.35);
+    const seen=new Set();
+    const hop=i=>{
+      const last=i===2;let m=null,bd=15*15;
+      for(const o of MOBS){if(!alive(o)||seen.has(o))continue;const d=d2(o.x,o.z,P.x,P.z);if(d<bd){bd=d;m=o}}
+      if(!m)m=nearTo(P.x,P.z,15);if(m)seen.add(m);
+      const tx=m?m.x:P.x+c.a.x*4,tz=m?m.z:P.z+c.a.z*4;
+      leapTo(tx,tz,last?.65:.38,last?9:4,()=>{
+        const x=P.x,z=P.z;hitStop(last?.14:.05);
+        if(!last){sArea(c,x,z,6,4,{kb:6,freeze:1,big:true});boom(x,z,5,c.col,.6);clearShots(x,z,6);later(.08,()=>hop(i+1));return}
+        [[7,0],[12,.26],[17,.52]].forEach(([r,d],k)=>later(d+.01,()=>{
+          for(const o of mobsIn(x,z,r)){const dist=Math.hypot(o.x-x,o.z-z);if(!k||dist>[7,12][k-1]-o.r)sHit(c,o,[8,6,5][k],{x,z,kb:12,freeze:2,big:true})}
+          clearShots(x,z,r);boom(x,z,r-1,c.col,1);ringBurst(x,.6,z,50,c.col,r*2,.6)}));
+        pillar(x,z,c.col,24,.8);
+      });
+    };
+    hop(0);
   },
   /* 마법사 */
   m_q(c){
@@ -4294,31 +4313,36 @@ const SK={
     sfx('level');netFx('ground',{x:pt.x,z:pt.z,r:8,c:c.col});
   },
   /* 암흑기사 */
-  d_q(c){
-    const a=c.a,g=grp(P.x,1.2,P.z),blade=grp(0,0,0,g);for(const s of[0,Math.PI]){const t=part(blade,'arc',0xff3a6a,1.7,1.7,2.4,0,0,0,.9);t.rotation.set(Math.PI/2,0,s)}g.add(glow(c.col,5,.5));
-    let x=P.x,z=P.z,back=false,hit=new Set(),healed=0;
-    act(3,(t,dt)=>{blade.rotation.y+=dt*20;
-      if(!back){const sp=34*(1-t/.62);x+=a.x*Math.max(6,sp)*dt;z+=a.z*Math.max(6,sp)*dt;if(t>=.55){back=true;hit=new Set()}}
-      else{const dx=P.x-x,dz=P.z-z,d=Math.hypot(dx,dz);if(d<1.5)return true;const st=Math.min(d,30*dt);x+=dx/d*st;z+=dz/d*st}
-      g.position.set(x,1.2,z);emit(x+rnd(-1.5,1.5),1.2,z+rnd(-1.5,1.5),0,.5,0,.3,c.col,0);
-      for(const m of mobsIn(x,z,2.4))if(!hit.has(m)){hit.add(m);sHit(c,m,2.2,{x,z,kb:4});if(healed<8){healed++;healP(Math.round(S.maxHp*.03))}}},null,g);
-    sfx('slash');netFx('shot',{x:P.x,z:P.z,vx:a.x*30,vz:a.z*30,v:'orb',c:c.col});
+  d_q(c){   // three scythes spiral out around the caster and drink blood
+    const g=grp(P.x,1.2,P.z),sc=[0,1,2].map(()=>{const k=grp(0,0,0,g);for(const s of[0,Math.PI]){const t=part(k,'arc',0xff3a6a,1.3,1.3,2,0,0,0,.9);t.rotation.set(Math.PI/2,0,s)}k.add(glow(c.col,3.2,.5));return k});
+    const last=new Map();let healed=0;
+    act(3.6,(t,dt)=>{g.position.set(P.x,1.2,P.z);const rad=2.2+Math.sin(Math.min(1,t/3.6)*Math.PI)*5.5;
+      sc.forEach((k,i)=>{const an=t*7+i*TAU/3,x=Math.cos(an)*rad,z=Math.sin(an)*rad;k.position.set(x,0,z);k.rotation.y+=dt*18;
+        emit(P.x+x,1.2,P.z+z,0,.4,0,.3,c.col,0);
+        for(const m of mobsIn(P.x+x,P.z+z,2.2))if(!(t-last.get(m)<.55)){last.set(m,t);sHit(c,m,1.3,{kb:1,noProc:true});if(healed<14){healed++;healP(Math.round(S.maxHp*.025))}}});
+    },null,g);
+    sfx('slash');netFx('nova',{x:P.x,z:P.z,r:7,c:c.col});
   },
-  d_e(c){
-    const list=mobsIn(P.x,P.z,10);if(!list.length){UI.toast('가까운 대상이 없습니다');return false}
-    for(const m of list.slice(0,16)){
-      const g=grp(m.x,-1.6,m.z);for(let i=0;i<4;i++){const an=i/4*TAU,f=part(g,'cone',0x3a1a5a,.4,2.6,.4,Math.cos(an)*m.r,1,Math.sin(an)*m.r,.5);f.rotation.set(-Math.sin(an)*.5,0,Math.cos(an)*.5)}flatDisc(g,m.r+.8,0x2a004a,.6,1.7);
-      freezeMob(m,2.4);let acc=.4;
-      act(2.4,(t,dt)=>{g.position.y=Math.min(0,-1.6+t*8);acc+=dt;if(acc>=.5&&valid(m)){acc-=.5;sHit(c,m,.75,{x:m.x,z:m.z+1,noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col);healP(Math.max(1,Math.round(S.maxHp*.006)))}},null,g);
-    }
-    sfx('magic');shockRing(P.x,P.z,10,c.col,.5);netFx('nova',{x:P.x,z:P.z,r:10,c:c.col});
+  d_e(c){   // a giant grip: gather everything to one spot, drain, then crush
+    const pt=aimPoint(11),list=mobsIn(pt.x,pt.z,9);if(!list.length){UI.toast('대상이 없습니다');return false}
+    const g=grp(pt.x,0,pt.z),hands=[];
+    for(let i=0;i<6;i++){const an=i/6*TAU,f=part(g,'cone',0x3a1a5a,.9,5,.9,Math.cos(an)*4,1.6,Math.sin(an)*4,.55);f.rotation.set(-Math.sin(an)*.5,0,Math.cos(an)*.5);hands.push({f,an})}
+    flatDisc(g,5,0x2a004a,.6);
+    for(const m of list){const dx=pt.x-m.x,dz=pt.z-m.z;shove(m,dx,dz,Math.max(0,Math.hypot(dx,dz)-1));freezeMob(m,2.4);boltFx(m.x,m.z,pt.x,pt.z,c.col)}
+    P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*Math.min(.3,.05*list.length));
+    let acc=0;
+    act(1.8,(t,dt)=>{acc+=dt;const k=Math.min(1,t/1.8);for(const h of hands){h.f.position.set(Math.cos(h.an)*(4-3.2*k),1.6,Math.sin(h.an)*(4-3.2*k));h.f.rotation.set(-Math.sin(h.an)*(.5+k*.5),0,Math.cos(h.an)*(.5+k*.5))}
+      if(acc>=.4){acc-=.4;const l=mobsIn(pt.x,pt.z,6);for(const m of l){const dx=pt.x-m.x,dz=pt.z-m.z;shove(m,dx,dz,Math.min(1.5,Math.hypot(dx,dz)));sHit(c,m,1,{x:pt.x,z:pt.z,noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.06,.012*l.length)))}},
+      ()=>{sArea(c,pt.x,pt.z,6,5,{kb:9,freeze:1,big:true});boom(pt.x,pt.z,6,c.col,1);pillar(pt.x,pt.z,c.col,14,.5)},g);
+    sfx('magic');shockRing(pt.x,pt.z,9,c.col,.5);netFx('nova',{x:pt.x,z:pt.z,r:9,c:c.col});
   },
-  d_f(c){
-    const g=grp(P.x,7,P.z),sun=part(g,'ball',0x050008,4,4,4);g.add(glow(c.col,13,.6));const ring=flatRing(g,15,c.col,.7,-6.8),dark=flatDisc(g,15,0x0a0016,.45,-6.9);let acc=.4;
-    act(5,(t,dt)=>{g.position.set(P.x,7,P.z);sun.scale.setScalar(4+Math.sin(t*6)*.3);ring.rotation.z+=dt;acc+=dt;
+  d_f(c){   // eclipse: the sun drags enemies in while the knight is hardened, then collapses
+    P.dkGuard=6.2;P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*.25);
+    const g=grp(P.x,7,P.z),sun=part(g,'ball',0x050008,4,4,4);g.add(glow(c.col,13,.6));const ring=flatRing(g,15,c.col,.7,-6.8);flatDisc(g,15,0x0a0016,.45,-6.9);let acc=.4;
+    act(6,(t,dt)=>{g.position.set(P.x,7,P.z);sun.scale.setScalar(4+t*.4+Math.sin(t*6)*.3);ring.rotation.z+=dt;acc+=dt;
       for(let i=0;i<3;i++){const an=rnd(0,TAU),r=rnd(5,15);emit(P.x+Math.cos(an)*r,rnd(.3,2),P.z+Math.sin(an)*r,-Math.cos(an)*r*1.5,6,-Math.sin(an)*r*1.5,.6,c.col,0)}
-      if(acc>=.5){acc-=.5;const l=mobsIn(P.x,P.z,15);for(const m of l){sHit(c,m,1.05,{noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.1,.025*l.length)))}},
-      ()=>{sArea(c,P.x,P.z,15,3,{kb:12,big:true});boom(P.x,P.z,12,c.col,1)},g);
+      if(acc>=.5){acc-=.5;const l=mobsIn(P.x,P.z,15);for(const m of l){const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,Math.min(1.8,d-3)));sHit(c,m,1.4,{noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.12,.03*l.length)))}},
+      ()=>{sArea(c,P.x,P.z,15,7,{kb:14,freeze:1.5,big:true});boom(P.x,P.z,14,c.col,1);pillar(P.x,P.z,c.col,22,.8)},g);
     sfx('level');netFx('nova',{x:P.x,z:P.z,r:15,c:c.col});
   },
 
@@ -5059,7 +5083,7 @@ function dgUpdate(dt){
   }
   else if(DG.on)for(const p of DGP)if(p.label.el)p.label.el.style.display='none';   // world portal name tags must not show inside
   if(!DG.on){
-    if(P&&P.x>600&&!P.dead){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
+    if(P&&P.x>600&&!P.dead&&!DU.on){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
     return;
   }
   dgScene(dt);
@@ -5294,6 +5318,238 @@ const DGTHEME={
     h.fns.push((dt,T)=>{beam.opacity=.08+Math.sin(T*1.3)*.035});
   }
 };
+
+/* ---------------- duels: request / accept / fight / spectate ----------------
+   Each fighter owns his own HP. The opponent is represented locally by an invisible proxy "mob", so every attack and skill works
+   unchanged; hitting the proxy sends the damage to the opponent. Only the loser reports the result to the server. */
+const DUEL_K=.25,DUEL_TIME=120,DUEL_POINT=300;
+const DU={on:false,role:null,id:null,a:null,b:null,opp:null,x:1300,z:0,R:13,ph:'idle',t:0,pt:0,prox:null,out:0,flush:0,back:null,pend:null,ask:null,arena:null,hud:null,seen:0};
+const DUATMO={bg:0x8ab8e6,sky:0xdcecff,gr:0x6a7a58,hi:.72,sun:.72,sc:0xfff2d6,rc:0x9ab8ff,ri:.4,fd:.0034};
+const duFree=()=>!DU.on&&!DG.on&&!NET.party&&P&&!P.dead;
+function duelClampXZ(e){const dx=e.x-DU.x,dz=e.z-DU.z,d=Math.hypot(dx,dz),lim=DU.R-.8;if(d>lim){e.x=DU.x+dx*lim/d;e.z=DU.z+dz*lim/d}}
+/* who is drawn: inside a duel only its two fighters, outside nobody who is fighting */
+function duelShows(n){return DU.on?(n===DU.a||n===DU.b):!(NET.peers[n]&&NET.peers[n].du)}
+
+/* ---------- arena: octagonal stone floor, stepped stands, arched walls, two pillars, floating isles in the sky ---------- */
+function duelFloorTex(){
+  const c=document.createElement('canvas');c.width=c.height=512;const x=c.getContext('2d');
+  if(x&&x.arc){
+    x.fillStyle='#9d8f74';x.fillRect(0,0,512,512);
+    x.strokeStyle='rgba(90,78,58,.35)';x.lineWidth=2;for(let i=0;i<=512;i+=40){x.beginPath();x.moveTo(i,0);x.lineTo(i,512);x.stroke();x.beginPath();x.moveTo(0,i);x.lineTo(512,i);x.stroke()}
+    const ring=(r,w,col)=>{x.strokeStyle=col;x.lineWidth=w;x.beginPath();x.arc(256,256,r,0,TAU);x.stroke()};
+    x.fillStyle='#86765a';x.beginPath();x.arc(256,256,200,0,TAU);x.fill();
+    ring(200,12,'#4a3e2a');ring(180,3,'#d8caa6');ring(142,10,'#53452e');ring(96,4,'#4a3e2a');ring(60,9,'#5e4c30');
+    for(let i=0;i<48;i++){const a=i/48*TAU;x.strokeStyle='#6e6048';x.lineWidth=3;x.beginPath();x.moveTo(256+Math.cos(a)*144,256+Math.sin(a)*144);x.lineTo(256+Math.cos(a)*178,256+Math.sin(a)*178);x.stroke()}
+    for(let i=0;i<8;i++){const a=i/8*TAU;x.fillStyle='#ddd0ac';x.beginPath();x.arc(256+Math.cos(a)*119,256+Math.sin(a)*119,13,0,TAU);x.fill()}
+    x.fillStyle='#5a4a30';x.beginPath();x.arc(256,256,34,0,TAU);x.fill();x.strokeStyle='#d8b86a';x.lineWidth=3;
+    for(let i=0;i<16;i++){const a=i/16*TAU;x.beginPath();x.moveTo(256,256);x.lineTo(256+Math.cos(a)*32,256+Math.sin(a)*32);x.stroke()}
+  }
+  return new THREE.CanvasTexture(c);
+}
+function duelArena(){
+  if(DU.arena)return DU.arena;
+  const g=grp(DU.x,0,DU.z,scene),R=DU.R;
+  const stone=M(0xb8ae98,{roughness:.95}),stone2=M(0x948a74,{roughness:.95}),dark=M(0x6c6456),grass=M(0x6f9a45,{roughness:1}),rock=M(0x7a7266,{roughness:1}),shade=M(0x39404a);
+  const cyl=(rt,rb,h,n,m,x,y,z,p)=>{const o=mesh(new THREE.CylinderGeometry(rt,rb,h,n),m,x,y,z,p||g,false);o.receiveShadow=true;return o};
+  /* the arena itself floats: grass shelf on a rock root */
+  cyl(R+12,R+11,.6,24,grass,0,-.85,0);cyl(R+11,3,15,10,rock,0,-8.6,0);
+  const floor=mesh(new THREE.CircleGeometry(R+.4,8),new THREE.MeshStandardMaterial({map:duelFloorTex(),roughness:.95}),0,.02,0,g,false);
+  floor.rotation.x=-Math.PI/2;floor.rotation.z=Math.PI/8;floor.receiveShadow=true;
+  /* stepped stands on the eight sides, with two entrances (left/right) */
+  for(let s=0;s<8;s++){
+    const an=s/8*TAU,side=grp(0,0,0,g);side.rotation.y=an;
+    const low=Math.abs(an)<.1,gate=Math.abs(an-Math.PI/2)<.1||Math.abs(an-Math.PI*1.5)<.1,tiers=low?2:4;   // an=0 faces the camera: keep it low
+    for(let t=0;t<tiers;t++){
+      const d=R+.6+t*1.25,w=2*d*Math.tan(Math.PI/8)+.1,h=.4+t*.45,m=t%2?stone2:stone;
+      if(gate){for(const k of[-1,1])BX(w*.36,h,1.25,m,k*w*.32,h/2-.1,d,side)}else BX(w,h,1.25,m,0,h/2-.1,d,side);
+    }
+  }
+  /* two-storey arched colonnades left and right */
+  const arcade=(x0,z0,ry,n)=>{const w=grp(x0,0,z0,g);w.rotation.y=ry;
+    for(let f=0;f<2;f++){const y=f*3.7;
+      BX(n*2.5+.6,.45,1.5,stone2,0,y+3.45,0,w);BX(n*2.5,3.2,.4,shade,0,y+1.6,-.55,w);
+      for(let i=0;i<=n;i++){const x=(i-n/2)*2.5;BX(.55,3.3,1.2,stone,x,y+1.6,0,w);cyl(.2,.22,2.6,8,stone2,x,y+1.45,.72,w)}
+      for(let i=0;i<n;i++){const x=(i-n/2+.5)*2.5;mesh(new THREE.TorusGeometry(.95,.24,5,12,Math.PI),stone,x,y+2.2,.3,w,false)}
+    }
+    BX(n*2.5+1,.35,1.8,stone,0,7.55,0,w);
+  };
+  arcade(-(R+6.4),-4,Math.PI/2,5);arcade(R+6.4,-4,-Math.PI/2,5);arcade(0,-(R+7),0,5);
+  /* two tall pillars at the back */
+  for(const sx of[-1,1]){const x=sx*8.5,z=-(R+6.5);BX(1.5,.7,1.5,dark,x,.35,z,g);cyl(.45,.55,8,10,stone,x,4.6,z);BX(1.3,.5,1.3,stone2,x,8.8,z,g);SP(.35,EM(0xffd27a,1),x,9.4,z,g,8,6)}
+  /* floating isles, rock spires and clouds around (below the arena, so the high camera sees them) */
+  for(const[x,z,y,r]of[[-9,-34,-7,4.5],[17,-31,-11,3],[-34,6,-12,3.5],[33,14,-9,4],[2,-48,-6,6],[-26,-24,-16,2.5],[27,-12,-15,2]]){
+    cyl(r,r*.9,.5,9,grass,x,y,z);cyl(r*.9,.2,r*2.2,7,rock,x,y-r*1.1-.2,z);
+    if(r>3.4){BX(r*.8,r*.45,r*.5,stone,x,y+r*.22,z,g);CN(r*.35,r*.5,dark,x,y+r*.7,z,g,4)}
+  }
+  for(let i=0;i<26;i++){const a=i*2.4,r=R+17+(i*7)%22,s=glow(0xffffff,9+(i%4)*3,.5);s.position.set(Math.cos(a)*r,-9-(i%3)*3,Math.sin(a)*r);g.add(s)}
+  g.visible=false;DU.arena={g};return DU.arena;
+}
+
+/* ---------- messages ---------- */
+function duelRequest(name){
+  if(!NET.on)return;const p=NET.peers[name];
+  if(!duFree()){UI.toast(NET.party?'파티 중에는 결투할 수 없습니다':'지금은 결투를 신청할 수 없습니다');return}
+  if(!p||p.du){UI.toast('상대가 결투를 받을 수 없습니다');return}
+  DU.pend={to:name,id:Math.random().toString(36).slice(2,10)+Date.now().toString(36),at:Date.now()};
+  netSend('dq',{f:SES.name,t:name,id:DU.pend.id});UI.toast(name+'님에게 결투를 신청했습니다');
+}
+const duelNo=(to,why)=>netSend('dx',{f:SES.name,t:to,why});
+function onDuelAsk(d){
+  if(!d||d.t!==SES.name||typeof d.f!=='string'||typeof d.id!=='string'||!NET.peers[d.f])return;
+  if(!duFree()||UI.trade){duelNo(d.f,'상대가 지금은 결투할 수 없습니다');return}
+  DU.ask={from:d.f,id:d.id,at:Date.now()};UI.duelInvite(d.f);
+}
+function duelAccept(){
+  const a=DU.ask;DU.ask=null;if(!a)return;
+  if(!duFree()||!NET.peers[a.from]){UI.toast('결투를 시작할 수 없습니다');duelNo(a.from,'상대가 결투를 시작할 수 없습니다');return}
+  netSend('da',{f:SES.name,t:a.from,id:a.id});duelStart(a.id,a.from,SES.name);
+}
+function duelDecline(){const a=DU.ask;DU.ask=null;if(a)duelNo(a.from,SES.name+'님이 결투를 거절했습니다')}
+function onDuelYes(d){
+  const q=DU.pend;if(!d||d.t!==SES.name||!q||d.id!==q.id||d.f!==q.to||Date.now()-q.at>25000)return;
+  DU.pend=null;
+  if(!duFree()){netSend('de',{id:q.id,cancel:1,f:SES.name});return}
+  duelStart(q.id,SES.name,q.to);
+}
+function onDuelNo(d){if(d&&d.t===SES.name&&DU.pend&&DU.pend.to===d.f){DU.pend=null;UI.toast(String(d.why||'결투가 거절되었습니다').slice(0,60))}}
+
+/* ---------- enter / leave ---------- */
+function duelEnter(){
+  if(GUIDE.id)guideStop();
+  const A=duelArena();A.g.visible=true;worldG.visible=false;skReset();resetMobs();
+  for(const p of DGP)if(p.label.el)p.label.el.style.display='none';
+  const mini=$('mini');if(mini&&mini.style)mini.style.display='none';
+  UI.zone=-1;duelHud(true);sfx('level');
+}
+function duelStart(id,a,b){
+  DU.on=true;DU.role='fight';DU.id=id;DU.a=a;DU.b=b;DU.opp=a===SES.name?b:a;DU.ph='count';DU.pt=3;DU.t=0;DU.out=0;DU.prox=null;DU.res=null;DU.seen=Date.now();
+  DU.back={x:P.x,z:P.z};UI.close();duelEnter();
+  P.recall=0;P.x=DU.x+(a===SES.name?-6:6);P.z=DU.z;P.vx=P.vz=0;P.face=a===SES.name?Math.PI/2:-Math.PI/2;P.hp=S.maxHp;P.shield=0;P.iframes=0;cam.x=P.x;cam.z=P.z;
+  for(const k of['q','e','r','f'])P.cd[k]=0;P.dashCd=0;
+  NET.lastPos=0;
+}
+function duelSpectate(name){
+  const p=NET.peers[name];if(!p||!p.du){UI.toast('결투가 이미 끝났습니다');return}
+  if(!duFree()){UI.toast(NET.party?'파티 중에는 관전할 수 없습니다':'지금은 관전할 수 없습니다');return}
+  if(!inTown(P.x,P.z)){UI.toast('관전은 마을에서만 할 수 있습니다');return}
+  DU.on=true;DU.role='spec';DU.id=p.du.id;DU.a=name;DU.b=p.du.vs;DU.opp=null;DU.ph='watch';DU.t=0;DU.pt=0;DU.res=null;DU.seen=Date.now();DU.back={x:P.x,z:P.z};
+  UI.close();duelEnter();cam.x=DU.x;cam.z=DU.z;
+}
+function duelLeave(msg){
+  if(!DU.on)return;
+  const spec=DU.role==='spec',back=DU.back;
+  DU.on=false;DU.ph='idle';DU.prox=null;DU.role=null;DU.res=null;
+  if(DU.arena)DU.arena.g.visible=false;worldG.visible=true;skReset();resetMobs();
+  if(!spec&&back){P.x=back.x;P.z=back.z;P.vx=P.vz=0;P.hp=S.maxHp;P.shield=0;P.iframes=2}
+  cam.x=P.x;cam.z=P.z;if(PM&&PM.g)PM.g.visible=true;
+  const mini=$('mini');if(mini&&mini.style)mini.style.display='';
+  UI.zone=-1;duelHud(false);NET.lastPos=0;
+  if(msg)UI.toast(msg,3200);
+}
+/* the fight is decided; stay a moment, then return */
+function duelFinish(winner,msg){
+  if(!DU.on||DU.ph==='end')return;
+  DU.ph='end';DU.pt=3.5;DU.res=msg||(winner+'님의 승리!');
+  if(DU.prox){removeMob(DU.prox,false);DU.prox=null}
+  if(DU.role==='fight'){skReset();P.iframes=9}
+}
+/* I lost: tell the others and let the server record it (winner +300 duel points) */
+function duelLose(why){
+  if(!DU.on||DU.role!=='fight'||DU.ph==='end')return;
+  const id=DU.id,opp=DU.opp,counted=DU.ph==='fight';
+  netSend('de',{id,w:opp,l:SES.name,counted:counted?1:0});
+  duelFinish(opp,counted?(why||'패배했습니다'):'결투를 취소했습니다');
+  if(counted)API.call('duelLose',opp,id).then(()=>netSend('dr',{id,t:opp})).catch(()=>UI.toast('전적을 저장하지 못했습니다',2600));
+}
+function onDuelEnd(d){
+  if(!d||!DU.on||d.id!==DU.id||DU.ph==='end')return;
+  if(d.cancel){duelLeave('결투가 취소되었습니다');return}
+  if(DU.role==='fight'){
+    if(d.l!==DU.opp)return;
+    duelFinish(SES.name,d.counted?'승리! 결투 포인트 +'+DUEL_POINT:'상대가 결투를 취소했습니다');
+  }else if(d.w===DU.a||d.w===DU.b)duelFinish(d.w);
+}
+/* the server has saved the result: reload my record and points */
+function onDuelRecorded(d){
+  if(!d||d.t!==SES.name)return;
+  API.resume(SES.name,SES.token).then(p=>{if(p&&p.items){const r=p.duel;if(r)UI.toast('전적 '+r.w+'승 '+r.l+'패 · 결투 포인트 '+fmtG(r.pt),3200)}}).catch(()=>{});
+}
+
+/* ---------- damage ---------- */
+function duelHitOut(m,d){
+  if(DU.ph!=='fight')return;
+  DU.out+=d;
+  if(S.vamp){P.vampAcc+=d*DUEL_K*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+}
+function onDuelHit(d){
+  if(!d||!DU.on||DU.role!=='fight'||DU.ph!=='fight'||d.id!==DU.id||d.t!==SES.name||d.f!==DU.opp)return;
+  if(P.dead||P.iframes>0||P.dashT>0||P.hidden)return;
+  let dmg=Math.min(Math.max(0,+d.d||0)*DUEL_K,S.maxHp*.3);
+  dmg=Math.max(1,Math.round(dmg*(1-S.armor)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab}
+  if(dmg>0){P.hp-=dmg;dmgNum(P.x,3,P.z,'-'+dmg,'hurt');sfx('hurt');vignette(.6);cam.shake=Math.max(cam.shake,.25)}
+  burst(P.x,1.2,P.z,6,0xff5a6a,5,.3,8);
+  if(P.hp<=0){P.hp=1;duelLose()}
+}
+
+/* ---------- HUD ---------- */
+function duelHud(on){
+  if(!DU.hud){
+    if(!on)return;
+    const st=document.createElement('style');st.textContent='#duel{position:fixed;left:50%;top:44px;transform:translateX(-50%);z-index:21;width:min(300px,64vw);padding:4px 10px;border-radius:12px;background:rgba(12,14,26,.86);border:1px solid #ffd24a;color:#fff;font-size:13px;text-align:center;display:none}#duel .r{display:flex;gap:8px;align-items:center;margin-top:2px;font-size:12px}#duel .r b{width:68px;text-align:left;overflow:hidden;white-space:nowrap}#duel .r i{flex:1;height:10px;background:#2a1c24;border-radius:5px;overflow:hidden}#duel .r i s{display:block;height:100%;background:#ff5a6a}#duel button{margin-top:3px;padding:2px 14px;border-radius:12px;border:1px solid #8890a8;background:#222842;color:#fff}';
+    document.head.appendChild(st);
+    const e=document.createElement('div');e.id='duel';e.innerHTML='<div></div><div class="r"><b></b><i><s></s></i></div><div class="r"><b></b><i><s></s></i></div><button></button>';document.body.appendChild(e);
+    const k=e.children;DU.hud={e,title:k[0],rows:[k[1],k[2]],btn:k[3]};
+    if(DU.hud.btn)DU.hud.btn.onclick=()=>duelQuit();
+  }
+  DU.hud.e.style.display=on?'block':'none';DU.hud.last='';
+}
+function duelHudUpdate(){
+  const H=DU.hud;if(!H||!H.title||!H.rows[0]||!H.rows[0].children)return;
+  const hp=n=>n===SES.name?Math.round(P.hp/S.maxHp*100):(NET.peers[n]?NET.peers[n].hp:0);
+  const title=DU.ph==='count'?'결투 시작까지 '+Math.ceil(DU.pt):DU.ph==='end'?DU.res:DU.role==='spec'?'관전 중':'결투 · '+Math.max(0,Math.ceil(DUEL_TIME-DU.t))+'초';
+  const v=[DU.a,DU.b].map(n=>[n,clamp(hp(n),0,100)]),key=title+JSON.stringify(v);if(H.last===key)return;H.last=key;
+  H.title.textContent=title;H.btn.textContent=DU.role==='spec'?'관전 종료':'기권';
+  v.forEach(([n,h],i)=>{const r=H.rows[i].children;r[0].textContent=n;r[1].firstElementChild.style.width=h+'%'});
+}
+function duelQuit(){
+  if(!DU.on)return;
+  if(DU.role==='spec')duelLeave('관전을 마쳤습니다');
+  else if(DU.ph!=='end')duelLose('기권했습니다');
+}
+
+/* ---------- per frame ---------- */
+function duelUpdate(dt){
+  if(DU.pend&&Date.now()-DU.pend.at>25000)DU.pend=null;
+  if(!DU.on)return;
+  if(!NET.on){duelLeave('연결이 끊겨 결투장에서 나왔습니다');return}
+  DU.t+=DU.ph==='count'?0:dt;
+  const now=Date.now(),others=DU.role==='spec'?[DU.a,DU.b]:[DU.opp],live=others.every(n=>NET.peers[n]);
+  if(live&&(DU.role==='fight'||others.some(n=>NET.peers[n].du&&NET.peers[n].du.id===DU.id)))DU.seen=now;
+  if(DU.ph==='end'){DU.pt-=dt;if(DU.pt<=0)duelLeave(DU.res)}
+  else if(!live||now-DU.seen>(DU.role==='spec'?4000:8000))duelLeave(DU.role==='spec'?'결투가 끝났습니다':'상대의 연결이 끊겨 결투가 취소되었습니다');
+  else if(DU.ph==='count'){
+    DU.pt-=dt;
+    if(DU.pt<=0){
+      DU.ph='fight';DU.t=0;UI.toast('결투 시작!',1400);sfx('level');
+      const p=NET.peers[DU.opp],m=makeMobObj(-777,'slime',p.x||DU.x,p.z||DU.z,1,false,true);
+      entG.remove(m.m.g);m.duel=true;m.spawning=false;m.dmg=0;m.r=.7;m.maxHp=m.hp=1e12;DU.prox=m;
+    }
+  }else if(DU.ph==='fight'){
+    const p=NET.peers[DU.opp],m=DU.prox;
+    if(m&&p){m.x=m.tx=p.x;m.z=m.tz=p.z;m.dead=false;m.hp=m.maxHp*Math.max(.01,p.hp/100);if(!MOBS.includes(m))MOBS.push(m)}
+    DU.flush-=dt;if(DU.out>0&&DU.flush<=0){DU.flush=.1;netSend('dh',{id:DU.id,f:SES.name,t:DU.opp,d:Math.round(DU.out)});DU.out=0}
+    /* time over: the one with less HP left concedes (ties: the challenger) */
+    if(DU.t>=DUEL_TIME&&p){const me=P.hp/S.maxHp*100;if(me<p.hp||(me===p.hp&&DU.a===SES.name))duelLose('시간 종료 · 패배')}
+  }
+  if(DU.on)duelHudUpdate();
+}
+/* camera target: spectators follow the middle of the two fighters */
+function duelFocus(){
+  if(!DU.on||DU.role!=='spec')return P;
+  const a=NET.peers[DU.a],b=NET.peers[DU.b];
+  return a&&b&&a.got&&b.got?{x:(a.x+b.x)/2,z:(a.z+b.z)/2}:DU;
+}
 
 /* ---------------- UI ---------------- */
 function esc(s){return String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
@@ -5593,15 +5849,18 @@ function openParty(){
   UI.page('파티 · 플레이어',()=>{
     let h='';
     if(!NET.on)return '<div class="card">오프라인 모드에서는 파티와 거래를 사용할 수 없습니다.<br><span class="dim">온라인 서버에 접속하면 다른 플레이어와 함께 사냥할 수 있습니다.</span></div>';
+    {const r=SES.pf.duel||{w:0,l:0,pt:0};h+='<div class="card" style="margin-bottom:10px"><b>결투 전적</b> '+r.w+'승 '+r.l+'패 · <span class="gold">결투 포인트 '+fmtG(r.pt)+'</span></div>'}
     h+='<div class="card" style="margin-bottom:10px"><div class="row sp"><b>내 파티</b>'+(NET.party?'<button class="btn sm red" data-a="pleave">탈퇴</button>':'')+'</div>';
     if(NET.party){h+='<div class="list" style="margin-top:6px;max-height:20vh">'+NET.party.members.map(n=>{const p=n===SES.name?{lv:SES.pf.level,job:SES.pf.job}:NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+(n===NET.party.leader?'<span class="gold">[파티장]</span> ':'')+esc(n)+'</div><div class="sub">'+(p?'Lv.'+(p.lv||'?')+' '+(JOBS[p.job]?JOBS[p.job].name:''):'연결 끊김')+'</div></div></div>'}).join('')+'</div><div class="dim" style="margin-top:6px">파티원은 같은 몬스터를 함께 사냥하며 각자 경험치와 드랍을 받습니다.</div>'}
     else h+='<div class="dim" style="margin-top:4px">파티가 없습니다. 아래 플레이어를 초대하세요.</div>';
     h+='</div><div class="card"><b>접속 중인 플레이어</b><div class="list" style="margin-top:6px;max-height:34vh">';
     const names=Object.keys(NET.peers);
-    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:'')+'</div></div><div class="rt"><button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
+    h+=names.length?names.map(n=>{const p=NET.peers[n];return '<div class="item" style="cursor:default"><div><div class="nm">'+esc(n)+'</div><div class="sub">Lv.'+p.lv+' '+(JOBS[p.job]?JOBS[p.job].name:'')+(p.du?' · <span class="gold">결투 중 vs '+esc(p.du.vs)+'</span>':'')+'</div></div><div class="rt">'+(p.du?'<button class="btn sm" data-a="dspec" data-v="'+esc(n)+'">관전</button>':'<button class="btn sm" data-a="duel" data-v="'+esc(n)+'">결투</button>')+'<button class="btn sm" data-a="pinv" data-v="'+esc(n)+'" '+(NET.party&&NET.party.members.includes(n)?'disabled':'')+'>파티 초대</button> <button class="btn sm sec" data-a="ptrade" data-v="'+esc(n)+'">거래</button></div></div>'}).join(''):'<div class="dim">같은 채널에 다른 플레이어가 없습니다.</div>';
     return h+'</div></div>';
   });
   UI.handlers.pinv=v=>partyInvite(v);
+  UI.handlers.duel=v=>{UI.close();duelRequest(v)};
+  UI.handlers.dspec=v=>duelSpectate(v);
   UI.handlers.pleave=()=>{partyLeave();UI.rerender()};
   UI.handlers.ptrade=async v=>{
     try{const t=await API.call('tradeOpen',v);netTradeInvite(v,t.id);UI.close();openTrade(t.id,v)}catch(e){UI.toast(errKo(e.message))}
@@ -5617,6 +5876,8 @@ UI.renderParty=()=>{
 };
 UI.partyInvite=from=>{$('invtx').textContent=from+'님이 파티에 초대했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');partyAccept()};$('invno').onclick=()=>{NET.invite=null;$('invite').classList.remove('on')};
   setTimeout(()=>{if(NET.invite&&NET.invite.from===from){NET.invite=null;$('invite').classList.remove('on')}},20000)};
+UI.duelInvite=from=>{$('invtx').textContent=from+'님이 결투를 신청했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');duelAccept()};$('invno').onclick=()=>{$('invite').classList.remove('on');duelDecline()};
+  setTimeout(()=>{if(DU.ask&&DU.ask.from===from){DU.ask=null;$('invite').classList.remove('on')}},20000)};
 UI.tradeInvite=(from,tid)=>{$('invtx').textContent=from+'님이 거래를 신청했습니다.';$('invite').classList.add('on');$('invok').onclick=()=>{$('invite').classList.remove('on');openTrade(tid,from)};$('invno').onclick=()=>{$('invite').classList.remove('on');API.call('tradeCancel',tid).catch(()=>{})};setTimeout(()=>$('invite').classList.remove('on'),20000)};
 
 /* ---------- direct trade ---------- */
@@ -5673,7 +5934,7 @@ function applyShadows(){renderer.shadowMap.enabled=!!save.shadows;sun.castShadow
 /* ---------- NPC interaction ---------- */
 function nearNpc(){
   if(!P||P.dead)return null;let best=null,bd=3.6*3.6;
-  if(DG.on)return null;
+  if(DG.on||DU.on)return null;
   for(const n of WORLD.npcs){const d=d2(n.x,n.z,P.x,P.z);if(d<bd){bd=d;best=n}}
   for(const n of DGP){const d=d2(n.x,n.z,P.x,P.z);if(d<bd){bd=d;best=n}}
   return best;
@@ -5759,7 +6020,7 @@ UI.hudTick=function(dt){
     if(tb)domX(domQ(tb,'.cdm'),sy)
   }
   const qs=$('quick').children;for(let i=0;i<qs.length;i++){const b=POTION_ORDER[i],pd=POTIONS[b],cdv=pd.kind==='hp'?P.pot.hp:P.pot[b];domX(domQ(qs[i],'.cdm'),'scaleY('+clamp(cdv/(pd.kind==='hp'?2.5:30),0,1).toFixed(3)+')')}
-  {const zb=$('zone');const hide=!!DG.on;if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}
+  {const zb=$('zone');const hide=!!(DG.on||DU.on);if(zb&&UI._zh!==hide){UI._zh=hide;zb.style.display=hide?'none':''}}
   const z=zoneAt(P.x,P.z);if(UI.zone!==z.id){UI.zone=z.id;$('znm').textContent=z.name;$('znlv').textContent=z.id?'권장 Lv.'+z.lo+'~'+z.hi:'안전 지대'}
   const n=nearNpc(),pr=$('prompt'),use=$('tb-use');
   if(n&&!UI.modal){const ph=(IS_TOUCH?'':'<kbd>E</kbd>')+n.name;if(pr._h!==ph){pr._h=ph;pr.innerHTML=ph}pr.classList.add('show');if(use){use.classList.remove('hidden');domT(domQ(use,'span'),n.name)}}
@@ -6136,7 +6397,7 @@ function netJoin(i){
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
       .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload)).on('broadcast',{event:'pq'},m=>onPQuery(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))
-      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload)).on('broadcast',{event:'cb'},m=>onCb(m.payload)).on('broadcast',{event:'ch'},m=>onCh(m.payload))
+      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload)).on('broadcast',{event:'dq'},m=>onDuelAsk(m.payload)).on('broadcast',{event:'da'},m=>onDuelYes(m.payload)).on('broadcast',{event:'dx'},m=>onDuelNo(m.payload)).on('broadcast',{event:'dh'},m=>onDuelHit(m.payload)).on('broadcast',{event:'de'},m=>onDuelEnd(m.payload)).on('broadcast',{event:'dr'},m=>onDuelRecorded(m.payload)).on('broadcast',{event:'cb'},m=>onCb(m.payload)).on('broadcast',{event:'ch'},m=>onCh(m.payload))
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
         if(n>SHARD_MAX&&i<6){fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
@@ -6174,7 +6435,8 @@ function dropPeer(k){const p=NET.peers[k];if(!p)return;if(p.model)entG.remove(p.
 function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
-  p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
+  p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
+  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
   if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
@@ -6197,7 +6459,7 @@ function partyInvite(name){
   if(!NET.party)setParty({id:SES.name+'-'+Date.now().toString(36),leader:SES.name,members:[SES.name]});
   netSend('pi',{f:SES.name,t:name,id:NET.party.id});UI.toast(name+'님에게 파티를 초대했습니다');
 }
-function onPInvite(d){if(!d||d.t!==SES.name)return;if(NET.party){netSend('c',{n:'시스템',m:SES.name+'님은 이미 파티 중입니다.',ch:'sys'});return}NET.invite={from:d.f,id:d.id,t:performance.now()};UI.partyInvite(d.f)}
+function onPInvite(d){if(!d||d.t!==SES.name)return;if(DU.on){netSend('c',{n:'시스템',m:SES.name+'님은 결투장에 있습니다.',ch:'sys'});return}if(NET.party){netSend('c',{n:'시스템',m:SES.name+'님은 이미 파티 중입니다.',ch:'sys'});return}NET.invite={from:d.f,id:d.id,t:performance.now()};UI.partyInvite(d.f)}
 function partyAccept(){
   const iv=NET.invite;if(!iv)return;NET.invite=null;
   netSend('pa',{f:SES.name,t:iv.from,id:iv.id});
@@ -6282,8 +6544,8 @@ function netUpdate(dt){
     const now=performance.now();
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
-      if(moved||now-NET.lastPos>1200){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0})}
+      if(moved||now-NET.lastPos>(DU.on?200:1200)){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp]:0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -6292,9 +6554,9 @@ function netUpdate(dt){
     if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
     if(!p.label)p.label=makeLabel(peerLabel(p),'pl');
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
-    p.model.g.visible=!p.dead;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
+    const show=duelShows(k);p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
-    p.label.pos(p.x,3.3,p.z);
+    if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
   }
 }
 function netClearModels(){for(const k in NET.peers){const p=NET.peers[k];if(p.model){entG.remove(p.model.g);p.model=null}if(p.label){p.label.remove();p.label=null}}}
@@ -6420,11 +6682,12 @@ function frame(dt){
   if(P&&G.mode==='play'){
     const modal=!!UI.modal;
     playerFacing(dt);
-    if(P.dead||modal){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
+    const watch=DU.on&&DU.role==='spec';
+    if(watch){P.ix=P.iz=0;P.vx=P.vz=0}else if(P.dead||modal){P.ix=P.iz=0;P.vx*=.85;P.vz*=.85;P.x+=P.vx*dt;P.z+=P.vz*dt;pushOut(P,P.r)}else movePlayer(dt);
     tickPlayer(dt);tickGather(dt);
-    if(!modal)tryAttackInput();
+    if(!modal&&!watch&&!(DU.on&&DU.ph!=='fight'))tryAttackInput();
     updatePB(dt);updateEB(dt);updateMobs(dt);updatePlayerModel(dt);
-    netUpdate(dt);dgUpdate(dt);
+    netUpdate(dt);dgUpdate(dt);duelUpdate(dt);if(DU.on&&DU.role==='spec'&&PM&&PM.g)PM.g.visible=false;
     const z=zoneAt(P.x,P.z);updateAtmo(dt,z.id);
     if(z.id!==lastZoneAudio){lastZoneAudio=z.id;musicMode(z.id?'field':'town');AU.mode=z.id?'field':'town';ambZone(z.id)}
     KBt+=dt;if(KBn&&KBt>4)flushKills();
@@ -6433,7 +6696,7 @@ function frame(dt){
     ambientFx(dt,z.id,cam.x,cam.z);
     for(const L of WORLD.lava){L.m.material.opacity=.45+Math.sin(G.t*2+L.x)*.12}
     UI.hudTick(dt);
-    updateCam(dt,P.x,P.z,false);
+    {const f=duelFocus();updateCam(dt,f.x,f.z,false)}
   }else{
     try{loginScene(dt)}catch(e){LOGIN.on=false;if(LOGIN.g)LOGIN.g.visible=false;console.error('login',e)}
     if(!LOGIN.g||!LOGIN.on)updateCam(dt,0,8,true);updateAtmo(dt,0);ambientFx(dt,0,0,11);
@@ -6467,7 +6730,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

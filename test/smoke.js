@@ -575,6 +575,25 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.P.cdMax.q=3;g.P.cd.q=1.5;T(Math.abs(g.qCharge()-.5)<1e-9,'q charge half');g.P.cd.q=0;T(g.qCharge()===1,'q charge full');
     T(g.qPower(1)===1.4&&g.qPower(.2)<g.qPower(.6)&&g.qPower(.99)<1,'q power grows with charge');
   }
+  { // duel: request -> accept -> hit -> lose -> back
+    const sent=[],N=g.NET,on0=N.on,ch0=N.ch,party0=N.party,me=g.SES.name;N.on=true;N.party=null;N.ch={send:o=>sent.push(o),track(){}};
+    N.peers['상대']={got:true,x:1306,z:0,tx:1306,tz:0,hp:100,lv:10,cls:'warrior',job:'warrior',anim:0,f:0,tf:0};
+    const x0=g.P.x,z0=g.P.z;g.P.dead=false;
+    g.duelRequest('상대');const q=sent.find(o=>o.event==='dq');T(!!q,'duel request sent');
+    g.onDuelYes({f:'상대',t:me,id:q.payload.id});T(g.DU.on&&g.DU.ph==='count'&&g.P.x>1200,'duel starts in arena');
+    g.frame(.03);g.frame(.03);T(g.P.x>1200&&g.DU.on,'stays in arena across frames');T(g.duelShows('상대')&&!g.duelShows('구경꾼'),'only fighters visible in arena');
+    for(let i=0;i<35;i++)g.duelUpdate(.1);T(g.DU.ph==='fight'&&!!g.DU.prox,'duel fight phase');
+    g.dealMob(g.DU.prox,100,{crit:false});g.duelUpdate(.2);T(sent.some(o=>o.event==='dh'&&o.payload.d>0&&o.payload.t==='상대'),'hit sent to opponent');
+    const hp=g.P.hp;g.P.iframes=0;g.P.dashT=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:200});T(g.P.hp<hp,'duel damage taken');
+    for(let i=0;i<20&&g.DU.ph==='fight';i++){g.P.iframes=0;g.onDuelHit({id:g.DU.id,f:'상대',t:me,d:1e9})}
+    T(g.DU.ph==='end'&&sent.some(o=>o.event==='de'&&o.payload.w==='상대'&&o.payload.counted===1),'loser reports defeat');
+    for(let i=0;i<45;i++)g.duelUpdate(.1);T(!g.DU.on&&g.P.x===x0&&g.P.z===z0,'returns after duel');
+    for(const[n,v]of[['갑','을'],['을','갑']])N.peers[n]={got:true,x:1300,z:0,tx:1300,tz:0,hp:90,lv:5,cls:'warrior',job:'warrior',anim:0,f:0,tf:0,du:{id:'spec-test',vs:v}};
+    g.openParty();g.P.x=0;g.P.z=0;g.duelSpectate('갑');g.frame(.03);g.duelUpdate(.1);T(g.DU.on&&g.DU.role==='spec'&&Math.abs(g.P.x)<20,'spectate from town');
+    g.onDuelEnd({id:'spec-test',w:'갑',l:'을',counted:1});for(let i=0;i<45;i++)g.duelUpdate(.1);T(!g.DU.on,'spectator leaves when duel ends');
+    delete N.peers['갑'];delete N.peers['을'];
+    N.on=on0;N.ch=ch0;N.party=party0;delete N.peers['상대'];
+  }
   console.log('errors:',errs,'ok:',ok,'bad:',bad);
   process.exit(bad||errs?1:0);
 })().catch(e=>{console.log('CRASH',e.stack||e);process.exit(2)});

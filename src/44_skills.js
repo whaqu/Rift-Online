@@ -7,9 +7,9 @@ const MAXLV=99;
 const sd=(id,name,cd,col,icon,desc,extra)=>Object.assign({id,fx:id,type:'x',name,cd,col,icon,desc},extra||{});
 /* [Q, E, F] per class */
 const KITDEF={
-  warrior:[sd('w_q','갈고리 사슬',9,0xffd24a,'swap','주변 적을 사슬로 끌어와 기절시킵니다.'),
-    sd('w_e','대지 가르기',8,0xc89a5a,'arrowup','앞으로 바위가 연달아 솟아오릅니다.'),
-    sd('w_f','천지 붕괴',60,0xffb02a,'burst','높이 뛰어 내려찍어 거대한 충격파 3겹을 퍼뜨립니다.')],
+  warrior:[sd('w_q','사슬 폭풍',7,0xffd24a,'swap','적을 사슬로 끌어와 기절시킨 뒤 회전 베기로 휩쓸며 움직입니다. 끌어온 수만큼 보호막.'),
+    sd('w_e','대지 가르기',6,0xc89a5a,'arrowup','세 갈래로 바위가 연달아 솟아 적을 기절시킵니다.'),
+    sd('w_f','천지 붕괴',50,0xffb02a,'burst','적에서 적으로 세 번 도약하고 마지막에 충격파 3겹. 보호막을 얻습니다.')],
   mage:[sd('m_q','블랙홀',12,0x9a6aff,'burst','적을 빨아들이는 구멍을 만든 뒤 터뜨립니다.'),
     sd('m_e','얼음 장벽',10,0x9fe8ff,'snow','앞에 얼음벽을 세워 적을 막고 얼립니다.'),
     sd('m_f','종말의 운석',60,0xff6a2a,'flame','화면을 뒤덮는 거대한 운석을 떨어뜨립니다.')],
@@ -34,9 +34,9 @@ const KITDEF={
   summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1(최대 5). 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
     sd('s_e','정령 벌떼',9,0x6bffd0,'star','적을 쫓아가는 도깨비불 14개를 풉니다.'),
     sd('s_f','고대 거신',70,0x9fffe8,'burst','거신이 나타나 적진을 네 번 짓밟습니다.')],
-  darknight:[sd('d_q','피의 낫',8,0xff3a6a,'swap','돌아오는 거대한 낫을 던져 맞힌 만큼 회복합니다.'),
-    sd('d_e','어둠의 손아귀',11,0xa070ff,'fist','주변 적의 발밑에서 손이 솟아 붙잡고 생명을 빱니다.'),
-    sd('d_f','일식',60,0x7a3aff,'burst','검은 태양이 5초간 주변의 생명을 빨아들입니다.')]
+  darknight:[sd('d_q','피의 낫',7,0xff3a6a,'swap','낫 세 자루가 주위를 휘돌며 벨 때마다 회복합니다.'),
+    sd('d_e','어둠의 손아귀',9,0xa070ff,'fist','지정한 곳으로 적을 모아 흡혈한 뒤 으스러뜨립니다. 보호막을 얻습니다.'),
+    sd('d_f','일식',50,0x7a3aff,'burst','6초간 검은 태양이 적을 끌어당기며 흡혈하고 받는 피해 40% 감소, 끝에 붕괴합니다.')]
 };
 /* 성직자 Q: 레벨에 따라 스몰 힐(10) → 힐(20) → 홀리 힐(30) */
 const CLQ=[null,
@@ -161,7 +161,7 @@ function shove(m,dx,dz,dist){
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
 function boom(x,z,r,col,shake){shockRing(x,z,r+.8,col,.45);flashDisc(x,z,r,col,.35);burst(x,1,z,24,col,10,.55,8);sfx('boom');cam.shake=Math.max(cam.shake,shake||.4)}
-function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
+function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&!DU.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
 function leapTo(x,z,dur,h,done){P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h,done};P.iframes=Math.max(P.iframes,dur+.2);sfx('dash')}
 const clearShots=(x,z,r)=>{for(const b of EB)if(d2(b.x,b.z,x,z)<r*r)b.life=0};
 function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.set(x,22,z);entG.add(g);act(dur,t=>{const k=t/dur;g.position.y=22*(1-k*k)+1},done,g)}
@@ -169,32 +169,44 @@ function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.se
 /* ---------- the skills ---------- */
 const SK={
   /* 전사 */
-  w_q(c){
-    const r=10,list=mobsIn(P.x,P.z,r),g=grp(P.x,0,P.z),links=[];
-    for(const m of list){links.push({m,o:part(g,'box',0xd0b060,.14,.14,1,0,1,0,.7)});const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,d-2.2));freezeMob(m,1.6)}
-    act(.45,()=>{g.position.set(P.x,0,P.z);for(const k of links){const dx=k.m.x-P.x,dz=k.m.z-P.z,d=Math.hypot(dx,dz)||.1;k.o.position.set(dx/2,1,dz/2);k.o.scale.z=d;k.o.rotation.y=Math.atan2(dx,dz)}},
-      ()=>{sArea(c,P.x,P.z,4,2.2,{big:true});boom(P.x,P.z,4,c.col)},g);
+  w_q(c){   // drag them in, then wade through them as a whirlwind
+    const r=11,list=mobsIn(P.x,P.z,r),g=grp(P.x,0,P.z),links=[];
+    for(const m of list){links.push({m,o:part(g,'box',0xd0b060,.14,.14,1,0,1,0,.7)});const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,d-2.2));freezeMob(m,1.8)}
+    if(list.length)P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*Math.min(.3,.05*list.length));
+    act(.35,()=>{g.position.set(P.x,0,P.z);for(const k of links){const dx=k.m.x-P.x,dz=k.m.z-P.z,d=Math.hypot(dx,dz)||.1;k.o.position.set(dx/2,1,dz/2);k.o.scale.z=d;k.o.rotation.y=Math.atan2(dx,dz)}},
+      ()=>{const w=grp(P.x,1.2,P.z),bl=grp(0,0,0,w);for(let i=0;i<2;i++){const t=part(bl,'arc',c.col,4.2,4.2,3,0,i*.5,0,.9);t.rotation.set(Math.PI/2,0,i*Math.PI)}let n=0;
+        act(1.7,(t,dt)=>{w.position.set(P.x,1.2,P.z);bl.rotation.y+=dt*18;if(n<7&&t>=n*.23){n++;sArea(c,P.x,P.z,4.6,1.15,{kb:1});ringBurst(P.x,.7,P.z,14,c.col,9,.3);sfx('slash')}},
+          ()=>{sArea(c,P.x,P.z,5.5,3,{kb:12,freeze:.8,big:true});boom(P.x,P.z,5,c.col)},w)},g);
     shockRing(P.x,P.z,r,c.col,.4);sfx('slash');
   },
-  w_e(c){
-    const hit=new Set();
-    for(let i=1;i<=9;i++)later(i*.07,()=>{
-      const x=P.x+c.a.x*i*1.6,z=P.z+c.a.z*i*1.6;   // follows the caster slightly, like a running fissure
-      const g=grp(x,-2,z);for(let j=0;j<3;j++){const s=part(g,'cone',0x8a6a4a,rnd(.8,1.4),rnd(1.8,3.2),rnd(.8,1.4),rnd(-.8,.8),0,rnd(-.8,.8));s.rotation.z=rnd(-.3,.3)}
+  w_e(c){   // three fissures in a fan
+    const hit=new Set(),base=Math.atan2(c.a.x,c.a.z);
+    for(const off of[-.42,0,.42])for(let i=1;i<=10;i++)later(i*.06,()=>{
+      const ax=Math.sin(base+off),az=Math.cos(base+off),x=P.x+ax*i*1.6,z=P.z+az*i*1.6;
+      const g=grp(x,-2,z);for(let j=0;j<2;j++){const s=part(g,'cone',0x8a6a4a,rnd(.8,1.4),rnd(1.8,3.4),rnd(.8,1.4),rnd(-.7,.7),0,rnd(-.7,.7));s.rotation.z=rnd(-.3,.3)}
       act(.8,t=>{g.position.y=t<.12?-2+t/.12*3:t>.55?1-(t-.55)*12:1},null,g);
-      for(const m of mobsIn(x,z,2.1))if(!hit.has(m)){hit.add(m);sHit(c,m,3,{kb:6,freeze:1,big:true})}
-      burst(x,.4,z,10,0xc89a5a,7,.4,14);sfx('hit_stone',.8);cam.shake=Math.max(cam.shake,.25);
+      for(const m of mobsIn(x,z,2.1))if(!hit.has(m)){hit.add(m);sHit(c,m,4.2,{kb:5,freeze:1.6,big:true})}
+      burst(x,.4,z,6,0xc89a5a,7,.4,14);if(!off){sfx('hit_stone',.8);cam.shake=Math.max(cam.shake,.25)}
     });
   },
-  w_f(c){
-    const a=c.a;
-    leapTo(P.x+a.x*4,P.z+a.z*4,.7,8,()=>{
-      const x=P.x,z=P.z;hitStop(.12);
-      [[6,0],[11,.28],[16,.56]].forEach(([r,d],i)=>later(d+.01,()=>{
-        for(const m of mobsIn(x,z,r)){const dist=Math.hypot(m.x-x,m.z-z);if(!i||dist>[6,11][i-1]-m.r)sHit(c,m,6-i,{x,z,kb:12,freeze:1.5,big:true})}
-        clearShots(x,z,r);boom(x,z,r-1,c.col,1);ringBurst(x,.6,z,50,c.col,r*2,.6)}));
-      pillar(x,z,c.col,22,.7);
-    });
+  w_f(c){   // three leaps from enemy to enemy, the last one shakes the whole field
+    P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*.35);
+    const seen=new Set();
+    const hop=i=>{
+      const last=i===2;let m=null,bd=15*15;
+      for(const o of MOBS){if(!alive(o)||seen.has(o))continue;const d=d2(o.x,o.z,P.x,P.z);if(d<bd){bd=d;m=o}}
+      if(!m)m=nearTo(P.x,P.z,15);if(m)seen.add(m);
+      const tx=m?m.x:P.x+c.a.x*4,tz=m?m.z:P.z+c.a.z*4;
+      leapTo(tx,tz,last?.65:.38,last?9:4,()=>{
+        const x=P.x,z=P.z;hitStop(last?.14:.05);
+        if(!last){sArea(c,x,z,6,4,{kb:6,freeze:1,big:true});boom(x,z,5,c.col,.6);clearShots(x,z,6);later(.08,()=>hop(i+1));return}
+        [[7,0],[12,.26],[17,.52]].forEach(([r,d],k)=>later(d+.01,()=>{
+          for(const o of mobsIn(x,z,r)){const dist=Math.hypot(o.x-x,o.z-z);if(!k||dist>[7,12][k-1]-o.r)sHit(c,o,[8,6,5][k],{x,z,kb:12,freeze:2,big:true})}
+          clearShots(x,z,r);boom(x,z,r-1,c.col,1);ringBurst(x,.6,z,50,c.col,r*2,.6)}));
+        pillar(x,z,c.col,24,.8);
+      });
+    };
+    hop(0);
   },
   /* 마법사 */
   m_q(c){
@@ -417,31 +429,36 @@ const SK={
     sfx('level');netFx('ground',{x:pt.x,z:pt.z,r:8,c:c.col});
   },
   /* 암흑기사 */
-  d_q(c){
-    const a=c.a,g=grp(P.x,1.2,P.z),blade=grp(0,0,0,g);for(const s of[0,Math.PI]){const t=part(blade,'arc',0xff3a6a,1.7,1.7,2.4,0,0,0,.9);t.rotation.set(Math.PI/2,0,s)}g.add(glow(c.col,5,.5));
-    let x=P.x,z=P.z,back=false,hit=new Set(),healed=0;
-    act(3,(t,dt)=>{blade.rotation.y+=dt*20;
-      if(!back){const sp=34*(1-t/.62);x+=a.x*Math.max(6,sp)*dt;z+=a.z*Math.max(6,sp)*dt;if(t>=.55){back=true;hit=new Set()}}
-      else{const dx=P.x-x,dz=P.z-z,d=Math.hypot(dx,dz);if(d<1.5)return true;const st=Math.min(d,30*dt);x+=dx/d*st;z+=dz/d*st}
-      g.position.set(x,1.2,z);emit(x+rnd(-1.5,1.5),1.2,z+rnd(-1.5,1.5),0,.5,0,.3,c.col,0);
-      for(const m of mobsIn(x,z,2.4))if(!hit.has(m)){hit.add(m);sHit(c,m,2.2,{x,z,kb:4});if(healed<8){healed++;healP(Math.round(S.maxHp*.03))}}},null,g);
-    sfx('slash');netFx('shot',{x:P.x,z:P.z,vx:a.x*30,vz:a.z*30,v:'orb',c:c.col});
+  d_q(c){   // three scythes spiral out around the caster and drink blood
+    const g=grp(P.x,1.2,P.z),sc=[0,1,2].map(()=>{const k=grp(0,0,0,g);for(const s of[0,Math.PI]){const t=part(k,'arc',0xff3a6a,1.3,1.3,2,0,0,0,.9);t.rotation.set(Math.PI/2,0,s)}k.add(glow(c.col,3.2,.5));return k});
+    const last=new Map();let healed=0;
+    act(3.6,(t,dt)=>{g.position.set(P.x,1.2,P.z);const rad=2.2+Math.sin(Math.min(1,t/3.6)*Math.PI)*5.5;
+      sc.forEach((k,i)=>{const an=t*7+i*TAU/3,x=Math.cos(an)*rad,z=Math.sin(an)*rad;k.position.set(x,0,z);k.rotation.y+=dt*18;
+        emit(P.x+x,1.2,P.z+z,0,.4,0,.3,c.col,0);
+        for(const m of mobsIn(P.x+x,P.z+z,2.2))if(!(t-last.get(m)<.55)){last.set(m,t);sHit(c,m,1.3,{kb:1,noProc:true});if(healed<14){healed++;healP(Math.round(S.maxHp*.025))}}});
+    },null,g);
+    sfx('slash');netFx('nova',{x:P.x,z:P.z,r:7,c:c.col});
   },
-  d_e(c){
-    const list=mobsIn(P.x,P.z,10);if(!list.length){UI.toast('가까운 대상이 없습니다');return false}
-    for(const m of list.slice(0,16)){
-      const g=grp(m.x,-1.6,m.z);for(let i=0;i<4;i++){const an=i/4*TAU,f=part(g,'cone',0x3a1a5a,.4,2.6,.4,Math.cos(an)*m.r,1,Math.sin(an)*m.r,.5);f.rotation.set(-Math.sin(an)*.5,0,Math.cos(an)*.5)}flatDisc(g,m.r+.8,0x2a004a,.6,1.7);
-      freezeMob(m,2.4);let acc=.4;
-      act(2.4,(t,dt)=>{g.position.y=Math.min(0,-1.6+t*8);acc+=dt;if(acc>=.5&&valid(m)){acc-=.5;sHit(c,m,.75,{x:m.x,z:m.z+1,noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col);healP(Math.max(1,Math.round(S.maxHp*.006)))}},null,g);
-    }
-    sfx('magic');shockRing(P.x,P.z,10,c.col,.5);netFx('nova',{x:P.x,z:P.z,r:10,c:c.col});
+  d_e(c){   // a giant grip: gather everything to one spot, drain, then crush
+    const pt=aimPoint(11),list=mobsIn(pt.x,pt.z,9);if(!list.length){UI.toast('대상이 없습니다');return false}
+    const g=grp(pt.x,0,pt.z),hands=[];
+    for(let i=0;i<6;i++){const an=i/6*TAU,f=part(g,'cone',0x3a1a5a,.9,5,.9,Math.cos(an)*4,1.6,Math.sin(an)*4,.55);f.rotation.set(-Math.sin(an)*.5,0,Math.cos(an)*.5);hands.push({f,an})}
+    flatDisc(g,5,0x2a004a,.6);
+    for(const m of list){const dx=pt.x-m.x,dz=pt.z-m.z;shove(m,dx,dz,Math.max(0,Math.hypot(dx,dz)-1));freezeMob(m,2.4);boltFx(m.x,m.z,pt.x,pt.z,c.col)}
+    P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*Math.min(.3,.05*list.length));
+    let acc=0;
+    act(1.8,(t,dt)=>{acc+=dt;const k=Math.min(1,t/1.8);for(const h of hands){h.f.position.set(Math.cos(h.an)*(4-3.2*k),1.6,Math.sin(h.an)*(4-3.2*k));h.f.rotation.set(-Math.sin(h.an)*(.5+k*.5),0,Math.cos(h.an)*(.5+k*.5))}
+      if(acc>=.4){acc-=.4;const l=mobsIn(pt.x,pt.z,6);for(const m of l){const dx=pt.x-m.x,dz=pt.z-m.z;shove(m,dx,dz,Math.min(1.5,Math.hypot(dx,dz)));sHit(c,m,1,{x:pt.x,z:pt.z,noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.06,.012*l.length)))}},
+      ()=>{sArea(c,pt.x,pt.z,6,5,{kb:9,freeze:1,big:true});boom(pt.x,pt.z,6,c.col,1);pillar(pt.x,pt.z,c.col,14,.5)},g);
+    sfx('magic');shockRing(pt.x,pt.z,9,c.col,.5);netFx('nova',{x:pt.x,z:pt.z,r:9,c:c.col});
   },
-  d_f(c){
-    const g=grp(P.x,7,P.z),sun=part(g,'ball',0x050008,4,4,4);g.add(glow(c.col,13,.6));const ring=flatRing(g,15,c.col,.7,-6.8),dark=flatDisc(g,15,0x0a0016,.45,-6.9);let acc=.4;
-    act(5,(t,dt)=>{g.position.set(P.x,7,P.z);sun.scale.setScalar(4+Math.sin(t*6)*.3);ring.rotation.z+=dt;acc+=dt;
+  d_f(c){   // eclipse: the sun drags enemies in while the knight is hardened, then collapses
+    P.dkGuard=6.2;P.shield=Math.min(S.maxHp*.8,P.shield+S.maxHp*.25);
+    const g=grp(P.x,7,P.z),sun=part(g,'ball',0x050008,4,4,4);g.add(glow(c.col,13,.6));const ring=flatRing(g,15,c.col,.7,-6.8);flatDisc(g,15,0x0a0016,.45,-6.9);let acc=.4;
+    act(6,(t,dt)=>{g.position.set(P.x,7,P.z);sun.scale.setScalar(4+t*.4+Math.sin(t*6)*.3);ring.rotation.z+=dt;acc+=dt;
       for(let i=0;i<3;i++){const an=rnd(0,TAU),r=rnd(5,15);emit(P.x+Math.cos(an)*r,rnd(.3,2),P.z+Math.sin(an)*r,-Math.cos(an)*r*1.5,6,-Math.sin(an)*r*1.5,.6,c.col,0)}
-      if(acc>=.5){acc-=.5;const l=mobsIn(P.x,P.z,15);for(const m of l){sHit(c,m,1.05,{noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.1,.025*l.length)))}},
-      ()=>{sArea(c,P.x,P.z,15,3,{kb:12,big:true});boom(P.x,P.z,12,c.col,1)},g);
+      if(acc>=.5){acc-=.5;const l=mobsIn(P.x,P.z,15);for(const m of l){const dx=P.x-m.x,dz=P.z-m.z,d=Math.hypot(dx,dz);shove(m,dx,dz,Math.max(0,Math.min(1.8,d-3)));sHit(c,m,1.4,{noProc:true});boltFx(m.x,m.z,P.x,P.z,c.col)}if(l.length)healP(Math.round(S.maxHp*Math.min(.12,.03*l.length)))}},
+      ()=>{sArea(c,P.x,P.z,15,7,{kb:14,freeze:1.5,big:true});boom(P.x,P.z,14,c.col,1);pillar(P.x,P.z,c.col,22,.8)},g);
     sfx('level');netFx('nova',{x:P.x,z:P.z,r:15,c:c.col});
   },
 

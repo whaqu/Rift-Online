@@ -90,7 +90,7 @@ function netJoin(i){
     ch.on('broadcast',{event:'p'},m=>onPos(m.payload)).on('broadcast',{event:'fx'},m=>onFx(m.payload)).on('broadcast',{event:'c'},m=>onChat(m.payload))
       .on('broadcast',{event:'pi'},m=>onPInvite(m.payload)).on('broadcast',{event:'pa'},m=>onPAccept(m.payload)).on('broadcast',{event:'ps'},m=>onPState(m.payload)).on('broadcast',{event:'pl'},m=>onPLeave(m.payload)).on('broadcast',{event:'pq'},m=>onPQuery(m.payload))
       .on('broadcast',{event:'ti'},m=>onTInvite(m.payload)).on('broadcast',{event:'es'},m=>onSnap(m.payload)).on('broadcast',{event:'ed'},m=>onHit(m.payload))
-      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload)).on('broadcast',{event:'cb'},m=>onCb(m.payload)).on('broadcast',{event:'ch'},m=>onCh(m.payload))
+      .on('broadcast',{event:'ek'},m=>onKillCredit(m.payload)).on('broadcast',{event:'ev'},m=>onEnemyEv(m.payload)).on('broadcast',{event:'dg'},m=>onDgEv(m.payload)).on('broadcast',{event:'dq'},m=>onDuelAsk(m.payload)).on('broadcast',{event:'da'},m=>onDuelYes(m.payload)).on('broadcast',{event:'dx'},m=>onDuelNo(m.payload)).on('broadcast',{event:'dh'},m=>onDuelHit(m.payload)).on('broadcast',{event:'de'},m=>onDuelEnd(m.payload)).on('broadcast',{event:'dr'},m=>onDuelRecorded(m.payload)).on('broadcast',{event:'cb'},m=>onCb(m.payload)).on('broadcast',{event:'ch'},m=>onCh(m.payload))
       .on('presence',{event:'sync'},()=>{syncPeers();if(!done){let n=0;try{n=Object.keys(ch.presenceState()).length}catch(e){}
         if(n>SHARD_MAX&&i<6){fin(false)}else{NET.ch=ch;NET.on=true;NET.shard=i;fin(true)}}})
       .subscribe(st=>{
@@ -128,7 +128,8 @@ function dropPeer(k){const p=NET.peers[k];if(!p)return;if(p.model)entG.remove(p.
 function onPos(d){
   if(!d||typeof d.n!=='string')return;const p=NET.peers[d.n];if(!p)return;
   const x=+d.x,z=+d.z,f=+d.f;if(!isFinite(x)||!isFinite(z)||!isFinite(f))return;
-  p.tx=clamp(x,-WORLD_R,WORLD_R);p.tz=clamp(z,-WORLD_R,WORLD_R);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
+  p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
+  {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
   if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
@@ -151,7 +152,7 @@ function partyInvite(name){
   if(!NET.party)setParty({id:SES.name+'-'+Date.now().toString(36),leader:SES.name,members:[SES.name]});
   netSend('pi',{f:SES.name,t:name,id:NET.party.id});UI.toast(name+'님에게 파티를 초대했습니다');
 }
-function onPInvite(d){if(!d||d.t!==SES.name)return;if(NET.party){netSend('c',{n:'시스템',m:SES.name+'님은 이미 파티 중입니다.',ch:'sys'});return}NET.invite={from:d.f,id:d.id,t:performance.now()};UI.partyInvite(d.f)}
+function onPInvite(d){if(!d||d.t!==SES.name)return;if(DU.on){netSend('c',{n:'시스템',m:SES.name+'님은 결투장에 있습니다.',ch:'sys'});return}if(NET.party){netSend('c',{n:'시스템',m:SES.name+'님은 이미 파티 중입니다.',ch:'sys'});return}NET.invite={from:d.f,id:d.id,t:performance.now()};UI.partyInvite(d.f)}
 function partyAccept(){
   const iv=NET.invite;if(!iv)return;NET.invite=null;
   netSend('pa',{f:SES.name,t:iv.from,id:iv.id});
@@ -236,8 +237,8 @@ function netUpdate(dt){
     const now=performance.now();
     if(now-NET.lastPos>100){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
-      if(moved||now-NET.lastPos>1200){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0})}
+      if(moved||now-NET.lastPos>(DU.on?200:1200)){NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp]:0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -246,9 +247,9 @@ function netUpdate(dt){
     if(!p.model){p.model=makeHeroFor(p.cls,p.job,CLS[p.cls].col);applyWeaponLook(p.model,p.w);entG.add(p.model.g)}
     if(!p.label)p.label=makeLabel(peerLabel(p),'pl');
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
-    p.model.g.visible=!p.dead;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
+    const show=duelShows(k);p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
-    p.label.pos(p.x,3.3,p.z);
+    if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
   }
 }
 function netClearModels(){for(const k in NET.peers){const p=NET.peers[k];if(p.model){entG.remove(p.model.g);p.model=null}if(p.label){p.label.remove();p.label=null}}}

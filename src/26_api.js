@@ -51,6 +51,7 @@ const LocalAPI=(()=>{
   function pf(a){
     const d=today(),es=(a.last_daily===d||a.last_daily===yday())?(a.streak||0):0,dd=a.last_daily===d?(((a.streak||1)-1)%7)+1:(es%7)+1;
     return{name:a.name,cls:a.cls,job:a.job,level:a.level,xp:a.xp,need:xpNeed(a.level),gold:a.gold,kills:a.kills,
+      duel:{w:0,l:0,pt:0},
       admin:a.name===LOCAL_GM,daily:{ready:a.last_daily!==d,streak:es,day:dd},gather:{xp:a.gat_xp||0,lv:gatLvOf(a.gat_xp||0)},perks:(()=>{const k=Object.assign({a:0,h:0,c:0},a.perks||{});k.pts=Math.max(0,a.level-1-k.a-k.h-k.c);return k})(),dq:JSON.parse(JSON.stringify(dqEnsure(a))),
       items:db.items.filter(i=>i.owner===a.name&&!i.gone).map(i=>({id:i.id,kind:i.kind,base:i.base,enh:i.enh,ench:i.ench,qty:i.qty,eq:i.eq,listed:i.listed,rune:i.rune||null}))};
   }
@@ -262,9 +263,10 @@ const LocalAPI=(()=>{
 })();
 
 /* ---------- unified client wrapper ---------- */
-const NAMES={claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
+const NAMES={duelLose:'rw_duel_lose',claim:'rw_claim',buy:'rw_buy',sell:'rw_sell',equip:'rw_equip',usePotion:'rw_use_potion',gather:'rw_gather',enhance:'rw_enhance',enchant:'rw_enchant',perk:'rw_perk',advance:'rw_advance',daily:'rw_daily',dqClaim:'rw_dq_claim',
   aucMine:'rw_auction_mine',aucPost:'rw_auction_post',aucCancel:'rw_auction_cancel',aucBuy:'rw_auction_buy',tradeOpen:'rw_trade_open',tradeGet:'rw_trade_get',tradeSet:'rw_trade_set',tradeOk:'rw_trade_ok',tradeCancel:'rw_trade_cancel',gmJob:'rw_gm_job',gmWeapon:'rw_gm_weapon',gmGrowth:'rw_gm_growth',gmResetInv:'rw_gm_reset_inventory',runeAttach:'rw_rune_attach',runeFuse:'rw_rune_fuse',runeBrew:'rw_rune_brew',dgBegin:'rw_dungeon_begin',dgEnd:'rw_dungeon_end'};
 const ARGS={
+  duelLose:a=>({p_winner:a[0],p_id:a[1]}),
   claim:(a)=>({p_kills:a[0]}),buy:a=>({p_base:a[0],p_qty:a[1]}),sell:a=>({p_item:a[0],p_qty:a[1]}),gather:a=>({p_weed:a[0],p_wood:a[1]}),equip:a=>({p_item:a[0]}),usePotion:a=>({p_base:a[0]}),
   enhance:a=>({p_item:a[0]}),enchant:a=>({p_item:a[0],p_slot:a[1]}),perk:a=>({p_kind:a[0]}),advance:a=>({p_job:a[0]}),daily:()=>({}),dqClaim:a=>({p_idx:a[0]}),aucMine:()=>({}),aucPost:a=>({p_item:a[0],p_price:a[1]}),
   aucCancel:a=>({p_id:a[0]}),aucBuy:a=>({p_id:a[0]}),tradeOpen:a=>({p_target:a[0]}),tradeGet:a=>({p_id:a[0]}),tradeSet:a=>({p_id:a[0],p_gold:a[1],p_items:a[2]}),

@@ -34,7 +34,7 @@ function postSize(){
 }
 function postPass(mat,target){POST.quad.material=mat;renderer.setRenderTarget(target);renderer.render(POST.scene,POST.cam)}
 function renderFrame(){
-  if(balOn()&&!DG.on)balCull();
+  if(balOn()&&!DG.on&&!DU.on)balCull();
   if(!save.fx||balOn()||POST.bad||!renderer.getDrawingBufferSize){renderer.render(scene,camera);return}
   try{
     if(!POST.ok)postInit();postSize();
