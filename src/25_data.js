@@ -226,7 +226,7 @@ const RUNES={
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
   forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
   snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 황금 오라'}
+  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'}
 };
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];

@@ -240,6 +240,73 @@ function auraApply(o,t){
   if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
 }
 
+/* 만물의 룬 aura: the nine regions' emblems circle the wearer over a golden nine-point ground circle (sprites: cheap on low-end GPUs) */
+const OMNI_COL=['#8dff6a','#7ff0dc','#ff6a2a','#6ee7ff','#ffe24a','#c86bff','#e4f6ff','#ffb85a','#fff0b0'];   // zid 1..9
+const OMTEX={};
+function omniTex(i){
+  if(OMTEX[i])return OMTEX[i];
+  const c=document.createElement('canvas'),S2=i<9?96:256;c.width=c.height=S2;const x=c.getContext('2d');
+  if(x&&x.arc){
+    x.translate(S2/2,S2/2);x.lineCap='round';x.lineJoin='round';
+    const path=(pts,fill)=>{x.beginPath();pts.forEach(([a,b],k)=>k?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fillStyle=fill;x.fill();x.stroke()};
+    const dot=(a,b,r,fill)=>{x.beginPath();x.arc(a,b,r,0,TAU);x.fillStyle=fill;x.fill()};
+    const line=(a,b,d,e)=>{x.beginPath();x.moveTo(a,b);x.lineTo(d,e);x.stroke()};
+    if(i===9){   // ground circle
+      x.shadowColor='#ffd24a';x.shadowBlur=12;x.strokeStyle='#ffd24a';
+      for(const[r,lw]of[[112,5],[84,2]]){x.lineWidth=lw;x.beginPath();x.arc(0,0,r,0,TAU);x.stroke()}
+      x.lineWidth=2;for(let k=0;k<9;k++){const a=k*TAU/9,b=(k+4)*TAU/9;line(Math.cos(a)*84,Math.sin(a)*84,Math.cos(b)*84,Math.sin(b)*84)}
+      for(let k=0;k<9;k++){const a=k*TAU/9;x.shadowColor=OMNI_COL[k];dot(Math.cos(a)*98,Math.sin(a)*98,10,OMNI_COL[k])}
+    }else{
+      const col=OMNI_COL[i];
+      const bg=x.createRadialGradient&&x.createRadialGradient(0,0,4,0,0,47);
+      if(bg&&bg.addColorStop){bg.addColorStop(0,col+'aa');bg.addColorStop(1,col+'00');dot(0,0,47,bg)}
+      x.shadowColor=col;x.shadowBlur=8;x.strokeStyle='#10131b';x.lineWidth=3;
+      if(i===0){   // meadow: flower
+        for(let k=0;k<5;k++){const a=k*TAU/5-TAU/4;dot(Math.cos(a)*18,Math.sin(a)*18,13,col)}dot(0,0,10,'#fff27a');
+      }else if(i===1){   // forest of the dead: skull
+        dot(0,-6,25,col);path([[-14,10],[14,10],[11,28],[-11,28]],col);dot(-10,-5,7,'#10131b');dot(10,-5,7,'#10131b');line(-4,18,-4,27);line(5,18,5,27);
+      }else if(i===2){   // ember: flame
+        path([[0,-34],[13,-13],[22,-19],[24,10],[12,29],[-12,29],[-24,10],[-18,-10],[-9,-3]],col);path([[1,-6],[12,12],[6,26],[-7,26],[-12,12]],'#ffe27a');
+      }else if(i===3){   // crystal: gem cluster
+        path([[0,-34],[13,-14],[9,28],[-9,28],[-13,-14]],col);path([[-24,-6],[-12,4],[-10,28],[-22,26]],'#b8f6ff');path([[24,-10],[12,2],[10,28],[22,26]],'#b8f6ff');
+      }else if(i===4){   // storm: lightning bolt
+        path([[6,-36],[-20,6],[-3,6],[-10,36],[21,-9],[3,-9],[16,-36]],col);
+      }else if(i===5){   // void: ringed dark orb
+        dot(0,0,21,col);dot(0,0,13,'#1a0830');x.strokeStyle=col;x.lineWidth=5;x.beginPath();x.ellipse&&x.ellipse(0,0,34,11,-.45,0,TAU);x.stroke();
+      }else if(i===6){   // snow: snowflake
+        x.strokeStyle=col;x.lineWidth=5;
+        for(let k=0;k<6;k++){x.save();x.rotate(k*TAU/6);line(0,0,0,-33);line(0,-19,-9,-28);line(0,-19,9,-28);x.restore()}
+      }else if(i===7){   // desert: sun over pyramid
+        dot(17,-19,11,'#fff27a');path([[-4,-20],[26,27],[-33,27]],col);path([[-4,-20],[26,27],[3,27]],'#b8772e');
+      }else{   // sky: winged halo
+        for(const s of[-1,1])path([[s*8,6],[s*36,-18],[s*31,-2],[s*34,6],[s*25,9],[s*25,19],[s*9,17]],'#ffffff');
+        x.strokeStyle=col;x.lineWidth=6;x.beginPath();x.ellipse&&x.ellipse(0,-19,15,6,0,0,TAU);x.stroke();dot(0,10,10,col);
+      }
+    }
+  }
+  return OMTEX[i]=new THREE.CanvasTexture(c);
+}
+let OMMAT=null;
+function omniBuild(){
+  if(!OMMAT)OMMAT={icon:OMNI_COL.map((_,i)=>new THREE.SpriteMaterial({map:omniTex(i),transparent:true,depthWrite:false})),
+    floor:new THREE.MeshBasicMaterial({map:omniTex(9),transparent:true,opacity:.85,depthWrite:false,side:THREE.DoubleSide})};
+  const g=new THREE.Group();
+  const floor=new THREE.Group();g.add(floor);
+  const disc=mesh(new THREE.PlaneGeometry(1,1),OMMAT.floor,0,0,0,floor,false);disc.rotation.x=-Math.PI/2;disc.scale.set(4.2,4.2,1);
+  const icons=OMMAT.icon.map(m=>{const s=new THREE.Sprite(m);g.add(s);return s});
+  const anim=(t,face,h)=>{
+    g.rotation.y=-face;floor.position.y=.09-h;floor.rotation.y=t*.5;   // the orbit stays still when the wearer turns
+    icons.forEach((s,i)=>{const a=t*.9+i*TAU/9,k=Math.sin(t*2.2+i*1.4);s.position.set(Math.cos(a)*2.05,1.15+k*.28,Math.sin(a)*2.05);const sz=.78+k*.06;s.scale.set(sz,sz,1)});
+  };
+  anim(0,0,0);return{g,anim};
+}
+function omniApply(o,on){
+  if(!o||!o.g||!!on===!!o.omni)return;
+  if(on){try{o.omni=omniBuild();o.g.add(o.omni.g)}catch(e){console.error('omni aura',e)}}
+  else{o.g.remove(o.omni.g);o.omni=null}
+}
+const myOmni=()=>SES.pf&&SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&String(i.rune||'').startsWith('all:'))?1:0;
+
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
   if(!o||!o.weapon||!o.cls)return;

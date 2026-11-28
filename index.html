@@ -1204,6 +1204,7 @@ function animHeroFor(o,t,spd,atkP,dashing,sd){
   if(o.scarf)o.scarf.forEach((b,i)=>{b.rotation.x=.35+i*.15+Math.sin(t*5.5+i*1.3)*.13;b.rotation.y=Math.sin(t*3.7+i)*.15});
   if(o.wfx)for(const f of o.wfx){const n=f.list.length;f.list.forEach((r,i)=>{const a=t*f.sp+i/n*TAU,k=1+.15*Math.sin(t*2+i);r.position.set(f.x+Math.cos(a)*f.r*k,f.y+Math.sin(t*1.7+i*1.9)*f.h,f.z+Math.sin(a)*f.r*k);r.rotation.y=-a})}
   if(o.wau)o.wau.anim(t);
+  if(o.omni)o.omni.anim(t,o.g.rotation.y,o.g.position.y);
   if(o.orbs)o.orbs.forEach((r,i)=>{const a=t*1.8+i/3*TAU;r.position.set(Math.cos(a)*1.1,1.6+Math.sin(t*2+i)*.2,Math.sin(a)*1.1);r.rotation.y=t*3});
 }
 function makeNPC(kind){
@@ -1440,7 +1441,7 @@ const RUNES={
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
   forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
   snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 황금 오라'}
+  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'}
 };
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];
@@ -2206,6 +2207,73 @@ function auraApply(o,t){
   if(o.wau){o.g.remove(o.wau.g);o.wau=null}
   if(kind&&o.g){o.wau=auraBuild(kind);o.g.add(o.wau.g)}
 }
+
+/* 만물의 룬 aura: the nine regions' emblems circle the wearer over a golden nine-point ground circle (sprites: cheap on low-end GPUs) */
+const OMNI_COL=['#8dff6a','#7ff0dc','#ff6a2a','#6ee7ff','#ffe24a','#c86bff','#e4f6ff','#ffb85a','#fff0b0'];   // zid 1..9
+const OMTEX={};
+function omniTex(i){
+  if(OMTEX[i])return OMTEX[i];
+  const c=document.createElement('canvas'),S2=i<9?96:256;c.width=c.height=S2;const x=c.getContext('2d');
+  if(x&&x.arc){
+    x.translate(S2/2,S2/2);x.lineCap='round';x.lineJoin='round';
+    const path=(pts,fill)=>{x.beginPath();pts.forEach(([a,b],k)=>k?x.lineTo(a,b):x.moveTo(a,b));x.closePath();x.fillStyle=fill;x.fill();x.stroke()};
+    const dot=(a,b,r,fill)=>{x.beginPath();x.arc(a,b,r,0,TAU);x.fillStyle=fill;x.fill()};
+    const line=(a,b,d,e)=>{x.beginPath();x.moveTo(a,b);x.lineTo(d,e);x.stroke()};
+    if(i===9){   // ground circle
+      x.shadowColor='#ffd24a';x.shadowBlur=12;x.strokeStyle='#ffd24a';
+      for(const[r,lw]of[[112,5],[84,2]]){x.lineWidth=lw;x.beginPath();x.arc(0,0,r,0,TAU);x.stroke()}
+      x.lineWidth=2;for(let k=0;k<9;k++){const a=k*TAU/9,b=(k+4)*TAU/9;line(Math.cos(a)*84,Math.sin(a)*84,Math.cos(b)*84,Math.sin(b)*84)}
+      for(let k=0;k<9;k++){const a=k*TAU/9;x.shadowColor=OMNI_COL[k];dot(Math.cos(a)*98,Math.sin(a)*98,10,OMNI_COL[k])}
+    }else{
+      const col=OMNI_COL[i];
+      const bg=x.createRadialGradient&&x.createRadialGradient(0,0,4,0,0,47);
+      if(bg&&bg.addColorStop){bg.addColorStop(0,col+'aa');bg.addColorStop(1,col+'00');dot(0,0,47,bg)}
+      x.shadowColor=col;x.shadowBlur=8;x.strokeStyle='#10131b';x.lineWidth=3;
+      if(i===0){   // meadow: flower
+        for(let k=0;k<5;k++){const a=k*TAU/5-TAU/4;dot(Math.cos(a)*18,Math.sin(a)*18,13,col)}dot(0,0,10,'#fff27a');
+      }else if(i===1){   // forest of the dead: skull
+        dot(0,-6,25,col);path([[-14,10],[14,10],[11,28],[-11,28]],col);dot(-10,-5,7,'#10131b');dot(10,-5,7,'#10131b');line(-4,18,-4,27);line(5,18,5,27);
+      }else if(i===2){   // ember: flame
+        path([[0,-34],[13,-13],[22,-19],[24,10],[12,29],[-12,29],[-24,10],[-18,-10],[-9,-3]],col);path([[1,-6],[12,12],[6,26],[-7,26],[-12,12]],'#ffe27a');
+      }else if(i===3){   // crystal: gem cluster
+        path([[0,-34],[13,-14],[9,28],[-9,28],[-13,-14]],col);path([[-24,-6],[-12,4],[-10,28],[-22,26]],'#b8f6ff');path([[24,-10],[12,2],[10,28],[22,26]],'#b8f6ff');
+      }else if(i===4){   // storm: lightning bolt
+        path([[6,-36],[-20,6],[-3,6],[-10,36],[21,-9],[3,-9],[16,-36]],col);
+      }else if(i===5){   // void: ringed dark orb
+        dot(0,0,21,col);dot(0,0,13,'#1a0830');x.strokeStyle=col;x.lineWidth=5;x.beginPath();x.ellipse&&x.ellipse(0,0,34,11,-.45,0,TAU);x.stroke();
+      }else if(i===6){   // snow: snowflake
+        x.strokeStyle=col;x.lineWidth=5;
+        for(let k=0;k<6;k++){x.save();x.rotate(k*TAU/6);line(0,0,0,-33);line(0,-19,-9,-28);line(0,-19,9,-28);x.restore()}
+      }else if(i===7){   // desert: sun over pyramid
+        dot(17,-19,11,'#fff27a');path([[-4,-20],[26,27],[-33,27]],col);path([[-4,-20],[26,27],[3,27]],'#b8772e');
+      }else{   // sky: winged halo
+        for(const s of[-1,1])path([[s*8,6],[s*36,-18],[s*31,-2],[s*34,6],[s*25,9],[s*25,19],[s*9,17]],'#ffffff');
+        x.strokeStyle=col;x.lineWidth=6;x.beginPath();x.ellipse&&x.ellipse(0,-19,15,6,0,0,TAU);x.stroke();dot(0,10,10,col);
+      }
+    }
+  }
+  return OMTEX[i]=new THREE.CanvasTexture(c);
+}
+let OMMAT=null;
+function omniBuild(){
+  if(!OMMAT)OMMAT={icon:OMNI_COL.map((_,i)=>new THREE.SpriteMaterial({map:omniTex(i),transparent:true,depthWrite:false})),
+    floor:new THREE.MeshBasicMaterial({map:omniTex(9),transparent:true,opacity:.85,depthWrite:false,side:THREE.DoubleSide})};
+  const g=new THREE.Group();
+  const floor=new THREE.Group();g.add(floor);
+  const disc=mesh(new THREE.PlaneGeometry(1,1),OMMAT.floor,0,0,0,floor,false);disc.rotation.x=-Math.PI/2;disc.scale.set(4.2,4.2,1);
+  const icons=OMMAT.icon.map(m=>{const s=new THREE.Sprite(m);g.add(s);return s});
+  const anim=(t,face,h)=>{
+    g.rotation.y=-face;floor.position.y=.09-h;floor.rotation.y=t*.5;   // the orbit stays still when the wearer turns
+    icons.forEach((s,i)=>{const a=t*.9+i*TAU/9,k=Math.sin(t*2.2+i*1.4);s.position.set(Math.cos(a)*2.05,1.15+k*.28,Math.sin(a)*2.05);const sz=.78+k*.06;s.scale.set(sz,sz,1)});
+  };
+  anim(0,0,0);return{g,anim};
+}
+function omniApply(o,on){
+  if(!o||!o.g||!!on===!!o.omni)return;
+  if(on){try{o.omni=omniBuild();o.g.add(o.omni.g)}catch(e){console.error('omni aura',e)}}
+  else{o.g.remove(o.omni.g);o.omni=null}
+}
+const myOmni=()=>SES.pf&&SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&String(i.rune||'').startsWith('all:'))?1:0;
 
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 function applyWeaponLook0(o,base){
@@ -3194,7 +3262,8 @@ function updatePlayerModel(dt){
   PM.body.position.z=0;if(air>0)glidePose(PM,P.animT,air);
   if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
   PM.auraT=(PM.auraT||0)-dt;
-  if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0}
+  if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
+  if(PM.omni&&PM.g.visible&&Math.random()<dt*9){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
   if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
@@ -6873,7 +6942,7 @@ function onPos(d){
   p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
   {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.gl=golemData(d.gl);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
-  if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
+  if(Array.isArray(d.i)){p.live=true;p.om=!!d.i[4];if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
@@ -6981,7 +7050,7 @@ function netUpdate(dt){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
       const gl=myGolems();
       if(moved||(NET.hadGol&&!gl)||now-NET.lastPos>(DU.on||gl?200:1200)){NET.hadGol=!!gl;NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0})}
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase(),myOmni()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -6992,6 +7061,7 @@ function netUpdate(dt){
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
     const show=duelShows(k)&&!(p.du&&p.du.hid);   // a stealthed opponent really disappears
     p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
+    omniApply(p.model,p.om);
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
     if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
     peerGolems(p,dt,duelShows(k));

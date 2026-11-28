@@ -131,7 +131,7 @@ function onPos(d){
   p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
   {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.gl=golemData(d.gl);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
-  if(Array.isArray(d.i)){p.live=true;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
+  if(Array.isArray(d.i)){p.live=true;p.om=!!d.i[4];if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
@@ -239,7 +239,7 @@ function netUpdate(dt){
       const moved=Math.abs(P.x-NET.lastX)>.02||Math.abs(P.z-NET.lastZ)>.02||Math.abs(P.face-NET.lastF)>.05;
       const gl=myGolems();
       if(moved||(NET.hadGol&&!gl)||now-NET.lastPos>(DU.on||gl?200:1200)){NET.hadGol=!!gl;NET.lastPos=now;NET.lastX=P.x;NET.lastZ=P.z;NET.lastF=P.face;
-        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0})}
+        netSend('p',{n:SES.name,i:[SES.pf.level,SES.pf.cls,SES.pf.job,myWeaponBase(),myOmni()],x:+P.x.toFixed(2),z:+P.z.toFixed(2),f:+P.face.toFixed(2),m:(P.ix||P.iz)?1:0,h:Math.round(P.hp/S.maxHp*100),d:P.dead?1:0,du:DU.on&&DU.role==='fight'?[DU.id,DU.opp,P.stealth>0||P.hidden?1:0]:0,gl:gl||0})}
     }
     if(now-NET.lastSnap>120){NET.lastSnap=now;netSnapshot();netFlushHits()}
   }
@@ -250,6 +250,7 @@ function netUpdate(dt){
     const kk=1-Math.exp(-dt*10);p.x=lerp(p.x,p.tx,kk);p.z=lerp(p.z,p.tz,kk);p.f=lerpAng(p.f,p.tf,kk);p.anim+=dt;
     const show=duelShows(k)&&!(p.du&&p.du.hid);   // a stealthed opponent really disappears
     p.model.g.visible=!p.dead&&show;p.model.g.position.set(p.x,0,p.z);p.model.g.rotation.y=p.f;
+    omniApply(p.model,p.om);
     animHeroFor(p.model,p.anim,Math.hypot(p.tx-p.x,p.tz-p.z)>.15?1:0,-1,false,1);
     if(show)p.label.pos(p.x,3.3,p.z);else if(p.label.el)p.label.el.style.display='none';
     peerGolems(p,dt,duelShows(k));
