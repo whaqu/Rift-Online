@@ -408,8 +408,9 @@ function buildHud(){
   $('skills').innerHTML=['dash','q','e','r','f'].map(k=>'<div class="sk rdy" data-k="'+k+'" id="sk-'+k+'"><span class="ic0"></span><span class="kk">'+({dash:'Space',q:'Q',e:'E',r:'R',f:'F'})[k]+'</span><span class="nm"></span><div class="cdm"></div><div class="cdt"></div></div>').join('');
   $('skills').onclick=e=>{const t=e.target.closest('.sk');if(!t)return;const k=t.dataset.k;if(k==='dash')doDash();else if(k!=='q')trySkill(k)};
   /* Q reacts to holding, so it fires on press instead of on click */
-  $('skills').onpointerdown=e=>{const t=e.target.closest('.sk');if(t&&t.dataset.k==='q'){mv.q=true;trySkill('q')}};
-  for(const n of['pointerup','pointercancel','blur'])addEventListener(n,()=>{mv.q=false});
+  $('skills').onpointerdown=e=>{const t=e.target.closest('.sk');if(t&&t.dataset.k==='q'){mv.q=true;mv.qp=e.pointerId;trySkill('q')}};
+  for(const n of['pointerup','pointercancel'])addEventListener(n,e=>{if(mv.qp!=null&&e.pointerId===mv.qp){mv.qp=null;mv.q=false}});
+  addEventListener('blur',()=>{mv.qp=null;mv.q=false});
   $('prompt').onclick=()=>interact();
   const ci=$('chatin');
   ci.onkeydown=e=>{e.stopPropagation();if(e.key==='Enter'){let t=ci.value.trim(),ch='all';if(t.startsWith('/p ')){ch='party';t=t.slice(3)}if(t){if(ch==='party'&&!NET.party)UI.toast('파티가 없습니다');else netChatSend(ch,t)}ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}else if(e.key==='Escape'){ci.value='';ci.classList.remove('on');ci.blur();canvas.focus()}};

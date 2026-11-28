@@ -88,7 +88,7 @@ function movePlayer(dt){
   if(mv.on){ix=mv.x;iz=mv.z}
   const il=Math.hypot(ix,iz);if(il>1){ix/=il;iz/=il}P.ix=ix;P.iz=iz;
   const sp=effSpd();
-  P.qClock=(P.qClock||0)+dt;if(P.glideCd>0)P.glideCd-=dt;
+  P.qClock=(P.qClock||0)+dt;
   if(P.qArm!=null){if(!qHeld())P.qArm=null;else if(P.qClock-P.qArm>=.12){P.qArm=null;qGlideStart()}}
   if(P.glide){qGlideStep(dt);P.vx=P.vz=0;return}
   if(P.leap){   // fly along an arc, no steering

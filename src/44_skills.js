@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(누르고 있는 동안 공격을 맞지 않음), 활공 중 적 위에서 한 번 더 누르면 내려찍습니다. (활공 재사용 5초) 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중 적 위에서 한 번 더 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -135,7 +135,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.glideCd=0;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.glide||P.hidden||P.chan>0||P.stunT>0);
@@ -712,8 +712,7 @@ function qPress(){
   const sk=skillOf('q');if(!sk||sk.fx!=='r_q'||P.stunT>0)return false;
   if(P.glide){qPlunge(sk);return true}
   const t=P.qClock||0;
-  if(P.qLast!=null&&t-P.qLast<.35){   // second tap: becomes a glide if kept held
-    if(P.glideCd>0)UI.toast('활공 재사용 대기 '+Math.ceil(P.glideCd)+'초',900);else P.qArm=t}
+  if(P.qLast!=null&&t-P.qLast<.35)P.qArm=t;   // second tap: becomes a glide if kept held
   P.qLast=t;return false;
 }
 /* black cloak: two waving sheets (violet underneath shows as a rim) with a pointed hem */
@@ -745,11 +744,11 @@ function capeDrop(){
   for(const c of P.cape.children||[]){if(c.geometry&&c.geometry.type==='PlaneGeometry'){c.geometry.dispose();c.material.dispose()}}
   P.cape=null;
 }
-/* nothing hits while the glide button is actually held */
-const qAloft=()=>!!(P&&P.glide&&!P.glide.land&&qHeld());
+/* nothing hits while airborne, including the float and the descent */
+const qAloft=()=>!!(P&&P.glide);
 const GLIDE_H=3.2,GLIDE_UP=.45,GLIDE_DOWN=.45;
 function qGlideStart(){
-  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0,land:0,from:0};P.glideCd=5;sfx('dash');
+  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0,land:0,from:0};sfx('dash');
   capeDrop();P.cape=capeBuild();capeWave(P.cape,0,0);P.cape.position.set(P.x,0,P.z);P.cape.rotation.y=P.face;entG.add(P.cape);
 }
 function qGlideStep(dt){

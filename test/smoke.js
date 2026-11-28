@@ -612,16 +612,17 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       {g.P.leap=null;g.keys.q=true;const px=g.P.x,pz=g.P.z;const other=g.makeMobObj(99003,'slime',px-5,pz,1,false,false,false);if(!g.MOBS.includes(other))g.MOBS.push(other);other.spawning=false;other.hp=other.maxHp=1e12;
         mm.x=px+5;mm.z=pz;mm.hp=1e12;mm.qT=other.qT=0;for(let k=0;k<4;k++){g.P.qChain=true;g.SK.r_q({atk:100,a:{x:1,z:0},col:0,m:1,sk:{}});g.P.qChain=false;for(let i=0;i<7;i++){g.P.qRun=false;g.movePlayer(.05)}}
         T(mm.hp<1e12&&other.hp<1e12&&mm.qT>0&&other.qT>0&&Math.abs(mm.qT-other.qT)===1,'held assassin Q weaves between enemies');g.keys.q=false;g.P.leap=null;g.P.qRun=false;}
-      {g.MOBS.splice(0);g.P.leap=null;g.P.glideCd=0;g.P.stunT=0;g.keys.q=true;g.P.qArm=g.P.qClock||0;const x1=g.P.x,z1=g.P.z;g.P.z=z1+40;const z2=g.P.z;for(let i=0;i<10;i++)g.movePlayer(.05);
+      {g.MOBS.splice(0);g.P.leap=null;g.P.stunT=0;g.keys.q=true;g.P.qArm=g.P.qClock||0;const x1=g.P.x,z1=g.P.z;g.P.z=z1+40;const z2=g.P.z;for(let i=0;i<10;i++)g.movePlayer(.05);
         const up=g.P.glide&&g.P.glide.h>2,moved=Math.hypot(g.P.x-x1,g.P.z-z2);T(up&&moved>2,'double tap and hold glides '+moved.toFixed(1));
         const v=g.makeMobObj(99004,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(v))g.MOBS.push(v);v.spawning=false;v.hp=v.maxHp=1e12;g.qPlunge({col:0});for(let i=0;i<6;i++)g.movePlayer(.05);
-        T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.P.qRun=false;g.P.glideCd=0;g.MOBS.splice(0);
+        T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.P.qRun=false;g.MOBS.splice(0);
         {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<6;i++)g.movePlayer(.05);const h0=g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);const h1=g.P.glide.h;
           g.keys.q=false;for(let i=0;i<17;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);
-          {g.P.qLast=null;g.keys.q=true;g.P.glideCd=0;g.P.qArm=g.P.qClock;for(let i=0;i<120;i++)g.movePlayer(.05);T(g.P.glide&&!g.P.glide.land&&g.P.glide.t>5,'glide has no time limit');
-            {const hp=g.P.hp;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'held glide takes no damage');}
+          {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<120;i++)g.movePlayer(.05);T(g.P.glide&&!g.P.glide.land&&g.P.glide.t>5,'glide has no time limit');
+            {const hp=g.P.hp;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'held glide takes no damage');
+              g.keys.q=false;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'floating after release takes no damage');g.keys.q=true;}
             const o={body:{rotation:{},position:{}},legL:{rotation:{x:0}},legR:{rotation:{x:0}},armL:{rotation:{x:0,z:0}},armR:{rotation:{x:0,z:0}}};g.glidePose(o,0,1);T(o.legL.rotation.x>0&&o.body.rotation.x>0&&o.armL.rotation.z<0,'glide pose replaces walking');g.keys.q=false;g.P.glide=null;}
-          T(h0<h1&&h2>0&&h2<h1,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));g.P.glideCd=0;}g.P.x=x1;g.P.z=z1;}
+          T(h0<h1&&h2>0&&h2<h1,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));}g.P.x=x1;g.P.z=z1;}
       g.P.leap=null;g.MOBS.splice(0);
       {const x1=g.P.x,z1=g.P.z;g.keys.q=true;const r=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<5;i++)g.movePlayer(.05);const d=Math.hypot(g.P.x-x1,g.P.z-z1);
         g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}
