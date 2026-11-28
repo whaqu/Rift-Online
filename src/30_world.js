@@ -11,14 +11,16 @@ const SPAWN={x:0,z:7};
 function addObst(x,z,r){const o={x,z,r};WORLD.obst.push(o);const k=Math.floor(x/WORLD.cell)+','+Math.floor(z/WORLD.cell);(WORLD.grid[k]||(WORLD.grid[k]=[])).push(o);return o}
 /* gatherable nodes: weeds (grass tufts) and trees; parts = [[instancedMesh,index],..] hidden while 'cut' */
 function regNode(k,x,z,parts,ob,s){const n={k,x,z,parts,ob,or:ob?ob.r:0,mats:null,cut:0,s:s||1};WORLD.nodes.push(n);const g=Math.floor(x/8)+','+Math.floor(z/8);(WORLD.ngrid[g]||(WORLD.ngrid[g]=[])).push(n);return n}
-function pushOut(e,r){
+/* a gliding player passes over ponds and small rocks / trees (not gate pillars) */
+const lowObst=o=>o.water||(o.r<=1.3&&!o.solid);
+function pushOut(e,r,air){
   if(DU.on&&e.x>1200)duelClampXZ(e);
   else if(DG.on&&e.x>600)dgClampXZ(e);
   else{const d=Math.hypot(e.x,e.z),lim=WORLD_R-1.2;if(d>lim){e.x*=lim/d;e.z*=lim/d}}
   const cx=Math.floor(e.x/WORLD.cell),cz=Math.floor(e.z/WORLD.cell);
   for(let i=-1;i<=1;i++)for(let j=-1;j<=1;j++){
     const c=WORLD.grid[(cx+i)+','+(cz+j)];if(!c)continue;
-    for(const o of c){const dx=e.x-o.x,dz=e.z-o.z,rr=o.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr){const dl=Math.sqrt(dd)||.01,k=(rr-dl)/dl;e.x+=dx*k;e.z+=dz*k}}
+    for(const o of c){if(air&&lowObst(o))continue;const dx=e.x-o.x,dz=e.z-o.z,rr=o.r+r,dd=dx*dx+dz*dz;if(dd<rr*rr){const dl=Math.sqrt(dd)||.01,k=(rr-dl)/dl;e.x+=dx*k;e.z+=dz*k}}
   }
 }
 function blocked(x,z,r){
@@ -388,7 +390,7 @@ function buildWorld(){
     sc=sc||1;const g=grp(x,0,z,worldG);g.rotation.y=th;g.scale.set(sc,sc,sc);
     for(const sx of[-3.9,3.9]){BX(1.4,6.4,1.4,stoneG,sx,3.2,0,g);BX(1.9,.5,1.9,darkG,sx,6.6,0,g);BX(1.9,.6,1.9,darkG,sx,.3,0,g);
       const f=SP(.3,EM(0xffb040,1.6),sx,7.1,0,g,6,5);const gl=glow(0xffa030,3.2,.6);gl.position.set(sx,7.1,0);g.add(gl);
-      addObst(x+Math.cos(th)*sx*sc,z-Math.sin(th)*sx*sc,1.0*sc)}
+      addObst(x+Math.cos(th)*sx*sc,z-Math.sin(th)*sx*sc,1.0*sc).solid=true}
     BX(9.8,.9,1.2,stoneG,0,6.2,0,g);BX(8,.5,1.0,darkG,0,5.6,0,g);
     const gem=OC(.5,EM(col,1.7),0,4.7,0,g);const gg=glow(col,4.2,.55);gg.position.set(0,4.7,0);g.add(gg);WORLD.pulse.push({s:gg,b:.55,ph:Math.random()*6});WORLD.gems=WORLD.gems||[];WORLD.gems.push(gem);
     for(const sx of[-2,2]){BX(1.1,2.2,.08,M(col,{emissive:col,emissiveIntensity:.35}),sx,4.5,.2,g)}
@@ -404,7 +406,7 @@ function buildWorld(){
     const sh=new THREE.Mesh(new THREE.RingGeometry(r,r+1,26),M(0x9a8a62,{roughness:1}));sh.rotation.x=-Math.PI/2;sh.position.set(x,.065,z);worldG.add(sh);
     const gl=glow(0x6ac8ff,r*2.2,.22);gl.position.set(x,.5,z);worldG.add(gl);
     for(let i=0;i<7;i++){const a=i/7*TAU+R()*.4,rr=r+.4+R()*.6,sc=.6+R()*.7;const rk=new THREE.Mesh(new THREE.DodecahedronGeometry(1,0),M(0x8a8f98));rk.scale.set(sc*1.2,sc*.7,sc);rk.position.set(x+Math.cos(a)*rr,sc*.35,z+Math.sin(a)*rr);rk.castShadow=true;worldG.add(rk)}
-    addObst(x,z,r+.4);
+    addObst(x,z,r+.4).water=true;
   });
   }catch(e){console.error('deco1',e)}
   /* stalls + npcs */

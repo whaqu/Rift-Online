@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중 적 위에서 한 번 더 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -163,7 +163,7 @@ function shove(m,dx,dz,dist){
   if(m.ghost)netSendHit(m,1,kk);else{const res=m.elite?.3:1;m.kx=kk.kx*kk.kb*res*1.6;m.kz=kk.kz*kk.kb*res*1.6}
 }
 function boom(x,z,r,col,shake){shockRing(x,z,r+.8,col,.45);flashDisc(x,z,r,col,.35);burst(x,1,z,24,col,10,.55,8);sfx('boom');cam.shake=Math.max(cam.shake,shake||.4)}
-function blinkTo(x,z){const d=Math.hypot(x,z);if(!DG.on&&!DU.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r)}
+function blinkTo(x,z,air){const d=Math.hypot(x,z);if(!DG.on&&!DU.on&&d>WORLD_R-2){x*=(WORLD_R-2)/d;z*=(WORLD_R-2)/d}P.x=x;P.z=z;P.vx=P.vz=0;pushOut(P,P.r,air)}
 function leapTo(x,z,dur,h,done){P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h,done};P.iframes=Math.max(P.iframes,dur+.2);sfx('dash')}
 const clearShots=(x,z,r)=>{for(const b of EB)if(d2(b.x,b.z,x,z)<r*r)b.life=0};
 function dropStar(x,z,col,size,dur,done){const g=glow(col,size,.9);g.position.set(x,22,z);entG.add(g);act(dur,t=>{const k=t/dur;g.position.y=22*(1-k*k)+1},done,g)}
@@ -748,27 +748,32 @@ function capeDrop(){
 const qAloft=()=>!!(P&&P.glide);
 const GLIDE_H=3.2,GLIDE_UP=.45,GLIDE_DOWN=.45;
 function qGlideStart(){
-  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0,land:0,from:0};sfx('dash');
+  P.leap=null;P.qRun=false;P.glide={t:0,h:0,land:0,from:0,rise:0,base:0};sfx('dash');
   capeDrop();P.cape=capeBuild();capeWave(P.cape,0,0);P.cape.position.set(P.x,0,P.z);P.cape.rotation.y=P.face;entG.add(P.cape);
 }
 function qGlideStep(dt){
-  const G=P.glide;G.t+=dt;G.off=qHeld()?0:G.off+dt;   // let go: float a moment so the plunge press fits in
+  const G=P.glide,held=qHeld();G.t+=dt;
   if(P.dead||P.stunT>0){P.glide=null;return}
-  if(!G.land&&G.off>.6){G.land=1e-6;G.from=G.h}
-  let open;
+  if(!held&&!G.land){G.land=1e-6;G.from=G.h}   // let go: start landing at once
+  else if(held&&G.land){G.land=0;G.rise=0;G.base=G.h}   // pressed again on the way down: climb back up
+  let open,u=0;
   if(G.land){   // sink back down softly
-    G.land+=dt;const u=Math.min(1,G.land/GLIDE_DOWN),k=u*u*(3-2*u);G.h=G.from*(1-k);open=1-k;
-    if(u>=1){P.glide=null;return}
+    G.land+=dt;u=Math.min(1,G.land/GLIDE_DOWN);const k=u*u*(3-2*u);G.h=G.from*(1-k);open=1-k;
   }else{   // ease up, then bob gently
-    const u=Math.min(1,G.t/GLIDE_UP),k=u*u*(3-2*u);G.h=GLIDE_H*k+Math.sin(G.t*5)*.15*k;open=k;
+    G.rise+=dt;const r=Math.min(1,G.rise/GLIDE_UP),k=r*r*(3-2*r);G.h=G.base+(GLIDE_H-G.base)*k+Math.sin(G.t*5)*.15*k;open=Math.max(k,G.base/GLIDE_H);
   }
-  const d=qDir();if(d){const step=effSpd()*2*dt*(.5+.5*open);blinkTo(P.x+d.x*step,P.z+d.z*step);P.face=Math.atan2(d.x,d.z)}
+  const d=qDir();if(d){const step=effSpd()*2*dt*(.5+.5*open);blinkTo(P.x+d.x*step,P.z+d.z*step,true);P.face=Math.atan2(d.x,d.z)}
+  if(G.land){   // coming down over a pond or rock: drift to its edge instead of popping out
+    const e={x:P.x,z:P.z};pushOut(e,P.r);const l=Math.hypot(e.x-P.x,e.z-P.z);
+    if(l>.05){const m=Math.min(l,dt*24);P.x+=(e.x-P.x)/l*m;P.z+=(e.z-P.z)/l*m}
+    if(u>=1&&(l<=.05||G.land>1.5)){P.glide=null;return}
+  }
   if(P.cape){P.cape.position.set(P.x,G.h,P.z);P.cape.rotation.y=P.face;capeWave(P.cape,G.t,open)}
   if(Math.random()<dt*20)emit(P.x+rnd(-.8,.8),G.h+rnd(.6,1.4),P.z+rnd(-.8,.8),0,-1,0,.35,0x4a2a78,0);
 }
 function qPlunge(sk){
   const l=mobsIn(P.x,P.z,6).sort((a,b)=>d2(a.x,a.z,P.x,P.z)-d2(b.x,b.z,P.x,P.z));
-  if(!l.length){P.glide.off=0;return}   // nothing below: keep gliding
+  if(!l.length)return;   // nothing below: keep gliding
   const m=l[0],y0=P.glide.h;P.glide=null;P.iframes=Math.max(P.iframes,.35);P.qGuard=.8;P.cd.q=P.cdMax.q||0;P.face=Math.atan2(m.x-P.x,m.z-P.z);
   P.leap={t:0,dur:.18,x0:P.x,z0:P.z,x1:m.x,z1:m.z,h:0,y0,done:()=>{
     const c={atk:effAtk(),col:sk.col,el:sk.el||null,m:sk.el?1.3:1,sk};

@@ -617,12 +617,16 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         const v=g.makeMobObj(99004,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(v))g.MOBS.push(v);v.spawning=false;v.hp=v.maxHp=1e12;g.qPlunge({col:0});for(let i=0;i<6;i++)g.movePlayer(.05);
         T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.P.qRun=false;g.MOBS.splice(0);
         {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<6;i++)g.movePlayer(.05);const h0=g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);const h1=g.P.glide.h;
-          g.keys.q=false;for(let i=0;i<17;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);
+          g.keys.q=false;for(let i=0;i<4;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h,landing=!!(g.P.glide&&g.P.glide.land>0);g.keys.q=true;for(let i=0;i<7;i++)g.movePlayer(.05);const h3=g.P.glide&&g.P.glide.h;
+          g.keys.q=false;for(let i=0;i<40;i++)g.movePlayer(.05);const down=!g.P.glide;
           {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<120;i++)g.movePlayer(.05);T(g.P.glide&&!g.P.glide.land&&g.P.glide.t>5,'glide has no time limit');
             {const hp=g.P.hp;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'held glide takes no damage');
               g.keys.q=false;g.P.iframes=0;T(g.hurtPlayer(50,null,null,true)===false&&g.P.hp===hp,'floating after release takes no damage');g.keys.q=true;}
             const o={body:{rotation:{},position:{}},legL:{rotation:{x:0}},legR:{rotation:{x:0}},armL:{rotation:{x:0,z:0}},armR:{rotation:{x:0,z:0}}};g.glidePose(o,0,1);T(o.legL.rotation.x>0&&o.body.rotation.x>0&&o.armL.rotation.z<0,'glide pose replaces walking');g.keys.q=false;g.P.glide=null;}
-          T(h0<h1&&h2>0&&h2<h1,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));}g.P.x=x1;g.P.z=z1;}
+          T(h0<h1&&landing&&h2>0&&h2<h1&&h3>h2&&down,'glide lands on release and climbs again '+[h0,h1,h2,h3].map(v=>(+v).toFixed(1)));
+          {const O=g.WORLD.obst,pond=O.find(o=>o.water),big=O.find(o=>!o.water&&o.r>1.4&&Math.hypot(o.x,o.z)>10),small=O.find(o=>!o.water&&!o.solid&&o.r<=1.3);
+            const moved=(o,air)=>{const e={x:o.x+.2,z:o.z};g.pushOut(e,.5,air);return Math.hypot(e.x-o.x-.2,e.z-o.z)>.1};
+            T(pond&&small&&big&&!moved(pond,true)&&moved(pond,false)&&moved(big,true)&&moved(small,false),'glide passes ponds and small things only');}}g.P.x=x1;g.P.z=z1;}
       g.P.leap=null;g.MOBS.splice(0);
       {const x1=g.P.x,z1=g.P.z;g.keys.q=true;const r=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<5;i++)g.movePlayer(.05);const d=Math.hypot(g.P.x-x1,g.P.z-z1);
         g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}
