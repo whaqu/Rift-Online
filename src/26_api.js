@@ -90,7 +90,7 @@ const LocalAPI=(()=>{
     register(name,pass,cls){
       rd();seedMarket();
       if(!/^[가-힣A-Za-z0-9_]{2,10}$/.test(name||''))E('BAD_NAME');if(!pass||pass.length<4)E('BAD_PASS');
-      if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');
+      if(!CLASSES.includes(cls))E('BAD_CLASS');if(db.acc[name])E('NAME_TAKEN');if(name===LOCAL_SEMI&&cls==='rogue')E('SEMI_NO_ASSASSIN');
       const a=db.acc[name]={name,pass,token:'t'+Math.random().toString(36).slice(2),cls,job:cls,level:name===LOCAL_GM?99:1,xp:0,gold:500,kills:0,tokens:60,ts:Date.now()};
       if(name===LOCAL_GM){a.perks={a:98,h:98,c:40};a.gat_xp=9025}
       if(name===LOCAL_SEMI)semiSetup(a);else{const w=give(name,'weapon',cls+'_1',1);w.eq=true;give(name,'potion','hp1',5)}wr();
@@ -263,7 +263,7 @@ const LocalAPI=(()=>{
       give(n,'weapon',a.cls+'_1',1).eq=true;give(n,'potion','hp1',5);wr();return pf(a);
     },
     gmJob(n,t,job){
-      rd();const a=auth(n,t);if(n!==LOCAL_GM&&n!==LOCAL_SEMI)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');a.cls=j.cls;a.job=job;
+      rd();const a=auth(n,t);if(n!==LOCAL_GM&&n!==LOCAL_SEMI)E('NOT_ADMIN');const j=JOBS[job];if(!j||j.tier===9)E('BAD_JOB');if(n===LOCAL_SEMI&&j.cls==='rogue')E('SEMI_NO_ASSASSIN');a.cls=j.cls;a.job=job;
       const ws=db.items.filter(i=>i.owner===n&&i.kind==='weapon'&&!i.gone);ws.forEach(i=>{if(wCls(i.base)!==j.cls)i.eq=false});
       if(!ws.some(i=>i.eq)){let w=ws.filter(i=>!i.listed&&wCls(i.base)===j.cls).sort((x,y)=>wTier(y.base)-wTier(x.base)||y.enh-x.enh)[0];if(!w)w=give(n,'weapon',j.cls+'_1',1);w.eq=true}
       wr();return pf(a);

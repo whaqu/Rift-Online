@@ -21,7 +21,7 @@ function openGM(){
   const base=()=>cls+'_'+tier+(wt?'_'+wt:'');
   UI.page('GM 패널',()=>{
     let h='<div class="tabs">'+(SES.pf.admin?[['job','직업'],['weapon','무기'],['grow','성장'],['acc','계정']]:[['job','직업']]).map(t=>'<div class="tab '+(tab===t[0]?'on':'')+'" data-a="gmtab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div>';
-    h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'||tab==='acc'?'':line('계열',CLASSES.map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
+    h+='<div style="max-height:58vh;overflow:auto">'+(tab==='grow'||tab==='acc'?'':line('계열',CLASSES.filter(k=>SES.pf.admin||k!=='rogue').map(k=>btn('gmcls',k,CLS[k].name,k===cls)).join('')));
     if(tab==='grow'){
       const k=perkOf(SES.pf),gl=gatLvOf((SES.pf.gather&&SES.pf.gather.xp)||0);
       h+='<div class="card"><div class="kv"><span>공격력 강화</span><span>'+k.a+'회</span><span>체력 강화</span><span>'+k.h+'회</span><span>쿨타임 강화</span><span>'+k.c+'회</span><span>벌목(채집) 숙련</span><span>Lv.'+gl+'</span></div></div>';

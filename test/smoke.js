@@ -421,6 +421,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(n0===42&&it().every(i=>i.enh===5&&/_7(_|$)/.test(i.base)),'30 weapons and 12 armour pieces, storm +5');
     T(it().filter(i=>i.eq).length===5,'weapon and full armour set equipped');
     await g.API.call('gmJob','mage');T(g.SES.pf.cls==='mage'&&it().find(i=>i.kind==='weapon'&&i.eq).base==='mage_7'&&it().length===n0,'semi switches job freely');
+    T(code(()=>A.gmJob(N,g.SES.token,'rogue'))==='SEMI_NO_ASSASSIN'&&code(()=>A.gmJob(N,g.SES.token,'assassin_dark'))==='SEMI_NO_ASSASSIN','semi cannot switch to assassin');
     const t=g.SES.token,id=it().find(i=>!i.eq).id;
     T(['buy','sell','aucPost','enhance','enchant'].every(f=>code(()=>A[f](N,t,f==='buy'?'hp1':id,1,0))==='SEMI_LOCKED'),'no buying, selling, listing or upgrading');
     T(code(()=>A.gmWeapon(N,t,'mage_8',20,[]))==='NOT_ADMIN'&&code(()=>A.gmGrowth(N,t,true))==='NOT_ADMIN'&&code(()=>A.gmPassword(N,t,'semi-pass-1','newpass123'))==='NOT_ADMIN'&&code(()=>A.gmResetInv(N,t))==='NOT_ADMIN','no weapon grant, growth or password tools');
