@@ -224,6 +224,13 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(g.S.runeAura&&g.S.burnLv>b0+1&&g.S.chainP>0&&g.S.vamp>0,'Rune of All gives every effect + aura');
     const fx=g.runeFx('all');T(fx.en.burn>=4&&fx.aura,'Rune of All effect is double the combined 8 runes');
     ee='';try{await g.API.call('runeFuse','all')}catch(e){ee=e.message}T(ee==='NO_RUNE','cannot fuse All twice without runes');
+    {const edit=gold=>{const d=dbR();d.acc[g.SES.name].gold=gold;dbW(d)},keep=dbR().acc[g.SES.name].gold,w0=wpn().id;
+      ee='';try{await g.API.call('runeRestore',w0)}catch(e){ee=e.message}T(ee==='NO_POTION','restore needs a scroll');
+      edit(100000);await g.API.resume(g.SES.name,g.SES.token);await g.API.call('buy','rr',1);T(g.SES.pf.gold===0,'restore scroll costs 100000');
+      await g.API.call('runeRestore',w0);
+      T(!wpn().rune&&runes().some(i=>i.base==='all'&&i.qty===1)&&!g.SES.pf.items.some(i=>i.base==='rr'),'scroll returns the rune and is used up');
+      ee='';try{await g.API.call('runeRestore',w0)}catch(e){ee=e.message}T(ee==='BAD_ITEM','nothing to restore on a bare weapon');
+      edit(keep);await g.API.resume(g.SES.name,g.SES.token);await g.API.call('runeAttach',w0,runes().find(i=>i.base==='all').id);g.derive();}
   }
   // ---- dungeon ----
   {
