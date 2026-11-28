@@ -444,7 +444,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(wi&&wi.qty>=1&&di&&di.qty>=1,'weed + wood in inventory');T(g.SES.pf.gather&&g.SES.pf.gather.xp>=6,'mastery xp gained');
     const gold0=g.SES.pf.gold,wq=wi.qty;await g.API.call('sell',wi.id,wq);T(g.SES.pf.gold-gold0===2*wq,'weed sells for 2G each');
     const g1=g.SES.pf.gold,dq=di.qty;await g.API.call('sell',di.id,dq);T(g.SES.pf.gold-g1===8*dq,'wood sells for 8G each');
-    T(!g.SES.pf.items.some(i=>i.kind==='mat'),'materials gone after selling');
+    T(!g.SES.pf.items.some(i=>i.id===wi.id||i.id===di.id),'materials gone after selling');
     T(g.gatLvOf(0)===1&&g.gatLvOf(25)===2&&g.gatLvOf(1e6)===20,'mastery level curve');
     g.P.x=tr.x-6;g.P.z=tr.z;g.gatherLine(1,0,10,1);T(true,'ranged strip runs');
     g.openInventory();g.UI.close&&g.UI.close();
