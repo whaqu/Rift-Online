@@ -206,15 +206,27 @@ function dgHitFloor(raw){
   const def=DG.on&&P&&P.x>600&&DGDEF[DG.id];if(!def||!def.hit)return 0;
   return S.maxHp*Math.min(.85,def.hit*raw/(mobDmg(def.ml)*def.dmgM));
 }
+/* meteor shower: one on every player plus several around them; a direct hit is a fixed huge damage */
+function dgMeteor(m,def){
+  const c=def.meteor,n=c.n[m.p2?1:0];let i=0;
+  const drop=(x,z)=>{const q=dgClampPt(x,z);emitEvent({t:'x',met:1,x:q.x,z:q.z,r:c.r,w:c.w+(i++%6)*.12,d:c.d,c:0xff5a1a})};
+  for(const t of targets().filter(t=>!t.pull).slice(0,4)){drop(t.x,t.z);for(let k=0;k<n;k++){const a=rnd(0,TAU),r=rnd(5,11);drop(t.x+Math.cos(a)*r,t.z+Math.sin(a)*r)}}
+  emitEvent({t:'v',x:m.x,z:m.z,n:'growl'});
+}
 function dgBossAI(m,dt,dx,dz,d){
-  const bk=m.bk,def=DGDEF[bk],enr=m.hp<m.maxHp*.35,en=enr?1.2:1,cdm=(enr?.7:1)*(def&&def.cdm||1);
+  const bk=m.bk,def=DGDEF[bk],enr=m.hp<m.maxHp*.35,en=enr?1.2:1,cdm=(enr?.7:1)*(def&&def.cdm||1)*(m.p2?def.p2.cdm:1);
   if(m.pi===undefined){m.pi=0;m.state='chase';m.cd=2}
+  if(def&&def.p2&&!m.p2&&m.hp<=m.maxHp*def.p2.at){m.p2=true;m.pi=0;m.warn=false;m.state='rec';m.st=2;m.cd=1.5;m.mt=0;emitEvent({t:'f',x:m.x,z:m.z,c:0xff3a2a,n:'boom'})}
+  if(def&&def.meteor){
+    if(m.mt===undefined)m.mt=def.meteor.first;m.mt-=dt;
+    if(m.mt<=0&&m.state==='chase'){m.mt=def.meteor.every[m.p2?1:0];m.cd=Math.max(m.cd,def.meteor.w+.8);dgMeteor(m,def)}
+  }
   if(m.state==='chase'){
     faceM(m,dx,dz,dt,6);
     const kp=def&&def.keep,keep=kp||3.4;
     if(d>keep+1.5){stepM(m,dx,dz,m.spd,dt);m.moving=true}else if(kp&&d<keep-2){stepM(m,-dx,-dz,m.spd*.8,dt);m.moving=true}
     if(m.cd<=0){
-      const pat=def.pat[m.pi++%def.pat.length],tel=DG_TEL[pat];m.pat=pat;m.state='wind';m.warn=true;m.st=tel;m.cdx=dx;m.cdz=dz;
+      const pl=m.p2?def.p2.pat:def.pat,pat=pl[m.pi++%pl.length],tel=DG_TEL[pat];m.pat=pat;m.state='wind';m.warn=true;m.st=tel;m.cdx=dx;m.cdz=dz;
       emitEvent({t:'v',x:m.x,z:m.z,n:'growl'});
       const T=targets().filter(t=>!t.pull).slice(0,4);
       if(pat==='slam')emitEvent({t:'x',x:m.x,z:m.z,r:6.5,w:tel,d:m.dmg*1.5*en,c:def.ring});
@@ -244,7 +256,7 @@ function dgEnter(id){
   const def=DGDEF[id],A=dgBuildArena();
   if(GUIDE.id)guideStop();
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
-  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
+  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.p2=false;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
   A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
@@ -530,6 +542,7 @@ function dgUpdate(dt){
   }
   let boss=null;for(const m of MOBS)if(m.type==='dgboss'&&!m.dead){boss=m;break}
   const bh=boss?Math.max(0,boss.hp/boss.maxHp*100):(DG.ph==='boss'?DG.bh:0);
+  if(def.p2&&!DG.p2&&DG.ph==='boss'&&boss&&bh>0&&bh<=def.p2.at*100){DG.p2=true;dgBanner('PHASE 2',def.bn+'의 분노 · 유성우를 피하세요',0xff3a2a);boss.m.g.add(glow(0xff3a2a,10,.65));cam.shake=Math.max(cam.shake,.8)}
   const tl=Math.max(0,600-DG.t),mm=Math.floor(tl/60),ss=Math.floor(tl%60);
   const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(cw+1,nw)+' / '+nw;
   const dm=Object.entries(DG.dm||DG.dmg||{}).sort((a,b)=>b[1]-a[1]).slice(0,4);

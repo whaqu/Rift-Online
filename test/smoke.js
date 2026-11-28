@@ -516,6 +516,10 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       const P=g.P,hit=hb=>{P.dead=false;P.iframes=0;P.shield=0;P.hb=hb;P.hp=g.S.maxHp;const h=P.hp,arm=g.S.armor;g.S.armor=.64;g.hurtPlayer(215*1.7*1.5,P.x,P.z);g.S.armor=arm;P.hb=null;return(h-P.hp)/g.S.maxHp};
       P.x=D.cx;const bare=hit(null),buffed=hit({ar:{t:20,pw:1}});
       T(bare>.8&&buffed<.65&&buffed>.5,'sky boss slam is near lethal without holy armor ('+bare.toFixed(2)+'/'+buffed.toFixed(2)+')');
+      const lost=hb=>{const mh=g.S.maxHp,arm=g.S.armor;g.S.maxHp=9000;g.S.armor=.64;P.dead=false;P.iframes=0;P.shield=0;P.hb=hb;P.hp=9000;g.hurtPlayer(5000,P.x,P.z,true);const v=9000-P.hp;g.S.maxHp=mh;g.S.armor=arm;P.hb=null;P.hp=mh;return v};
+      T(lost(null)===5000&&lost({ar:{t:20,pw:1}})===3600,'meteor is 5000 through armor, holy armor still helps');
+      {const b=g.MOBS.find(m=>m.type==='dgboss');b.hp=b.maxHp*.4;let h=0;for(let i=0;i<500;i++){P.iframes=1e9;P.dead=false;step(1);if(D.p2)h++}
+        T(b.p2===true&&D.p2===true&&b.mt>0,'sky boss enters phase 2 and casts meteors ('+b.p2+' '+D.p2+' '+b.mt+')');P.iframes=0}
     }
     const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});

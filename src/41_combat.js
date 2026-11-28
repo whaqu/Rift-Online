@@ -107,9 +107,11 @@ function runEnemyEvent(ev){
   }else if(ev.t==='v'){sfxAt(ev.n||'growl',ev.x,ev.z);
   }else if(ev.t==='f'){burst(ev.x,1.2,ev.z,16,ev.c||0xff3dd0,6,.5,2);shockRing(ev.x,ev.z,2,ev.c||0xff3dd0,.3);if(ev.n)sfxAt(ev.n,ev.x,ev.z);
   }else if(ev.t==='x'){
+    if(ev.met){const g=grp(ev.x,26,ev.z,entG);g.add(glow(0xff6a1a,5.5,.9));part(g,'box',0xffb04a,1.3,1.3,1.3,0,0,0,1.6);
+      addFx(ev.w,k=>{g.position.y=26*(1-k*k)+.6;g.rotation.x=k*7},()=>entG.remove(g))}
     telegraph(ev.x,ev.z,ev.r,ev.w,()=>{
       shockRing(ev.x,ev.z,ev.r+.8,ev.c||0xff7a3a,.4);flashDisc(ev.x,ev.z,ev.r,ev.c||0xff5a1a,.35);burst(ev.x,1,ev.z,26,ev.c||0xff8a3a,10,.6,8);sfx('boom');cam.shake=Math.max(cam.shake,.4);
-      if(d2(ev.x,ev.z,P.x,P.z)<(ev.r+P.r)*(ev.r+P.r))hurtPlayer(ev.d,ev.x,ev.z);
+      if(d2(ev.x,ev.z,P.x,P.z)<(ev.r+P.r)*(ev.r+P.r))hurtPlayer(ev.d,ev.x,ev.z,!!ev.met);
     },ev.c||0xff3a4a);
   }
 }

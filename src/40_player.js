@@ -281,9 +281,9 @@ function healP(n){
   const before=P.hp;P.hp=Math.min(S.maxHp,P.hp+n);const g=Math.round(P.hp-before);
   if(g>0){dmgNum(P.x,3,P.z,'+'+g,'heal');burst(P.x,1.2,P.z,8,0x6bffb0,3,.6,-1,.8)}
 }
-function hurtPlayer(dmg,sx,sz){
+function hurtPlayer(dmg,sx,sz,pure){   /* pure: ignores armor (meteor); buffs, shields and guard skills still apply */
   if(!P||P.dead||P.iframes>0||inTown(P.x,P.z))return false;
-  dmg=Math.max(1,Math.round(Math.max(dmg*(1-S.armor),dgHitFloor(dmg))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
+  dmg=Math.max(1,Math.round((pure?dmg:Math.max(dmg*(1-S.armor),dgHitFloor(dmg)))*(P.pot.def>0?.7:1)*(P.hb?(hbOn('ar')?.72:hbOn('my')?.85:1):1)*(P.qGuard>0?.4:1)*(P.golemGuard>0?.7:1)*(P.dkGuard>0?.6:1)));
   if(P.shield>0){const ab=Math.min(P.shield,dmg);P.shield-=ab;dmg-=ab;burst(P.x,1.4,P.z,8,0x9fd0ff,5,.3,2)}
   P.iframes=.5;
   if(P.recall>0)cancelRecall('피격으로 마을 귀환이 취소되었습니다');
