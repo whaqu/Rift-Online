@@ -122,7 +122,7 @@ const later=(t,fn)=>act(t,null,fn);
 function tickSkills(dt){
   hbTick(dt);healTick(dt);
   if(P.chan>0)P.chan-=dt;
-  if(P.cape&&!P.glide){entG.remove(P.cape);P.cape=null}
+  if(P.cape&&!P.glide)capeDrop();
   if(P.stealth>0){P.stealth-=dt;if(Math.random()<dt*18)emit(P.x+rnd(-.5,.5),rnd(.2,1.6),P.z+rnd(-.5,.5),0,.8,0,.45,0x8a6ad0,0)}
   for(let i=0;i<ACTS.length;i++){
     const a=ACTS[i];a.t+=dt;
@@ -135,7 +135,7 @@ function skReset(){
   for(const a of ACTS.splice(0))actDrop(a);
   DECOYS.length=0;
   if(!P)return;
-  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.glideCd=0;if(P.cape){entG.remove(P.cape);P.cape=null}P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
+  P.stealth=0;P.leap=null;P.qRun=false;P.glide=null;P.qArm=null;P.glideCd=0;capeDrop();P.chan=0;P.hidden=false;P.spinT=0;P.slow=1;
   if(PM&&PM.base)PM.g.scale.setScalar(PM.base);
 }
 const skBusy=()=>!!(P.leap||P.glide||P.hidden||P.chan>0||P.stunT>0);
@@ -715,19 +715,54 @@ function qPress(){
   if(P.qLast!=null&&t-P.qLast<.32&&!(P.glideCd>0))P.qArm=t;   // second tap: becomes a glide if kept held
   P.qLast=t;return false;
 }
+/* black cloak: two waving sheets (violet underneath shows as a rim) with a pointed hem */
+const CAPE_N=8;
+function capeBuild(){
+  const g=grp(0,0,0),sheets=[];
+  for(const[col,k,dy]of[[0x6a2fb8,1.09,-.05],[0x07060b,1,0]]){
+    const geom=new THREE.PlaneGeometry(1,1,CAPE_N,CAPE_N),m=new THREE.Mesh(geom,new THREE.MeshBasicMaterial({color:col,side:THREE.DoubleSide}));
+    m.frustumCulled=false;g.add(m);sheets.push({geom,k,dy});
+  }
+  part(g,'box',0x07060b,1,.22,.34,0,1.78,-.12);part(g,'box',0xb27aff,.2,.2,.2,0,1.86,.02,1);   // collar and clasp
+  g.userData.sheets=sheets;return g;
+}
+/* t: seconds airborne, open: 0 folded .. 1 fully spread */
+function capeWave(g,t,open){
+  for(const sh of(g.userData&&g.userData.sheets)||[]){
+    const pos=sh.geom.attributes&&sh.geom.attributes.position;if(!pos||!pos.setXYZ)continue;
+    for(let j=0;j<=CAPE_N;j++)for(let i=0;i<=CAPE_N;i++){
+      const u=i/CAPE_N-.5,v=j/CAPE_N,w=(.9+3.4*Math.pow(v,.8)*(.35+.65*open))*sh.k;
+      const hem=Math.pow(v,6)*(i%2?.55:0);   // every other column pulls in: ragged points
+      const flap=Math.sin(t*9-v*5+Math.abs(u)*4)*.22*v;
+      pos.setXYZ(j*(CAPE_N+1)+i,u*w,1.74+sh.dy-v*.75+Math.abs(u)*v*1.1*open+flap,-.15-v*2.5*sh.k+hem+Math.abs(u)*v*.5);
+    }
+    pos.needsUpdate=true;
+  }
+}
+function capeDrop(){
+  if(!P.cape)return;entG.remove(P.cape);
+  for(const c of P.cape.children||[]){if(c.geometry&&c.geometry.type==='PlaneGeometry'){c.geometry.dispose();c.material.dispose()}}
+  P.cape=null;
+}
+const GLIDE_H=3.2,GLIDE_UP=.45,GLIDE_DOWN=.45;
 function qGlideStart(){
-  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0};P.glideCd=5;sfx('dash');
-  const g=grp(P.x,0,P.z);for(const s of[-1,1]){const w=part(g,'box',0x3a1a5a,1.5,.07,1.1,s*.85,1.5,-.45);w.rotation.z=-s*.3;w.rotation.y=s*.35;
-    part(g,'box',0x8a6ad0,1.4,.08,.12,s*.85,1.52,.05).rotation.z=-s*.3}
-  if(P.cape)entG.remove(P.cape);P.cape=g;entG.add(g);
+  P.leap=null;P.qRun=false;P.glide={t:0,off:0,h:0,land:0,from:0};P.glideCd=5;sfx('dash');
+  capeDrop();P.cape=capeBuild();capeWave(P.cape,0,0);P.cape.position.set(P.x,0,P.z);P.cape.rotation.y=P.face;entG.add(P.cape);
 }
 function qGlideStep(dt){
   const G=P.glide;G.t+=dt;G.off=qHeld()?0:G.off+dt;   // let go: float a moment so the plunge press fits in
-  if(P.dead||P.stunT>0||G.t>2.5||G.off>.6){P.glide=null;return}
-  G.h=Math.min(3,G.h+dt*20);
-  const d=qDir();if(d){const step=effSpd()*2*dt;blinkTo(P.x+d.x*step,P.z+d.z*step);P.face=Math.atan2(d.x,d.z)}
-  if(P.cape){P.cape.position.set(P.x,G.h,P.z);P.cape.rotation.y=P.face}
-  emit(P.x,G.h+.8,P.z,0,0,0,.3,0x8a6ad0,0);
+  if(P.dead||P.stunT>0){P.glide=null;return}
+  if(!G.land&&(G.t>2.5||G.off>.6)){G.land=1e-6;G.from=G.h}
+  let open;
+  if(G.land){   // sink back down softly
+    G.land+=dt;const u=Math.min(1,G.land/GLIDE_DOWN),k=u*u*(3-2*u);G.h=G.from*(1-k);open=1-k;
+    if(u>=1){P.glide=null;return}
+  }else{   // ease up, then bob gently
+    const u=Math.min(1,G.t/GLIDE_UP),k=u*u*(3-2*u);G.h=GLIDE_H*k+Math.sin(G.t*5)*.15*k;open=k;
+  }
+  const d=qDir();if(d){const step=effSpd()*2*dt*(.5+.5*open);blinkTo(P.x+d.x*step,P.z+d.z*step);P.face=Math.atan2(d.x,d.z)}
+  if(P.cape){P.cape.position.set(P.x,G.h,P.z);P.cape.rotation.y=P.face;capeWave(P.cape,G.t,open)}
+  if(Math.random()<dt*20)emit(P.x+rnd(-.8,.8),G.h+rnd(.6,1.4),P.z+rnd(-.8,.8),0,-1,0,.35,0x4a2a78,0);
 }
 function qPlunge(sk){
   const l=mobsIn(P.x,P.z,6).sort((a,b)=>d2(a.x,a.z,P.x,P.z)-d2(b.x,b.z,P.x,P.z));
