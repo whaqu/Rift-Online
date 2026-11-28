@@ -1,0 +1,130 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Rift Wardens 제작법 제작기</title>
+<style>
+*{box-sizing:border-box;font-family:system-ui,sans-serif}
+body{margin:0;background:#151929;color:#e4e6ec;padding:12px}
+main{max-width:520px;margin:0 auto}
+h1{font-size:19px;margin:4px 0 12px}
+h2{font-size:14px;margin:18px 0 6px;color:#aab}
+button,input,select,textarea{font-size:16px;color:#e4e6ec;background:#232940;border:1px solid #4a5274;border-radius:8px;padding:8px;max-width:100%}
+button{cursor:pointer;font-size:13px;font-weight:700}
+button.on{outline:3px solid #ffd24a}
+input,select,textarea{width:100%;margin-bottom:6px}
+textarea{font-family:monospace;font-size:12px;height:190px}
+#grid{display:grid;grid-template-columns:repeat(5,1fr);gap:5px}
+#grid button{aspect-ratio:1;border-width:2px;padding:2px;font-size:11px;word-break:keep-all;overflow:hidden}
+.row{display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.item{display:flex;gap:6px;align-items:center;background:#1d2236;border-radius:8px;padding:8px;margin-bottom:6px}
+.item span{flex:1;font-size:13px}
+#msg,#need{font-size:13px;min-height:18px;margin-top:6px}
+#msg{color:#ffd24a}
+</style>
+</head>
+<body>
+<main>
+<h1>Rift Wardens 제작법 제작기</h1>
+<div id="grid"></div>
+<div id="need"></div>
+<div class="row"><button id="erase">지우개</button><button id="clear">비우기</button></div>
+<div id="pal"></div>
+<h2>결과물</h2>
+<input id="name" placeholder="이름 (예: 만물의 방패)">
+<select id="grade"></select>
+<input id="gradeCustom" placeholder="등급 직접 입력" hidden>
+<input id="target" placeholder="종류 · 착용 직업 (예: 검, 전사)">
+<input id="memo" placeholder="성능 · 설명 (예: 공격력 900)">
+<div class="row"><button id="save">저장</button><button id="new">새로 만들기</button></div>
+<div id="msg"></div>
+<h2>내보내기 (복사해서 Claude에게 보내면 게임에 추가)</h2>
+<textarea id="out" readonly></textarea>
+<div class="row"><button id="copy">현재 제작법 복사</button><button id="copyAll">저장한 것 모두 복사</button></div>
+<h2>저장한 제작법 (이 기기에만 저장)</h2>
+<div id="mine"></div>
+<h2>게임에 이미 있는 제작법</h2>
+<div id="game"></div>
+</main>
+<script>
+const DATA={"mats":[{"k":"mat:m1","n":"말랑한 점액","c":"#8dff6a","g":"몬스터"},{"k":"mat:m2","n":"낡은 뼛조각","c":"#d8d2b8","g":"몬스터"},{"k":"mat:m3","n":"식지 않는 불씨","c":"#ff6a2a","g":"몬스터"},{"k":"mat:m4","n":"수정 파편","c":"#6ee7ff","g":"몬스터"},{"k":"mat:m5","n":"뇌광 깃털","c":"#ffe24a","g":"몬스터"},{"k":"mat:m6","n":"공허의 잔재","c":"#c86bff","g":"몬스터"},{"k":"mat:m7","n":"서리 결정","c":"#bfeaff","g":"몬스터"},{"k":"mat:m8","n":"고대 유물 조각","c":"#ffb85a","g":"몬스터"},{"k":"mat:m9","n":"천상의 깃","c":"#fff0b0","g":"몬스터"},{"k":"mat:core","n":"정예의 핵","c":"#ff5ad1","g":"몬스터"},{"k":"mat:weed","n":"잡초","c":"#7fd35a","g":"채집"},{"k":"mat:wood","n":"목재","c":"#c8935a","g":"채집"},{"k":"rune:fire","n":"화염의 룬","c":"#ff7a2a","g":"룬"},{"k":"rune:ice","n":"냉기의 룬","c":"#7fd8ff","g":"룬"},{"k":"rune:thunder","n":"번개의 룬","c":"#ffe27a","g":"룬"},{"k":"rune:dark","n":"암흑의 룬","c":"#b07aff","g":"룬"},{"k":"rune:holy","n":"성광의 룬","c":"#fff1a8","g":"룬"},{"k":"rune:meadow","n":"초원의 룬","c":"#7fd35a","g":"룬"},{"k":"rune:crystal","n":"수정의 룬","c":"#6ee7ff","g":"룬"},{"k":"rune:storm","n":"폭풍의 룬","c":"#9aa8ff","g":"룬"},{"k":"rune:forest","n":"묘지의 룬","c":"#7fe0d0","g":"룬"},{"k":"rune:ember","n":"용암의 룬","c":"#ff5a1e","g":"룬"},{"k":"rune:void","n":"공허의 룬","c":"#c86bff","g":"룬"},{"k":"rune:snow","n":"설원의 룬","c":"#bfeaff","g":"룬"},{"k":"rune:desert","n":"사막의 룬","c":"#ffb85a","g":"룬"},{"k":"rune:sky","n":"천공의 룬","c":"#fff0b0","g":"룬"},{"k":"rune:all","n":"만물의 룬","c":"#ffd24a","g":"룬"}],"grades":["1등급(초원)","2등급(망자의 숲)","3등급(화염 황무지)","4등급(수정 협곡)","5등급(뇌우 고원)","6등급(공허의 균열)","7등급(얼어붙은 설원)","8등급(고대 사막 유적)","9등급(천공의 성역)","유니크","전설","신화"],"game":[{"name":"만물의 검","grade":"유니크","target":"sword_10","memo":"","cells":[null,null,null,null,null,null,null,"mat:core",null,null,null,null,"rune:all",null,null,null,"mat:m9","mat:wood","mat:m9",null,null,null,"mat:wood",null,null]},{"name":"만물의 활","grade":"유니크","target":"archer_10","memo":"","cells":[null,null,"mat:m9","mat:m9",null,null,"mat:m9",null,"mat:wood",null,null,"mat:core",null,"rune:all",null,null,"mat:m9",null,"mat:wood",null,null,null,"mat:m9","mat:m9",null]},{"name":"만물의 완드","grade":"유니크","target":"wand_10","memo":"","cells":[null,null,"mat:m3",null,null,null,null,"mat:m9",null,null,null,null,"mat:core",null,null,null,null,"mat:wood",null,null,null,null,"rune:all",null,null]},{"name":"만물의 창","grade":"유니크","target":"lancer_10","memo":"","cells":[null,null,"mat:m3",null,null,null,"mat:m3","mat:m9","mat:m3",null,null,"mat:wood","mat:core","mat:wood",null,null,null,"mat:wood",null,null,null,null,"rune:all",null,null]},{"name":"만물의 건틀렛","grade":"유니크","target":"monk_10","memo":"","cells":[null,null,null,null,null,null,null,null,null,null,null,"mat:core",null,"mat:core",null,null,"mat:m9",null,"mat:m9",null,null,"mat:m3","rune:all","mat:m3",null]},{"name":"만물의 셰리프","grade":"유니크","target":"gunner_10","memo":"","cells":[null,null,null,null,null,null,null,null,null,"mat:core","mat:m3","mat:core","rune:all","mat:m7","mat:m9",null,null,null,"mat:wood",null,null,null,null,"mat:wood",null]}]};
+const KEY='rw_crafter_v1',$=id=>document.getElementById(id);
+const MAT=Object.fromEntries(DATA.mats.map(m=>[m.k,m]));
+let cells=Array(25).fill(null),pick=null,editing=-1,list=[];
+try{const v=JSON.parse(localStorage.getItem(KEY));if(Array.isArray(v))list=v}catch(e){}
+const store=()=>{try{localStorage.setItem(KEY,JSON.stringify(list));return true}catch(e){return false}};
+const el=(tag,text,parent,fn)=>{const e=document.createElement(tag);if(text)e.textContent=text;if(fn)e.onclick=fn;if(parent)parent.appendChild(e);return e};
+function shape(g){
+  const p=g.map((v,i)=>v?[i%5,i/5|0]:null).filter(Boolean);if(!p.length)return'';
+  const xs=p.map(a=>a[0]),ys=p.map(a=>a[1]),o=[];
+  for(let y=Math.min(...ys);y<=Math.max(...ys);y++)o.push(g.slice(y*5+Math.min(...xs),y*5+Math.max(...xs)+1).map(v=>v||'.').join(','));
+  return o.join('/');
+}
+const totals=g=>g.reduce((o,k)=>(k&&(o[k]=(o[k]||0)+1),o),{});
+const needText=g=>Object.entries(totals(g)).map(([k,n])=>(MAT[k]?MAT[k].n:k)+' '+n).join(', ');
+const gradeValue=()=>$('grade').value==='custom'?$('gradeCustom').value.trim():$('grade').value;
+const current=()=>({name:$('name').value.trim(),grade:gradeValue(),target:$('target').value.trim(),memo:$('memo').value.trim(),cells:cells.slice()});
+function text(r){
+  const rows=[0,1,2,3,4].map(y=>r.cells.slice(y*5,y*5+5).map(k=>k||'.').join(' | '));
+  return['[제작법] '+(r.name||'(이름 없음)'),'등급: '+r.grade,'종류·직업: '+(r.target||'-'),'설명: '+(r.memo||'-'),'격자:',...rows,'재료: '+(needText(r.cells)||'-')].join('\n');
+}
+function draw(){
+  $('grid').innerHTML='';
+  cells.forEach((k,i)=>{
+    const b=el('button',k?(MAT[k]?MAT[k].n:k):'',$('grid'),()=>{
+      if(pick==='erase')cells[i]=null;else if(pick)cells[i]=cells[i]===pick?null:pick;else{$('msg').textContent='아래에서 재료를 먼저 고르세요.';return}
+      $('msg').textContent='';draw()});
+    if(k&&MAT[k]){b.style.borderColor=b.style.color=MAT[k].c}
+    b.setAttribute('aria-label',(i/5|0)+1+'행 '+(i%5+1)+'열 '+b.textContent);
+  });
+  $('need').textContent=needText(cells)?'재료: '+needText(cells):'';
+  const s=shape(cells),dup=s&&[...DATA.game,...list.filter((r,i)=>i!==editing)].find(r=>shape(r.cells)===s);
+  if(dup)$('need').textContent+=' ⚠️ "'+dup.name+'"와 모양이 같아요';
+  document.querySelectorAll('[data-k]').forEach(b=>b.classList.toggle('on',b.dataset.k===pick));
+  $('erase').classList.toggle('on',pick==='erase');
+  $('gradeCustom').hidden=$('grade').value!=='custom';
+  $('out').value=text(current());
+}
+function load(r,idx){
+  cells=r.cells.slice();editing=idx;$('name').value=r.name;$('target').value=r.target;$('memo').value=r.memo;
+  const known=DATA.grades.includes(r.grade);$('grade').value=known?r.grade:'custom';$('gradeCustom').value=known?'':r.grade;
+  $('msg').textContent=r.name?'"'+r.name+'" 불러옴':'';draw();scrollTo(0,0);
+}
+function drawLists(){
+  for(const[id,arr,mine]of[['mine',list,true],['game',DATA.game,false]]){
+    $(id).innerHTML='';if(!arr.length)el('div','아직 없어요.',$(id));
+    arr.forEach((r,i)=>{const d=el('div','',$(id));d.className='item';el('span',r.name+' · '+r.grade,d);
+      el('button','불러오기',d,()=>load(r,mine?i:-1));
+      if(mine)el('button','삭제',d,()=>{if(!confirm('"'+r.name+'" 삭제할까요?'))return;list.splice(i,1);editing=-1;store();drawLists();draw()});
+    });
+  }
+}
+async function copy(t){
+  $('out').value=t;
+  try{await navigator.clipboard.writeText(t);$('msg').textContent='복사했어요.'}
+  catch(e){$('out').select();$('msg').textContent=document.execCommand('copy')?'복사했어요.':'아래 글을 길게 눌러 복사하세요.'}
+}
+for(const g of['몬스터','채집','룬']){
+  el('h2',g+' 재료',$('pal'));const row=el('div','',$('pal'));row.className='row';
+  for(const m of DATA.mats.filter(m=>m.g===g)){const b=el('button',m.n,row,()=>{pick=pick===m.k?null:m.k;draw()});b.dataset.k=m.k;b.style.color=b.style.borderColor=m.c}
+}
+for(const g of DATA.grades)el('option',g,$('grade')).value=g;
+el('option','직접 입력',$('grade')).value='custom';
+$('grade').value='유니크';
+for(const id of['name','grade','gradeCustom','target','memo'])$(id).addEventListener('input',draw);
+$('erase').onclick=()=>{pick=pick==='erase'?null:'erase';draw()};
+$('clear').onclick=()=>{cells.fill(null);draw()};
+$('new').onclick=()=>load({name:'',grade:'유니크',target:'',memo:'',cells:Array(25).fill(null)},-1);
+$('save').onclick=()=>{
+  const r=current();
+  if(!r.name||!r.grade||!shape(r.cells)){$('msg').textContent='이름, 등급, 재료를 모두 넣어주세요.';return}
+  if(editing>=0)list[editing]=r;else{list.push(r);editing=list.length-1}
+  const ok=store();drawLists();draw();$('msg').textContent=ok?'저장했어요.':'이 브라우저는 저장이 안 돼요. 복사해 두세요.';
+};
+$('copy').onclick=()=>copy(text(current()));
+$('copyAll').onclick=()=>list.length?copy(list.map(text).join('\n\n')):$('msg').textContent='저장한 제작법이 없어요.';
+drawLists();draw();
+</script>
+</body>
+</html>
