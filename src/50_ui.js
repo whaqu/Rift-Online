@@ -67,6 +67,7 @@ async function guarded(fn,okMsg){
 }
 
 /* ---------- inventory ---------- */
+const INV_TABS=[['all','전체',()=>true],['armor','방어구',i=>i.kind==='armor'],['weapon','무기',i=>i.kind==='weapon'],['rune','룬',i=>i.kind==='rune'],['item','아이템',i=>i.kind==='potion'||i.kind==='mat']];
 function statsHtml(){
   derive();const pen=Math.round(S.armor*100);
   const gx=(SES.pf.gather&&SES.pf.gather.xp)||0,gl=gatLvOf(gx),gp=gl>=GAT_MAX?100:Math.floor((gx-(gl>1?gatNeed(gl-1):0))/(gatNeed(gl)-(gl>1?gatNeed(gl-1):0))*100);
@@ -84,9 +85,10 @@ function equipRow(){
   return '<div class="eqrow">'+ASLOTS.map(sl=>{const it=pf.items.find(i=>i.kind==='armor'&&i.eq&&aSlot(i.base)===sl);return '<div class="eqs'+(it?'':' emp')+'" '+(it?'data-a="sel" data-v="'+it.id+'"':'')+'>'+(it?itemIcon(it):ico(ic(sl,'#667',26),'#667'))+'<span>'+ASLOT_N[sl]+(it&&it.enh?' +'+it.enh:'')+'</span></div>'}).join('')+'</div>';
 }
 function openInventory(){
-  UI.sel=null;UI.multi=new Set();UI.multiMode=false;flushGather();
+  UI.sel=null;UI.multi=new Set();UI.multiMode=false;UI.invTab='all';flushGather();
   UI.page('가방',()=>{
-    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
+    const tab=INV_TABS.find(t=>t[0]===UI.invTab)||INV_TABS[0];
+    const items=myItems().filter(tab[2]).sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
     let det='<div class="dim">아이템을 선택하세요.</div>';
     if(sel){
@@ -115,13 +117,15 @@ function openInventory(){
     det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm '+(UI.multiMode?'':'sec')+'" data-a="mmode">다중 선택 '+(UI.multiMode?'켜짐':'(터치용)')+'</button></div>';
     const pf=SES.pf,jn=JOBS[pf.job].name;
     return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
-      +'<div><div class="list" style="max-height:62vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
+      +'<div><div class="tabs" style="gap:4px;margin-bottom:8px">'+INV_TABS.map(t=>'<div class="tab '+(t===tab?'on':'')+'" style="padding:6px 11px" data-a="itab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div><div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
   });
   bindDragSelect();
 }
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
 /* inventory multi-select: a plain click picks one item for details (or toggles when multi mode is on); dragging over rows selects many */
 UI.handlers.isel=v=>{v=+v;if(UI.multiMode||UI.multi.size){if(UI.multi.has(v))UI.multi.delete(v);else UI.multi.add(v)}else UI.sel=v;UI.rerender()};
+/* switching tabs drops the selection so hidden items are never sold by mistake */
+UI.handlers.itab=v=>{UI.invTab=v;UI.sel=null;UI.multi.clear();UI.rerender()};
 UI.handlers.mmode=()=>{UI.multiMode=!UI.multiMode;UI.rerender()};
 UI.handlers.mclear=()=>{UI.multi.clear();UI.rerender()};
 UI.handlers.msell=async()=>{

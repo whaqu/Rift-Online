@@ -35,7 +35,9 @@ const LocalAPI=(()=>{
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
   const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
-  const xpNeed=l=>30+7*l*l;
+  const xpBase=l=>30+7*l*l;
+  /* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
+  const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
   const jobOK=id=>JOBS[id];
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const yday=()=>new Date(Date.now()+9*3600e3-864e5).toISOString().slice(0,10);
@@ -115,8 +117,8 @@ const LocalAPI=(()=>{
     },
     dqClaim(n,t,idx){
       rd();const a=auth(n,t),dq=dqEnsure(a),pot=a.level>=16?'hp2':'hp1';let rg,rx;
-      if(idx>=0&&idx<=2){const q=dq.q[idx];if(!q||q.p<q.t||q.c)E('NOT_READY');q.c=true;rg=400+a.level*90;rx=Math.floor(xpNeed(a.level)*.2);a.gold+=rg;give(n,'potion',pot,3)}
-      else if(idx===3){if(dq.b)E('ALREADY');if(dq.q.filter(q=>q.c).length<3)E('NOT_READY');dq.b=true;rg=(400+a.level*90)*3;rx=Math.floor(xpNeed(a.level)*.5);a.gold+=rg;give(n,'potion','atk',2);give(n,'potion','def',2);give(n,'potion',pot,5)}
+      if(idx>=0&&idx<=2){const q=dq.q[idx];if(!q||q.p<q.t||q.c)E('NOT_READY');q.c=true;rg=400+a.level*90;rx=Math.floor(xpBase(a.level)*.2);a.gold+=rg;give(n,'potion',pot,3)}
+      else if(idx===3){if(dq.b)E('ALREADY');if(dq.q.filter(q=>q.c).length<3)E('NOT_READY');dq.b=true;rg=(400+a.level*90)*3;rx=Math.floor(xpBase(a.level)*.5);a.gold+=rg;give(n,'potion','atk',2);give(n,'potion','def',2);give(n,'potion',pot,5)}
       else E('BAD_ARGS');
       applyXp(a,rx);wr();return{gold:rg,xp:rx,profile:pf(a)};
     },

@@ -333,10 +333,24 @@ function tickRecall(dt){
 const tpBlocked=()=>!P||P.dead?'지금은 사용할 수 없습니다':DU.on?'결투 중에는 사용할 수 없습니다':DG.on?'던전에서는 사용할 수 없습니다':'';
 function openTeleport(){
   const why=tpBlocked();if(why){UI.toast(why);return}
-  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
+  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b><div class="dim"><span style="color:#ff5ad1">● 나</span> · <span style="color:#6bff8a">● 파티원</span> · <span style="color:#5ee7ff">● 다른 플레이어</span></div></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
 }
+/* other players standing in the world (not in a dungeon or duel arena) */
+const tpPlayers=()=>Object.values(NET.peers).filter(p=>p.got&&!p.du&&Math.hypot(p.tx,p.tz)<=WORLD_R)
+  .map(p=>({name:p.name,x:p.tx,z:p.tz,party:!!(NET.party&&NET.party.members.includes(p.name))}));
+function tpMarks(c){
+  const g=c.getContext&&c.getContext('2d');if(!g)return;
+  const W=c.width,sc=(W/2-14)/WORLD_R;
+  const mark=(x,z,t,col,r,fs)=>{const mx=W/2+x*sc,mz=W/2+z*sc;
+    g.fillStyle=col;g.beginPath();g.arc(mx,mz,r,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=3;g.stroke();
+    g.font='bold '+fs+'px sans-serif';g.textAlign='center';g.lineWidth=5;g.strokeStyle='rgba(0,0,0,.85)';g.strokeText(t,mx,mz-r-7);g.fillStyle=col;g.fillText(t,mx,mz-r-7)};
+  for(const p of tpPlayers())mark(p.x,p.z,p.name,p.party?'#6bff8a':'#5ee7ff',10,20);
+  mark(P.x,P.z,'나','#ff5ad1',13,26);
+}
+let tpT=0;
 function tpDrawMap(){
-  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();
+  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();tpMarks(c);
+  clearTimeout(tpT);tpT=setTimeout(tpDrawMap,500);
   c.onclick=ev=>{const r=c.getBoundingClientRect(),W=c.width,sc=(W/2-14)/WORLD_R;
     teleportTo(((ev.clientX-r.left)*W/r.width-W/2)/sc,((ev.clientY-r.top)*W/r.height-W/2)/sc)};
 }

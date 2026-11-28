@@ -41,3 +41,4 @@
 - a40_dungeon-rewards-cut: 모든 던전 골드 1/5, 1위 무기 보상 확률 20%
 - a41_judgement-moly-recommend: 천공 보스 체력 100만+200만, 천상의 심판 추가, 홀리 몰리 자동 공격, 캐릭터 생성 성직자 추천 테두리
 - a42_teleport-scroll-mobile-recall: 모바일 귀환 버튼, 텔레포트의 서(1000G, 지도에서 순간이동)
+- a43_bag-tabs-map-players-xp: 가방 분류 탭, 텔레포트 지도에 나·다른 플레이어 표시, Lv.25부터 필요 경험치 3배 이상

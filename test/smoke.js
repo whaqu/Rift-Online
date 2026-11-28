@@ -504,6 +504,11 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.P.x=0;g.P.z=0;const done=await g.teleportTo(200,150);
     T(done&&Math.hypot(g.P.x-200,g.P.z-150)<50&&!g.SES.pf.items.some(i=>i.base==='tp'&&i.qty>0),'teleport moves and uses the scroll '+g.P.x.toFixed(0)+','+g.P.z.toFixed(0));
     const x=g.P.x;T(!(await g.teleportTo(0,0))&&g.P.x===x,'no scroll, no teleport');
+    T(Array.isArray(g.tpPlayers()),'teleport map lists players');
+    g.openInventory();for(const t of g.INV_TABS){g.UI.handlers.itab(t[0]);T(g.UI.modal==='가방'&&g.UI.invTab===t[0],'bag tab '+t[0])}
+    T(g.INV_TABS.map(t=>t[1]).join()==='전체,방어구,무기,룬,아이템','bag tab names');g.UI.close();
+    {const lvNeed=async l=>{edit(a=>{a.level=l;a.xp=0});await g.API.resume(me,g.SES.token);return g.SES.pf.need};
+      const n24=await lvNeed(24),n25=await lvNeed(25),n50=await lvNeed(50);T(n24===30+7*576&&n25===(30+7*625)*3&&n50===(30+7*2500)*6,'harder xp from lv25 '+[n24,n25,n50]);}
   }
   // developer tools guard (last: once tripped the game stays stopped)
   { // every region has its own dungeon: entry, scenery, waves, boss, offline rewards

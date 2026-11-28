@@ -1597,7 +1597,9 @@ const LocalAPI=(()=>{
   const rd=()=>{try{const s=JSON.parse(localStorage.getItem(KEY)||'null');if(s)db=s}catch(e){}};
   const wr=()=>{if(GUARD.tripped)return;try{localStorage.setItem(KEY,JSON.stringify(db))}catch(e){}};
   const E=c=>{throw new Error(c)};
-  const xpNeed=l=>30+7*l*l;
+  const xpBase=l=>30+7*l*l;
+  /* from Lv.25 a level costs 3x and keeps climbing (server: rw_xp_need) */
+  const xpNeed=l=>l<25?xpBase(l):Math.floor(xpBase(l)*(300+12*(l-25))/100);
   const jobOK=id=>JOBS[id];
   const today=()=>new Date(Date.now()+9*3600e3).toISOString().slice(0,10);
   const yday=()=>new Date(Date.now()+9*3600e3-864e5).toISOString().slice(0,10);
@@ -1677,8 +1679,8 @@ const LocalAPI=(()=>{
     },
     dqClaim(n,t,idx){
       rd();const a=auth(n,t),dq=dqEnsure(a),pot=a.level>=16?'hp2':'hp1';let rg,rx;
-      if(idx>=0&&idx<=2){const q=dq.q[idx];if(!q||q.p<q.t||q.c)E('NOT_READY');q.c=true;rg=400+a.level*90;rx=Math.floor(xpNeed(a.level)*.2);a.gold+=rg;give(n,'potion',pot,3)}
-      else if(idx===3){if(dq.b)E('ALREADY');if(dq.q.filter(q=>q.c).length<3)E('NOT_READY');dq.b=true;rg=(400+a.level*90)*3;rx=Math.floor(xpNeed(a.level)*.5);a.gold+=rg;give(n,'potion','atk',2);give(n,'potion','def',2);give(n,'potion',pot,5)}
+      if(idx>=0&&idx<=2){const q=dq.q[idx];if(!q||q.p<q.t||q.c)E('NOT_READY');q.c=true;rg=400+a.level*90;rx=Math.floor(xpBase(a.level)*.2);a.gold+=rg;give(n,'potion',pot,3)}
+      else if(idx===3){if(dq.b)E('ALREADY');if(dq.q.filter(q=>q.c).length<3)E('NOT_READY');dq.b=true;rg=(400+a.level*90)*3;rx=Math.floor(xpBase(a.level)*.5);a.gold+=rg;give(n,'potion','atk',2);give(n,'potion','def',2);give(n,'potion',pot,5)}
       else E('BAD_ARGS');
       applyXp(a,rx);wr();return{gold:rg,xp:rx,profile:pf(a)};
     },
@@ -3293,10 +3295,24 @@ function tickRecall(dt){
 const tpBlocked=()=>!P||P.dead?'지금은 사용할 수 없습니다':DU.on?'결투 중에는 사용할 수 없습니다':DG.on?'던전에서는 사용할 수 없습니다':'';
 function openTeleport(){
   const why=tpBlocked();if(why){UI.toast(why);return}
-  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
+  UI.page('텔레포트',()=>{setTimeout(tpDrawMap,0);return '<div style="text-align:center"><div style="margin-bottom:6px;color:#c79bff"><b>이동할 곳을 누르세요</b><div class="dim"><span style="color:#ff5ad1">● 나</span> · <span style="color:#6bff8a">● 파티원</span> · <span style="color:#5ee7ff">● 다른 플레이어</span></div></div><canvas id="bigmap" width="720" height="720" style="width:100%;max-width:min(560px,62vh);border-radius:10px;border:1px solid #c79bff;cursor:crosshair"></canvas></div><div id="mapl" style="display:none"></div>'});
 }
+/* other players standing in the world (not in a dungeon or duel arena) */
+const tpPlayers=()=>Object.values(NET.peers).filter(p=>p.got&&!p.du&&Math.hypot(p.tx,p.tz)<=WORLD_R)
+  .map(p=>({name:p.name,x:p.tx,z:p.tz,party:!!(NET.party&&NET.party.members.includes(p.name))}));
+function tpMarks(c){
+  const g=c.getContext&&c.getContext('2d');if(!g)return;
+  const W=c.width,sc=(W/2-14)/WORLD_R;
+  const mark=(x,z,t,col,r,fs)=>{const mx=W/2+x*sc,mz=W/2+z*sc;
+    g.fillStyle=col;g.beginPath();g.arc(mx,mz,r,0,TAU);g.fill();g.strokeStyle='#fff';g.lineWidth=3;g.stroke();
+    g.font='bold '+fs+'px sans-serif';g.textAlign='center';g.lineWidth=5;g.strokeStyle='rgba(0,0,0,.85)';g.strokeText(t,mx,mz-r-7);g.fillStyle=col;g.fillText(t,mx,mz-r-7)};
+  for(const p of tpPlayers())mark(p.x,p.z,p.name,p.party?'#6bff8a':'#5ee7ff',10,20);
+  mark(P.x,P.z,'나','#ff5ad1',13,26);
+}
+let tpT=0;
 function tpDrawMap(){
-  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();
+  const c=$('bigmap');if(!c||UI.modal!=='텔레포트')return;drawBigMap();tpMarks(c);
+  clearTimeout(tpT);tpT=setTimeout(tpDrawMap,500);
   c.onclick=ev=>{const r=c.getBoundingClientRect(),W=c.width,sc=(W/2-14)/WORLD_R;
     teleportTo(((ev.clientX-r.left)*W/r.width-W/2)/sc,((ev.clientY-r.top)*W/r.height-W/2)/sc)};
 }
@@ -5749,6 +5765,7 @@ async function guarded(fn,okMsg){
 }
 
 /* ---------- inventory ---------- */
+const INV_TABS=[['all','전체',()=>true],['armor','방어구',i=>i.kind==='armor'],['weapon','무기',i=>i.kind==='weapon'],['rune','룬',i=>i.kind==='rune'],['item','아이템',i=>i.kind==='potion'||i.kind==='mat']];
 function statsHtml(){
   derive();const pen=Math.round(S.armor*100);
   const gx=(SES.pf.gather&&SES.pf.gather.xp)||0,gl=gatLvOf(gx),gp=gl>=GAT_MAX?100:Math.floor((gx-(gl>1?gatNeed(gl-1):0))/(gatNeed(gl)-(gl>1?gatNeed(gl-1):0))*100);
@@ -5766,9 +5783,10 @@ function equipRow(){
   return '<div class="eqrow">'+ASLOTS.map(sl=>{const it=pf.items.find(i=>i.kind==='armor'&&i.eq&&aSlot(i.base)===sl);return '<div class="eqs'+(it?'':' emp')+'" '+(it?'data-a="sel" data-v="'+it.id+'"':'')+'>'+(it?itemIcon(it):ico(ic(sl,'#667',26),'#667'))+'<span>'+ASLOT_N[sl]+(it&&it.enh?' +'+it.enh:'')+'</span></div>'}).join('')+'</div>';
 }
 function openInventory(){
-  UI.sel=null;UI.multi=new Set();UI.multiMode=false;flushGather();
+  UI.sel=null;UI.multi=new Set();UI.multiMode=false;UI.invTab='all';flushGather();
   UI.page('가방',()=>{
-    const items=myItems().slice().sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
+    const tab=INV_TABS.find(t=>t[0]===UI.invTab)||INV_TABS[0];
+    const items=myItems().filter(tab[2]).sort((a,b)=>(b.eq-a.eq)||byValue(a,b));
     const sel=UI.sel&&byId(UI.sel)&&!byId(UI.sel).listed?byId(UI.sel):null;
     let det='<div class="dim">아이템을 선택하세요.</div>';
     if(sel){
@@ -5797,13 +5815,15 @@ function openInventory(){
     det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm '+(UI.multiMode?'':'sec')+'" data-a="mmode">다중 선택 '+(UI.multiMode?'켜짐':'(터치용)')+'</button></div>';
     const pf=SES.pf,jn=JOBS[pf.job].name;
     return '<div class="two"><div><div class="card" style="margin-bottom:8px"><div class="row sp"><b>'+esc(pf.name)+'</b><span class="gold">'+fmtG(pf.gold)+'</span></div><div class="dim" style="margin:2px 0 6px">Lv.'+pf.level+' '+jn+' · 경험치 '+fmtN(pf.xp)+'/'+fmtN(pf.need)+'</div>'+statsHtml()+'</div><div class="card" style="margin-bottom:8px"><div class="dim" style="margin-bottom:5px">방어구</div>'+equipRow()+setBonusHtml()+'</div><div class="card">'+det+'</div></div>'
-      +'<div><div class="list" style="max-height:62vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
+      +'<div><div class="tabs" style="gap:4px;margin-bottom:8px">'+INV_TABS.map(t=>'<div class="tab '+(t===tab?'on':'')+'" style="padding:6px 11px" data-a="itab" data-v="'+t[0]+'">'+t[1]+'</div>').join('')+'</div><div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{sel:(sel&&sel.id===i.id)||UI.multi.has(i.id),a:i.eq?'sel':'isel'})).join(''):'<div class="dim">비어 있습니다.</div>')+'</div></div></div>';
   });
   bindDragSelect();
 }
 UI.handlers.sel=v=>{UI.sel=+v;UI.rerender()};
 /* inventory multi-select: a plain click picks one item for details (or toggles when multi mode is on); dragging over rows selects many */
 UI.handlers.isel=v=>{v=+v;if(UI.multiMode||UI.multi.size){if(UI.multi.has(v))UI.multi.delete(v);else UI.multi.add(v)}else UI.sel=v;UI.rerender()};
+/* switching tabs drops the selection so hidden items are never sold by mistake */
+UI.handlers.itab=v=>{UI.invTab=v;UI.sel=null;UI.multi.clear();UI.rerender()};
 UI.handlers.mmode=()=>{UI.multiMode=!UI.multiMode;UI.rerender()};
 UI.handlers.mclear=()=>{UI.multi.clear();UI.rerender()};
 UI.handlers.msell=async()=>{
@@ -6888,7 +6908,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>
