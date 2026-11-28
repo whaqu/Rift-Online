@@ -374,8 +374,8 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.UI.modal=null;await g.flushGather();for(let k=0;k<30&&(g.GAT.busy||g.GAT.pend.weed+g.GAT.pend.wood>0);k++)await sleep(30);await sleep(30);
     const wi=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='weed'),di=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='wood');
     T(wi&&wi.qty>=1&&di&&di.qty>=1,'weed + wood in inventory');T(g.SES.pf.gather&&g.SES.pf.gather.xp>=6,'mastery xp gained');
-    const gold0=g.SES.pf.gold,wq=wi.qty;await g.API.call('sell',wi.id,wq);T(g.SES.pf.gold-gold0===10*wq,'weed sells for 10G each');
-    const g1=g.SES.pf.gold,dq=di.qty;await g.API.call('sell',di.id,dq);T(g.SES.pf.gold-g1===20*dq,'wood sells for 20G each');
+    const gold0=g.SES.pf.gold,wq=wi.qty;await g.API.call('sell',wi.id,wq);T(g.SES.pf.gold-gold0===2*wq,'weed sells for 2G each');
+    const g1=g.SES.pf.gold,dq=di.qty;await g.API.call('sell',di.id,dq);T(g.SES.pf.gold-g1===8*dq,'wood sells for 8G each');
     T(!g.SES.pf.items.some(i=>i.kind==='mat'),'materials gone after selling');
     T(g.gatLvOf(0)===1&&g.gatLvOf(25)===2&&g.gatLvOf(1e6)===20,'mastery level curve');
     g.P.x=tr.x-6;g.P.z=tr.z;g.gatherLine(1,0,10,1);T(true,'ranged strip runs');
@@ -509,6 +509,11 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       const b=g.MOBS.find(m=>m.type==='dgboss');T(b&&b.bn===def.bn&&b.bk===id,id+' boss spawns');
       g.dgLeave('x');step(2);
     }
+    { // sky temple: two waves in every room before the gate opens
+      g.UI.close();g.dgEnter('sky');g.P.dead=false;let n=0,prev='';
+      for(let i=0;i<200&&D.ph!=='boss';i++){g.P.iframes=1e9;for(const m of g.MOBS.slice())if(m.dg&&!m.dead&&m.type!=='dgboss')g.applyMobDmg(m,1e9,null,g.SES.name);if(D.ph==='advance'){g.P.x=D.cx;g.P.z=D.cz-300}step(60);if(D.ph==='wave'&&prev!=='wave')n++;prev=D.ph}
+      T(n===8&&D.ph==='boss','sky dungeon runs 8 waves then boss ('+n+' '+D.ph+')');g.dgLeave('x');step(2);
+    }
     const K='rw_local_db_v1',me=g.SES.name,tk=g.SES.token,edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});
     for(const id of ids){g.LocalAPI.dgBegin(me,tk,id);edit(a=>{a.dgRun.ts-=60000});const r=g.LocalAPI.dgEnd(me,tk,id,1);T(r.rewards.every(x=>x.t!=='weapon'||g.wTier(x.base)===g.DGDEF[id].zid),id+' weapon reward is the region grade');T(r.rewards.every(x=>x.t!=='rune'||x.g<2||x.base===id),id+' area rune');T(r.rewards.length>=2&&r.rewards.every(x=>x.t!=='rune'||g.RUNES[x.base]),id+' reward '+JSON.stringify(r.rewards))}
@@ -523,7 +528,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     }
     for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff);g.applyWeaponLook(o,c+'_9_2');T(o.wbase===c+'_9_2'&&g.wName(c+'_9')&&!g.wName(c+'_9').includes('undefined'),'grade 9 '+c)}
     for(const c of g.CLASSES){const o=g.makeHeroFor(c,c,0xffffff),k=n=>{g.applyWeaponLook(o,c+'_'+n);g.animHeroFor(o,1.3,0,-1,false,1);return o.wau?o.wau.kind:null};T(k(7)==='storm'&&k(8)==='eternity'&&k(9)==='celestial'&&k(6)===null&&!o.wau,'weapon grade aura '+c)}
-    T(g.weaponAtk('mage_9',0)>g.weaponAtk('mage_8',0)&&g.sellValue({kind:'weapon',base:'mage_9',enh:0,ench:[]})===720000,'grade 9 stats and value');
+    T(g.weaponAtk('mage_9',0)>g.weaponAtk('mage_8',0)&&g.sellValue({kind:'weapon',base:'mage_9',enh:0,ench:[]})===90000,'grade 9 stats and value');
     T(g.wType('mage_4_11')===0&&g.wName('mage_4_11')===g.wName('mage_4'),'removed kinds fall back to the basic kind');
     const me=g.SES.name,tk=g.SES.token,K='rw_local_db_v1',edit=f=>{const d=JSON.parse(localStorage.getItem(K));f(d.acc[me]);localStorage.setItem(K,JSON.stringify(d))};
     let lv;edit(a=>{lv=a.level;a.level=99});

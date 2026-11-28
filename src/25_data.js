@@ -187,7 +187,9 @@ const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
-const sellValue=it=>it.kind==='armor'?Math.floor(AVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
+/* base resale price by tier (30% of value, top tiers capped around 70-90k) */
+const WSELL=[30,270,1050,3600,11400,33000,70000,80000,90000],ASELL=[18,150,600,2100,6600,18000,51000,75000];
+const sellValue=it=>it.kind==='armor'?Math.floor(ASELL[wTier(it.base)-1]*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WSELL[wTier(it.base)-1]*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
 
 const POTIONS={
   hp1:{name:'하급 체력 물약',kind:'hp',pct:.35,price:40,col:'#ff5a6a'},
@@ -197,10 +199,10 @@ const POTIONS={
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
 };
-/* gathering materials (sold at the shop: weed 10G, wood 20G; reserved for future upgrade recipes) */
+/* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
-  weed:{name:'잡초',price:10,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 10G · 강화 재료로도 쓰일 예정'},
-  wood:{name:'목재',price:20,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 20G · 강화 재료로도 쓰일 예정'}
+  weed:{name:'잡초',price:2,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 2G · 강화 재료로도 쓰일 예정'},
+  wood:{name:'목재',price:8,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 8G · 강화 재료로도 쓰일 예정'}
 };
 const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
 const gatSpeed=lv=>1+.1*(lv-1),gatDouble=lv=>.015*(lv-1);
@@ -293,7 +295,7 @@ const DGDEF={
     pat:['slam','quake','nova','barrage','summon'],adds:['frostwolf','frostwolf']},
   desert:{name:'왕릉 던전',need:80,zid:8,ml:85,col:0xb8955a,ring:0xffb85a,rock:0xa8854e,fl:0x3a2c1a,wl:0x54402a,atmo:{bg:0x100b05,sky:0x2e2212,gr:0x181008,hi:.52,sun:.3,sc:0xe0c090,rc:0xffb85a,ri:.42,fd:.016},mobs:['scorpion','mummy','jackal','mummy'],waves:[6,8,10,12],bn:'전갈 여왕',hpM:42,dmgM:1.4,spd:4,sc:2.5,r:2.2,pa:5.9,pr:470,bits:512,at:'scorpion',model:()=>makeScorpion(),
     pat:['rush','barrage','quake','summon','slam'],adds:['scorpion','jackal']},
-  sky:{name:'천공 신전 던전',need:90,zid:9,ml:95,col:0xc4c0d8,ring:0xfff0b0,rock:0xc8c2da,fl:0x34324a,wl:0x4a4666,atmo:{bg:0x0c0a18,sky:0x2a2648,gr:0x141226,hi:.55,sun:.3,sc:0xe0d8ff,rc:0xffe8a0,ri:.45,fd:.015},mobs:['sentinel','seraph','stormhawk','sentinel'],waves:[6,8,10,12],bn:'타락 대천사',hpM:45,dmgM:1.4,spd:4.2,sc:2.1,r:1.8,pa:.9,pr:538,bits:1024,at:'seraph',model:()=>makeSeraph(),fly:.7,keep:8,
+  sky:{name:'천공 신전 던전',need:90,zid:9,ml:95,col:0xc4c0d8,ring:0xfff0b0,rock:0xc8c2da,fl:0x34324a,wl:0x4a4666,atmo:{bg:0x0c0a18,sky:0x2a2648,gr:0x141226,hi:.55,sun:.3,sc:0xe0d8ff,rc:0xffe8a0,ri:.45,fd:.015},mobs:['sentinel','seraph','stormhawk','sentinel'],per:2,waves:[8,10,12,14],bn:'타락 대천사',hpM:45,dmgM:1.4,spd:4.2,sc:2.1,r:1.8,pa:.9,pr:538,bits:1024,at:'seraph',model:()=>makeSeraph(),fly:.7,keep:8,
     pat:['bolts','nova','quake','barrage','summon'],adds:['seraph','sentinel']}
 };
 const DGK=Object.keys(DGDEF).sort((a,b)=>DGDEF[a].need-DGDEF[b].need);

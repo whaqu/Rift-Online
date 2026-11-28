@@ -236,7 +236,7 @@ function dgEnter(id){
   const def=DGDEF[id],A=dgBuildArena();
   if(GUIDE.id)guideStop();
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
-  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
+  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
   A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
@@ -286,7 +286,7 @@ async function openPortal(p){
     if(await UI.confirm(def.name+'에 합류할까요?'))dgJoin(p.dg);
     return;
   }
-  const txt=def.name+'\n입장 Lv.'+def.need+' 이상 · 웨이브 '+def.waves.length+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
+  const txt=def.name+'\n입장 Lv.'+def.need+' 이상 · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
   if(!(await UI.confirm(txt)))return;
   dgStart(p.dg);
 }
@@ -310,7 +310,7 @@ function dgSpawnWave(){
   for(let i=0;i<n;i++){
     let x=DG.cx,z=DG.cz+zb+6;
     for(let k=0;k<10;k++){x=DG.cx+rnd(-13,13);z=DG.cz+rnd(zb+4,zt-18);if(!blocked(x,z,1.2)&&A.every(q=>d2(x,z,q.x,q.z)>9*9))break}
-    dgSpawnAdd(pick(def.mobs),x,z,idx===def.waves.length-1&&i===0&&pc>1);
+    dgSpawnAdd(pick(def.mobs),x,z,idx===def.waves.length-1&&DG.sub===(def.per||1)-1&&i===0&&pc>1);
   }
 }
 function dgSpawnBoss(){
@@ -326,14 +326,15 @@ function dgTick(dt,A){
   if(DG.t>600){dgFail('제한 시간이 초과되었습니다');return}
   let alive=0;for(const m of MOBS)if(m.dg&&!m.dead&&!m.ghost&&m.type!=='dgboss')alive++;DG.alive=alive;
   if(DG.ph==='intro'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
-  else if(DG.ph==='wave'){if(alive===0){DG.wave++;DG.ph='advance'}}
+  else if(DG.ph==='wave'){if(alive===0){if(DG.sub+1<(def.per||1)){DG.sub++;DG.ph='gap';DG.pt=2.5}else{DG.sub=0;DG.wave++;DG.ph='advance'}}}
+  else if(DG.ph==='gap'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
   else if(DG.ph==='advance'){
     const tz=dgRoomTrigger(DG.wave);
     if(dgPlayers().some(q=>q.z-DG.cz<tz)){if(DG.wave>=def.waves.length){DG.ph='boss';dgSpawnBoss()}else{DG.ph='wave';dgSpawnWave()}}
   }
   else if(DG.ph==='boss'){if(DG.boss&&DG.boss.dead)dgClear()}
   DG.lastSt+=dt;
-  if(DG.lastSt>.5){DG.lastSt=0;if(NET.on&&NET.party&&NET.party.members.length>1){const b=DG.boss;netSend('dg',{k:'st',id:DG.id,ph:DG.ph,w:DG.wave,al:alive,t:Math.round(DG.t),bh:b&&!b.dead?Math.round(b.hp/b.maxHp*100):0,dm:Object.fromEntries(Object.entries(DG.dmg).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>[x[0],Math.round(x[1])]))})}}
+  if(DG.lastSt>.5){DG.lastSt=0;if(NET.on&&NET.party&&NET.party.members.length>1){const b=DG.boss;netSend('dg',{k:'st',id:DG.id,ph:DG.ph,w:DG.wave,s:DG.sub,al:alive,t:Math.round(DG.t),bh:b&&!b.dead?Math.round(b.hp/b.maxHp*100):0,dm:Object.fromEntries(Object.entries(DG.dmg).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>[x[0],Math.round(x[1])]))})}}
 }
 function dgStandings(){
   const names=new Set(Object.keys(DG.dmg));
@@ -398,7 +399,7 @@ async function onDgEv(d){
     if(SES.pf.level<DGDEF[d.id].need){UI.toast('파티장이 '+DGDEF[d.id].name+'에 입장했지만 레벨이 부족합니다');return}
     if(await UI.confirm('파티장이 '+DGDEF[d.id].name+'에 입장했습니다.\n함께 입장할까요?'))dgJoin(d.id);
   }else if(d.k==='st'){
-    if(!DG.on||isAuth()||DG.id!==d.id)return;DG.ph=d.ph;DG.wave=d.w;DG.alive=d.al;DG.t=d.t;DG.bh=d.bh;if(d.dm&&typeof d.dm==='object')DG.dm=d.dm;
+    if(!DG.on||isAuth()||DG.id!==d.id)return;DG.ph=d.ph;DG.wave=d.w;DG.sub=d.s|0;DG.alive=d.al;DG.t=d.t;DG.bh=d.bh;if(d.dm&&typeof d.dm==='object')DG.dm=d.dm;
   }else if(d.k==='end'){
     if(!DG.on||isAuth()||DG.id!==d.id||DG.ph==='clear'||!Array.isArray(d.st))return;dgOnEnd(d.st.slice(0,8).map(s=>[String(s[0]),+s[1]||0]));
   }else if(d.k==='out'){
@@ -509,26 +510,26 @@ function dgUpdate(dt){
   if(DG.ph!=='clear'&&DG.ph!=='fail'&&(NET.party?NET.party.leader:SES.name)!==DG.leader){dgFail('파티 구성이 바뀌어 던전에서 나갑니다');return}
   DGH.t+=dt;if(DGH.t<.2)return;DGH.t=0;
   const def=DGDEF[DG.id];if(!def||!DGH.el)return;
-  const dc=hex6(def.ring),nw=def.waves.length;
-  const bk=DG.ph+'|'+DG.wave;
+  const dc=hex6(def.ring),per=def.per||1,nw=def.waves.length*per,cw=DG.wave*per+(DG.sub||0);
+  const bk=DG.ph+'|'+cw;
   if(bk!==DGH.bk){
     DGH.bk=bk;
     if(DG.ph==='intro')dgBanner(def.name,'준비하세요…',def.ring);
-    else if(DG.ph==='wave')dgBanner('WAVE '+(DG.wave+1)+' / '+nw,'몬스터를 모두 처치하라',def.ring);
-    else if(DG.ph==='advance')dgBanner(DG.wave>=nw?'보스의 방':'길이 열렸다','앞으로 나아가세요',DG.wave>=nw?0xff5a3a:def.ring);
+    else if(DG.ph==='wave')dgBanner('WAVE '+(cw+1)+' / '+nw,'몬스터를 모두 처치하라',def.ring);
+    else if(DG.ph==='advance')dgBanner(cw>=nw?'보스의 방':'길이 열렸다','앞으로 나아가세요',cw>=nw?0xff5a3a:def.ring);
     else if(DG.ph==='boss')dgBanner(def.bn,'BOSS',0xff7a3a);
     else if(DG.ph==='clear')dgBanner('DUNGEON CLEAR','보상을 정산합니다…',0xffd24a);
   }
   let boss=null;for(const m of MOBS)if(m.type==='dgboss'&&!m.dead){boss=m;break}
   const bh=boss?Math.max(0,boss.hp/boss.maxHp*100):(DG.ph==='boss'?DG.bh:0);
   const tl=Math.max(0,600-DG.t),mm=Math.floor(tl/60),ss=Math.floor(tl%60);
-  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(DG.wave+1,nw)+' / '+nw;
+  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(cw+1,nw)+' / '+nw;
   const dm=Object.entries(DG.dm||DG.dmg||{}).sort((a,b)=>b[1]-a[1]).slice(0,4);
-  const key=pt+'|'+mm+':'+ss+'|'+DG.deaths+'|'+DG.alive+'|'+DG.wave+'|'+DG.ph+'|'+Math.round(bh)+'|'+dm.map(x=>x[0]+Math.round(x[1]/50)).join();
+  const key=pt+'|'+mm+':'+ss+'|'+DG.deaths+'|'+DG.alive+'|'+cw+'|'+DG.ph+'|'+Math.round(bh)+'|'+dm.map(x=>x[0]+Math.round(x[1]/50)).join();
   if(key===DGH.last)return;DGH.last=key;
   dgVar(DGH.el,'--dc',dc);dgVar(DGH.rank,'--dc',dc);dgVar(DGH.boss,'--dc',dc);
   DGH.q('.t').textContent='◆ '+def.name+' ◆';DGH.q('.p').textContent=pt;
-  let pips='';for(let i=0;i<nw;i++)pips+='<i class="pip'+(DG.wave>i||DG.ph==='boss'||DG.ph==='bossIntro'||DG.ph==='clear'?' on':DG.wave===i&&DG.ph==='wave'?' cur':'')+'"></i>';
+  let pips='';for(let i=0;i<nw;i++)pips+='<i class="pip'+(cw>i||DG.ph==='boss'||DG.ph==='bossIntro'||DG.ph==='clear'?' on':cw===i&&DG.ph==='wave'?' cur':'')+'"></i>';
   pips+='<i class="pip boss'+(DG.ph==='clear'?' on':DG.ph==='boss'?' cur':'')+'"></i>';DGH.q('.pips').innerHTML=pips;
   DGH.q('.tm').innerHTML='⏱ <b class="'+(tl<60?'low':'')+'">'+mm+':'+('0'+ss).slice(-2)+'</b>';
   DGH.q('.mo').innerHTML=DG.ph==='boss'||DG.ph==='clear'?'':'👹 <b>'+(DG.alive||0)+'</b>';

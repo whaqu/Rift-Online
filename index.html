@@ -1378,7 +1378,9 @@ const WVALUE=[100,900,3500,12000,38000,110000,320000,900000,2400000];
 const enhCost=(b,enh)=>Math.floor(80*Math.pow(1+enh,1.75)*(1+.5*wTier(b))*(ASLOT_W[aSlot(b)]!=null?.7:1));
 const isArmorIt=it=>it.kind==='armor',isGear=it=>it.kind==='weapon'||it.kind==='armor',maxEnh=it=>it.kind==='armor'?15:20;
 const ENH_RATE=[95,92,88,84,80,74,66,58,50,44,38,32,27,22,18,14,11,8,6,4];
-const sellValue=it=>it.kind==='armor'?Math.floor(AVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WVALUE[wTier(it.base)-1]*.3*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
+/* base resale price by tier (30% of value, top tiers capped around 70-90k) */
+const WSELL=[30,270,1050,3600,11400,33000,70000,80000,90000],ASELL=[18,150,600,2100,6600,18000,51000,75000];
+const sellValue=it=>it.kind==='armor'?Math.floor(ASELL[wTier(it.base)-1]*(1+it.enh*.35)):it.kind==='weapon'?Math.floor(WSELL[wTier(it.base)-1]*(1+it.enh*.35)*(1+(it.ench||[]).length*.5)):Math.floor((POTIONS[it.base]?POTIONS[it.base].price:0)*.25*it.qty);
 
 const POTIONS={
   hp1:{name:'하급 체력 물약',kind:'hp',pct:.35,price:40,col:'#ff5a6a'},
@@ -1388,10 +1390,10 @@ const POTIONS={
   atk:{name:'격분 물약',kind:'buff',price:200,col:'#ffa23a',desc:'30초간 공격력 +30%'},
   def:{name:'강철 물약',kind:'buff',price:200,col:'#9aa6c8',desc:'30초간 받는 피해 -30%'}
 };
-/* gathering materials (sold at the shop: weed 10G, wood 20G; reserved for future upgrade recipes) */
+/* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
-  weed:{name:'잡초',price:10,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 10G · 강화 재료로도 쓰일 예정'},
-  wood:{name:'목재',price:20,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 20G · 강화 재료로도 쓰일 예정'}
+  weed:{name:'잡초',price:2,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 2G · 강화 재료로도 쓰일 예정'},
+  wood:{name:'목재',price:8,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 8G · 강화 재료로도 쓰일 예정'}
 };
 const GAT_MAX=20,gatLvOf=xp=>Math.min(GAT_MAX,1+Math.floor(Math.sqrt(Math.max(0,xp||0)/25))),gatNeed=lv=>25*lv*lv;
 const gatSpeed=lv=>1+.1*(lv-1),gatDouble=lv=>.015*(lv-1);
@@ -1484,7 +1486,7 @@ const DGDEF={
     pat:['slam','quake','nova','barrage','summon'],adds:['frostwolf','frostwolf']},
   desert:{name:'왕릉 던전',need:80,zid:8,ml:85,col:0xb8955a,ring:0xffb85a,rock:0xa8854e,fl:0x3a2c1a,wl:0x54402a,atmo:{bg:0x100b05,sky:0x2e2212,gr:0x181008,hi:.52,sun:.3,sc:0xe0c090,rc:0xffb85a,ri:.42,fd:.016},mobs:['scorpion','mummy','jackal','mummy'],waves:[6,8,10,12],bn:'전갈 여왕',hpM:42,dmgM:1.4,spd:4,sc:2.5,r:2.2,pa:5.9,pr:470,bits:512,at:'scorpion',model:()=>makeScorpion(),
     pat:['rush','barrage','quake','summon','slam'],adds:['scorpion','jackal']},
-  sky:{name:'천공 신전 던전',need:90,zid:9,ml:95,col:0xc4c0d8,ring:0xfff0b0,rock:0xc8c2da,fl:0x34324a,wl:0x4a4666,atmo:{bg:0x0c0a18,sky:0x2a2648,gr:0x141226,hi:.55,sun:.3,sc:0xe0d8ff,rc:0xffe8a0,ri:.45,fd:.015},mobs:['sentinel','seraph','stormhawk','sentinel'],waves:[6,8,10,12],bn:'타락 대천사',hpM:45,dmgM:1.4,spd:4.2,sc:2.1,r:1.8,pa:.9,pr:538,bits:1024,at:'seraph',model:()=>makeSeraph(),fly:.7,keep:8,
+  sky:{name:'천공 신전 던전',need:90,zid:9,ml:95,col:0xc4c0d8,ring:0xfff0b0,rock:0xc8c2da,fl:0x34324a,wl:0x4a4666,atmo:{bg:0x0c0a18,sky:0x2a2648,gr:0x141226,hi:.55,sun:.3,sc:0xe0d8ff,rc:0xffe8a0,ri:.45,fd:.015},mobs:['sentinel','seraph','stormhawk','sentinel'],per:2,waves:[8,10,12,14],bn:'타락 대천사',hpM:45,dmgM:1.4,spd:4.2,sc:2.1,r:1.8,pa:.9,pr:538,bits:1024,at:'seraph',model:()=>makeSeraph(),fly:.7,keep:8,
     pat:['bolts','nova','quake','barrage','summon'],adds:['seraph','sentinel']}
 };
 const DGK=Object.keys(DGDEF).sort((a,b)=>DGDEF[a].need-DGDEF[b].need);
@@ -1651,8 +1653,9 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
-          else if(rr<wc+ac){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
+          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/(wz>=6?10:1),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
+          if(rr<wr){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          else if(rr<wr+ar){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
@@ -4819,7 +4822,7 @@ function dgEnter(id){
   const def=DGDEF[id],A=dgBuildArena();
   if(GUIDE.id)guideStop();
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
-  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
+  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
   A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
@@ -4869,7 +4872,7 @@ async function openPortal(p){
     if(await UI.confirm(def.name+'에 합류할까요?'))dgJoin(p.dg);
     return;
   }
-  const txt=def.name+'\n입장 Lv.'+def.need+' 이상 · 웨이브 '+def.waves.length+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
+  const txt=def.name+'\n입장 Lv.'+def.need+' 이상 · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
   if(!(await UI.confirm(txt)))return;
   dgStart(p.dg);
 }
@@ -4893,7 +4896,7 @@ function dgSpawnWave(){
   for(let i=0;i<n;i++){
     let x=DG.cx,z=DG.cz+zb+6;
     for(let k=0;k<10;k++){x=DG.cx+rnd(-13,13);z=DG.cz+rnd(zb+4,zt-18);if(!blocked(x,z,1.2)&&A.every(q=>d2(x,z,q.x,q.z)>9*9))break}
-    dgSpawnAdd(pick(def.mobs),x,z,idx===def.waves.length-1&&i===0&&pc>1);
+    dgSpawnAdd(pick(def.mobs),x,z,idx===def.waves.length-1&&DG.sub===(def.per||1)-1&&i===0&&pc>1);
   }
 }
 function dgSpawnBoss(){
@@ -4909,14 +4912,15 @@ function dgTick(dt,A){
   if(DG.t>600){dgFail('제한 시간이 초과되었습니다');return}
   let alive=0;for(const m of MOBS)if(m.dg&&!m.dead&&!m.ghost&&m.type!=='dgboss')alive++;DG.alive=alive;
   if(DG.ph==='intro'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
-  else if(DG.ph==='wave'){if(alive===0){DG.wave++;DG.ph='advance'}}
+  else if(DG.ph==='wave'){if(alive===0){if(DG.sub+1<(def.per||1)){DG.sub++;DG.ph='gap';DG.pt=2.5}else{DG.sub=0;DG.wave++;DG.ph='advance'}}}
+  else if(DG.ph==='gap'){DG.pt-=dt;if(DG.pt<=0){DG.ph='wave';dgSpawnWave()}}
   else if(DG.ph==='advance'){
     const tz=dgRoomTrigger(DG.wave);
     if(dgPlayers().some(q=>q.z-DG.cz<tz)){if(DG.wave>=def.waves.length){DG.ph='boss';dgSpawnBoss()}else{DG.ph='wave';dgSpawnWave()}}
   }
   else if(DG.ph==='boss'){if(DG.boss&&DG.boss.dead)dgClear()}
   DG.lastSt+=dt;
-  if(DG.lastSt>.5){DG.lastSt=0;if(NET.on&&NET.party&&NET.party.members.length>1){const b=DG.boss;netSend('dg',{k:'st',id:DG.id,ph:DG.ph,w:DG.wave,al:alive,t:Math.round(DG.t),bh:b&&!b.dead?Math.round(b.hp/b.maxHp*100):0,dm:Object.fromEntries(Object.entries(DG.dmg).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>[x[0],Math.round(x[1])]))})}}
+  if(DG.lastSt>.5){DG.lastSt=0;if(NET.on&&NET.party&&NET.party.members.length>1){const b=DG.boss;netSend('dg',{k:'st',id:DG.id,ph:DG.ph,w:DG.wave,s:DG.sub,al:alive,t:Math.round(DG.t),bh:b&&!b.dead?Math.round(b.hp/b.maxHp*100):0,dm:Object.fromEntries(Object.entries(DG.dmg).sort((a,b)=>b[1]-a[1]).slice(0,4).map(x=>[x[0],Math.round(x[1])]))})}}
 }
 function dgStandings(){
   const names=new Set(Object.keys(DG.dmg));
@@ -4981,7 +4985,7 @@ async function onDgEv(d){
     if(SES.pf.level<DGDEF[d.id].need){UI.toast('파티장이 '+DGDEF[d.id].name+'에 입장했지만 레벨이 부족합니다');return}
     if(await UI.confirm('파티장이 '+DGDEF[d.id].name+'에 입장했습니다.\n함께 입장할까요?'))dgJoin(d.id);
   }else if(d.k==='st'){
-    if(!DG.on||isAuth()||DG.id!==d.id)return;DG.ph=d.ph;DG.wave=d.w;DG.alive=d.al;DG.t=d.t;DG.bh=d.bh;if(d.dm&&typeof d.dm==='object')DG.dm=d.dm;
+    if(!DG.on||isAuth()||DG.id!==d.id)return;DG.ph=d.ph;DG.wave=d.w;DG.sub=d.s|0;DG.alive=d.al;DG.t=d.t;DG.bh=d.bh;if(d.dm&&typeof d.dm==='object')DG.dm=d.dm;
   }else if(d.k==='end'){
     if(!DG.on||isAuth()||DG.id!==d.id||DG.ph==='clear'||!Array.isArray(d.st))return;dgOnEnd(d.st.slice(0,8).map(s=>[String(s[0]),+s[1]||0]));
   }else if(d.k==='out'){
@@ -5092,26 +5096,26 @@ function dgUpdate(dt){
   if(DG.ph!=='clear'&&DG.ph!=='fail'&&(NET.party?NET.party.leader:SES.name)!==DG.leader){dgFail('파티 구성이 바뀌어 던전에서 나갑니다');return}
   DGH.t+=dt;if(DGH.t<.2)return;DGH.t=0;
   const def=DGDEF[DG.id];if(!def||!DGH.el)return;
-  const dc=hex6(def.ring),nw=def.waves.length;
-  const bk=DG.ph+'|'+DG.wave;
+  const dc=hex6(def.ring),per=def.per||1,nw=def.waves.length*per,cw=DG.wave*per+(DG.sub||0);
+  const bk=DG.ph+'|'+cw;
   if(bk!==DGH.bk){
     DGH.bk=bk;
     if(DG.ph==='intro')dgBanner(def.name,'준비하세요…',def.ring);
-    else if(DG.ph==='wave')dgBanner('WAVE '+(DG.wave+1)+' / '+nw,'몬스터를 모두 처치하라',def.ring);
-    else if(DG.ph==='advance')dgBanner(DG.wave>=nw?'보스의 방':'길이 열렸다','앞으로 나아가세요',DG.wave>=nw?0xff5a3a:def.ring);
+    else if(DG.ph==='wave')dgBanner('WAVE '+(cw+1)+' / '+nw,'몬스터를 모두 처치하라',def.ring);
+    else if(DG.ph==='advance')dgBanner(cw>=nw?'보스의 방':'길이 열렸다','앞으로 나아가세요',cw>=nw?0xff5a3a:def.ring);
     else if(DG.ph==='boss')dgBanner(def.bn,'BOSS',0xff7a3a);
     else if(DG.ph==='clear')dgBanner('DUNGEON CLEAR','보상을 정산합니다…',0xffd24a);
   }
   let boss=null;for(const m of MOBS)if(m.type==='dgboss'&&!m.dead){boss=m;break}
   const bh=boss?Math.max(0,boss.hp/boss.maxHp*100):(DG.ph==='boss'?DG.bh:0);
   const tl=Math.max(0,600-DG.t),mm=Math.floor(tl/60),ss=Math.floor(tl%60);
-  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(DG.wave+1,nw)+' / '+nw;
+  const pt=DG.ph==='intro'?'준비 중':DG.ph==='gap'?'다음 웨이브 준비':DG.ph==='advance'?'앞으로 나아가세요 ▶':DG.ph==='bossIntro'?'보스 등장 임박':DG.ph==='boss'?'보스 전투':DG.ph==='clear'?'클리어!':'웨이브 '+Math.min(cw+1,nw)+' / '+nw;
   const dm=Object.entries(DG.dm||DG.dmg||{}).sort((a,b)=>b[1]-a[1]).slice(0,4);
-  const key=pt+'|'+mm+':'+ss+'|'+DG.deaths+'|'+DG.alive+'|'+DG.wave+'|'+DG.ph+'|'+Math.round(bh)+'|'+dm.map(x=>x[0]+Math.round(x[1]/50)).join();
+  const key=pt+'|'+mm+':'+ss+'|'+DG.deaths+'|'+DG.alive+'|'+cw+'|'+DG.ph+'|'+Math.round(bh)+'|'+dm.map(x=>x[0]+Math.round(x[1]/50)).join();
   if(key===DGH.last)return;DGH.last=key;
   dgVar(DGH.el,'--dc',dc);dgVar(DGH.rank,'--dc',dc);dgVar(DGH.boss,'--dc',dc);
   DGH.q('.t').textContent='◆ '+def.name+' ◆';DGH.q('.p').textContent=pt;
-  let pips='';for(let i=0;i<nw;i++)pips+='<i class="pip'+(DG.wave>i||DG.ph==='boss'||DG.ph==='bossIntro'||DG.ph==='clear'?' on':DG.wave===i&&DG.ph==='wave'?' cur':'')+'"></i>';
+  let pips='';for(let i=0;i<nw;i++)pips+='<i class="pip'+(cw>i||DG.ph==='boss'||DG.ph==='bossIntro'||DG.ph==='clear'?' on':cw===i&&DG.ph==='wave'?' cur':'')+'"></i>';
   pips+='<i class="pip boss'+(DG.ph==='clear'?' on':DG.ph==='boss'?' cur':'')+'"></i>';DGH.q('.pips').innerHTML=pips;
   DGH.q('.tm').innerHTML='⏱ <b class="'+(tl<60?'low':'')+'">'+mm+':'+('0'+ss).slice(-2)+'</b>';
   DGH.q('.mo').innerHTML=DG.ph==='boss'||DG.ph==='clear'?'':'👹 <b>'+(DG.alive||0)+'</b>';

@@ -95,8 +95,9 @@ const LocalAPI=(()=>{
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
-          if(rr<wc){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
-          else if(rr<wc+ac){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
+          const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/(wz>=6?10:1),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
+          if(rr<wr){const cls=rnd01()<.6?a.cls:CLASSES[Math.floor(rnd01()*CLASSES.length)],wt=Math.floor(rnd01()*3),b=cls+'_'+wz+(wt?'_'+wt:'');give(n,'weapon',b,1);drops.push({kind:'weapon',base:b,qty:1})}
+          else if(rr<wr+ar){const b=ASLOTS[Math.floor(rnd01()*4)]+'_'+tier+'_'+ASET_KEYS[Math.floor(rnd01()*3)];give(n,'armor',b,1);drops.push({kind:'armor',base:b,qty:1})}
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
