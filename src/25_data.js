@@ -203,6 +203,17 @@ const POTIONS={
 };
 /* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
+  /* monster drops (m1..m9 by region, core from elites). Prices must match rw_mat_price */
+  m1:{name:'말랑한 점액',price:4,col:'#8dff6a',icon:'gem',mob:1,desc:'초원 몬스터의 전리품 · 개당 4G'},
+  m2:{name:'낡은 뼛조각',price:8,col:'#d8d2b8',icon:'gem',mob:1,desc:'망자의 숲 몬스터의 전리품 · 개당 8G'},
+  m3:{name:'식지 않는 불씨',price:14,col:'#ff6a2a',icon:'flame',mob:1,desc:'화염 황무지 몬스터의 전리품 · 개당 14G'},
+  m4:{name:'수정 파편',price:22,col:'#6ee7ff',icon:'gem',mob:1,desc:'수정 협곡 몬스터의 전리품 · 개당 22G'},
+  m5:{name:'뇌광 깃털',price:35,col:'#ffe24a',icon:'bolt',mob:1,desc:'뇌우 고원 몬스터의 전리품 · 개당 35G'},
+  m6:{name:'공허의 잔재',price:50,col:'#c86bff',icon:'burst',mob:1,desc:'공허의 균열 몬스터의 전리품 · 개당 50G'},
+  m7:{name:'서리 결정',price:70,col:'#bfeaff',icon:'gem',mob:1,desc:'얼어붙은 설원 몬스터의 전리품 · 개당 70G'},
+  m8:{name:'고대 유물 조각',price:90,col:'#ffb85a',icon:'shield',mob:1,desc:'고대 사막 유적 몬스터의 전리품 · 개당 90G'},
+  m9:{name:'천상의 깃',price:120,col:'#fff0b0',icon:'leaf',mob:1,desc:'천공의 성역 몬스터의 전리품 · 개당 120G'},
+  core:{name:'정예의 핵',price:500,col:'#ff5ad1',icon:'star',mob:1,desc:'엘리트 몬스터가 가끔 남기는 핵 · 개당 500G'},
   weed:{name:'잡초',price:2,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 2G · 강화 재료로도 쓰일 예정'},
   wood:{name:'목재',price:8,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 8G · 강화 재료로도 쓰일 예정'}
 };

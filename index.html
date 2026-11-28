@@ -1418,6 +1418,17 @@ const POTIONS={
 };
 /* gathering materials (sold at the shop: weed 2G, wood 8G; reserved for future upgrade recipes) */
 const MATS={
+  /* monster drops (m1..m9 by region, core from elites). Prices must match rw_mat_price */
+  m1:{name:'말랑한 점액',price:4,col:'#8dff6a',icon:'gem',mob:1,desc:'초원 몬스터의 전리품 · 개당 4G'},
+  m2:{name:'낡은 뼛조각',price:8,col:'#d8d2b8',icon:'gem',mob:1,desc:'망자의 숲 몬스터의 전리품 · 개당 8G'},
+  m3:{name:'식지 않는 불씨',price:14,col:'#ff6a2a',icon:'flame',mob:1,desc:'화염 황무지 몬스터의 전리품 · 개당 14G'},
+  m4:{name:'수정 파편',price:22,col:'#6ee7ff',icon:'gem',mob:1,desc:'수정 협곡 몬스터의 전리품 · 개당 22G'},
+  m5:{name:'뇌광 깃털',price:35,col:'#ffe24a',icon:'bolt',mob:1,desc:'뇌우 고원 몬스터의 전리품 · 개당 35G'},
+  m6:{name:'공허의 잔재',price:50,col:'#c86bff',icon:'burst',mob:1,desc:'공허의 균열 몬스터의 전리품 · 개당 50G'},
+  m7:{name:'서리 결정',price:70,col:'#bfeaff',icon:'gem',mob:1,desc:'얼어붙은 설원 몬스터의 전리품 · 개당 70G'},
+  m8:{name:'고대 유물 조각',price:90,col:'#ffb85a',icon:'shield',mob:1,desc:'고대 사막 유적 몬스터의 전리품 · 개당 90G'},
+  m9:{name:'천상의 깃',price:120,col:'#fff0b0',icon:'leaf',mob:1,desc:'천공의 성역 몬스터의 전리품 · 개당 120G'},
+  core:{name:'정예의 핵',price:500,col:'#ff5ad1',icon:'star',mob:1,desc:'엘리트 몬스터가 가끔 남기는 핵 · 개당 500G'},
   weed:{name:'잡초',price:2,col:'#7fd35a',icon:'leaf',desc:'풀숲에서 벤 잡초 · 개당 2G · 강화 재료로도 쓰일 예정'},
   wood:{name:'목재',price:8,col:'#c8935a',icon:'log',desc:'벌목한 나무 · 개당 8G · 강화 재료로도 쓰일 예정'}
 };
@@ -1723,7 +1734,7 @@ const LocalAPI=(()=>{
     login(name,pass){rd();seedMarket();const a=db.acc[name];if(!a||a.pass!==pass)E('BAD_LOGIN');a.token='t'+Math.random().toString(36).slice(2);wr();return{token:a.token,profile:pf(a)}},
     load(n,t){rd();return pf(auth(n,t))},
     claim(n,t,kills){
-      rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
+      rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;const mc=[0,0,0,0,0,0,0,0,0,0];let cores=0;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
       if(!a.gq_ts||Date.now()-a.gq_ts>30*60e3){a.gq_n=0;a.gq_ts=Date.now()}
       const zc=[0,0,0,0,0,0,0,0,0,0];let ec=0;
       for(const k of kills||[]){
@@ -1731,6 +1742,8 @@ const LocalAPI=(()=>{
         const lo=[1,8,16,26,40,60,70,78,88][z-1],hi=[10,18,28,42,62,72,80,89,99][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
         tk-=nn;got+=nn;zc[z]+=nn;if(el)ec+=nn;xx+=Math.floor(nn*(6+ml*4)*(el?6:1)*nm);gx+=Math.floor(nn*(2+ml*1.6)*(el?5:1)*nm);
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
+        const mz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length);   // monster materials
+        for(let i=0;i<nn;i++){if(el){mc[mz]+=2+Math.floor(rnd01()*3);if(rnd01()<.25)cores++}else if(rnd01()<.25)mc[mz]++}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
           const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/((wz>=6?10:1)*(wz===7||wz===8?3:1)),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
@@ -1739,6 +1752,8 @@ const LocalAPI=(()=>{
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
+      if(n!==LOCAL_SEMI){for(let i=1;i<=9;i++)if(mc[i]>0){give(n,'mat','m'+i,mc[i]);drops.push({kind:'mat',base:'m'+i,qty:mc[i]})}
+        if(cores>0){give(n,'mat','core',cores);drops.push({kind:'mat',base:'core',qty:cores})}}
       a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;
       if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=9;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
       applyXp(a,xx);wr();
@@ -6030,7 +6045,7 @@ UI.afterProfile=()=>{if(UI.rerender)UI.rerender()};
 UI.feed=d=>{
   let txt,col='#ccc';
   if(d.kind==='weapon'){txt=wName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='armor'){txt=armorName(d.base);col=TIER_COL[wTier(d.base)-1]}else if(d.kind==='mat'){const p=MATS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}else{const p=POTIONS[d.base];txt=p?p.name:d.base;col=p?p.col:'#ccc'}
-  UI.feedText('획득: '+txt,col);
+  UI.feedText('획득: '+txt+(d.qty>1?' x'+d.qty:''),col);
 };
 UI.feedText=(txt,col)=>{const f=$('feed'),d=document.createElement('div');d.textContent=txt;d.style.borderLeftColor=col||'#888';f.appendChild(d);while(f.children.length>5)f.removeChild(f.children[0]);setTimeout(()=>{try{f.removeChild(d)}catch(e){}},6000)};
 UI.chatAdd=(n,m,ch)=>{
@@ -6126,7 +6141,7 @@ function openInventory(){
           +'<button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(runePrice(sel.base,sel.enh))+')</button></div>'
           +'<div class="dim" style="margin-top:6px">룬을 장착하면 무기 효과가 추가됩니다. 이미 장착된 룬은 교체됩니다. 같은 지역 등급의 무기에 넣으면 효과가 '+Math.round((RUNE_MATCH-1)*100)+'% 강해집니다. 9개 지역의 룬('+REGION_RUNE.map(k=>RUNES[k].name.replace('의 룬','')).join('·')+')을 Ⅱ 이상으로 모두 모으면 ‘만물의 룬’으로 합성할 수 있습니다.</div>'
           +(REGION_RUNE.every(k=>myItems().some(i=>i.kind==='rune'&&i.base===k&&i.enh>=2))?'<div class="row" style="margin-top:6px"><button class="btn sm" data-a="rall">만물의 룬 합성</button></div>':'');
-      }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">강화 재료로 쓰일 수 있는 채집 재료입니다.</div>'}
+      }else if(sel.kind==='mat'){const mp=MATS[sel.base].price;det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(mp)+')</button><button class="btn sm" data-a="sellall" data-v="'+sel.id+'">전부 판매 ('+fmtG(mp*sel.qty)+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div><div class="dim" style="margin-top:6px">'+(MATS[sel.base].mob?'몬스터에게서 얻은 전리품입니다. 상점에 팔거나 경매·교환할 수 있습니다.':'강화 재료로 쓰일 수 있는 채집 재료입니다.')+'</div>'}
       else det+='<div class="row wrap" style="margin-top:8px"><button class="btn sm" data-a="usep" data-v="'+sel.base+'">사용</button><button class="btn sm sec" data-a="sell" data-v="'+sel.id+'">1개 판매 ('+fmtG(Math.floor(POTIONS[sel.base].price*.25))+')</button><button class="btn sm sec" data-a="toauc" data-v="'+sel.id+'">경매 등록</button></div>';
     }
     const msel=[...UI.multi].map(byId).filter(i=>i&&!i.eq&&!i.listed),mtot=msel.reduce((s,i)=>s+itemPrice(i)*((i.kind==='potion'||i.kind==='mat'||i.kind==='rune')?i.qty:1),0);
@@ -6220,14 +6235,14 @@ function openShop(){
       h+='</div>';
     }else{
       const items=myItems().filter(i=>!i.eq).sort(byValue);const mats=items.filter(i=>i.kind==='mat'),mv=mats.reduce((s,i)=>s+MATS[i.base].price*i.qty,0);
-      if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">채집 재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
+      if(mats.length)h+='<div class="row sp" style="margin-bottom:6px"><span class="dim">재료 '+mats.reduce((s,i)=>s+i.qty,0)+'개</span><button class="btn sm" data-a="sellmats" data-v="0">재료 모두 팔기 ('+fmtG(mv)+')</button></div>';
       h+='<div class="list" style="max-height:56vh">'+(items.length?items.map(i=>itemRow(i,{a:'sellrow',rt:'<div class="gold">'+fmtG(itemPrice(i))+'</div>'+(i.kind==='potion'||i.kind==='mat'?'<span class="dim">1개씩</span>':'')})).join(''):'<div class="dim">판매할 아이템이 없습니다.</div>')+'</div>';
     }
     return h;
   });
   UI.handlers.stab=v=>{tab=v;UI.rerender()};UI.handlers.aset=v=>{aset=v;UI.rerender()};UI.handlers.atier=v=>{atier=+v;UI.rerender()};UI.handlers.sqty=v=>{qty=+v;UI.rerender()};
   UI.handlers.buy=v=>{sfx('coin');return guarded(()=>API.call('buy',v,qty),'구매했습니다')};
-  UI.handlers.sellmats=async()=>{sfx('coin');await guarded(async()=>{for(const i of myItems().filter(x=>x.kind==='mat'))await API.call('sell',i.id,i.qty)},'채집 재료를 모두 판매했습니다')};
+  UI.handlers.sellmats=async()=>{sfx('coin');await guarded(async()=>{for(const i of myItems().filter(x=>x.kind==='mat'))await API.call('sell',i.id,i.qty)},'재료를 모두 판매했습니다')};
   UI.handlers.sellrow=async v=>{const it=byId(+v);if(!it)return;if(isGear(it)&&(it.enh>=5||(it.ench||[]).length)&&!(await UI.confirm('강화·인첸트된 장비입니다.\n정말 판매할까요?')))return;guarded(()=>API.call('sell',+v,1),'판매했습니다')};
 }
 

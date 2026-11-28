@@ -102,7 +102,7 @@ const LocalAPI=(()=>{
     login(name,pass){rd();seedMarket();const a=db.acc[name];if(!a||a.pass!==pass)E('BAD_LOGIN');a.token='t'+Math.random().toString(36).slice(2);wr();return{token:a.token,profile:pf(a)}},
     load(n,t){rd();return pf(auth(n,t))},
     claim(n,t,kills){
-      rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
+      rd();const a=auth(n,t);const night=isNightL(),nm=night?1.3:1;const mc=[0,0,0,0,0,0,0,0,0,0];let cores=0;let tk=Math.min(80,(a.tokens==null?60:a.tokens)+(Date.now()-(a.ts||Date.now()))/1000*2.5);let gx=0,xx=0,got=0;const drops=[];
       if(!a.gq_ts||Date.now()-a.gq_ts>30*60e3){a.gq_n=0;a.gq_ts=Date.now()}
       const zc=[0,0,0,0,0,0,0,0,0,0];let ec=0;
       for(const k of kills||[]){
@@ -110,6 +110,8 @@ const LocalAPI=(()=>{
         const lo=[1,8,16,26,40,60,70,78,88][z-1],hi=[10,18,28,42,62,72,80,89,99][z-1];let ml=clamp(k.ml|0||1,lo,hi);ml=Math.min(ml,a.level+10);
         tk-=nn;got+=nn;zc[z]+=nn;if(el)ec+=nn;xx+=Math.floor(nn*(6+ml*4)*(el?6:1)*nm);gx+=Math.floor(nn*(2+ml*1.6)*(el?5:1)*nm);
         if(gl&&!el){const i3=Math.min(nn,3,Math.max(0,8-a.gq_n));if(i3>0){gx+=Math.floor(i3*(2+ml*1.6)*30*nm);a.gq_n+=i3}}
+        const mz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length);   // monster materials
+        for(let i=0;i<nn;i++){if(el){mc[mz]+=2+Math.floor(rnd01()*3);if(rnd01()<.25)cores++}else if(rnd01()<.25)mc[mz]++}
         for(let i=0;i<nn;i++){
           const rr=rnd01(),wc=(el?.3:.035)*(night?1.4:1),ac=(el?.22:.03)*(night?1.4:1),tier=clamp(Math.round(ml/9+rnd01()*1.6-.6),1,8);
           const wz=Math.min(z,[1,8,16,26,40,60,70,78,88].filter(v=>v<=ml).length),wr=wc/((wz>=6?10:1)*(wz===7||wz===8?3:1)),ar=ac/(tier>=6?10:1);   /* tier 6+ drops 10x rarer */
@@ -118,6 +120,8 @@ const LocalAPI=(()=>{
           else if(rnd01()<.14){let b=ml<10?'hp1':ml<24?(rnd01()<.6?'hp1':'hp2'):(rnd01()<.5?'hp2':'hp3');if(rnd01()<.08)b=['spd','atk','def'][Math.floor(rnd01()*3)];give(n,'potion',b,1);drops.push({kind:'potion',base:b,qty:1})}
         }
       }
+      if(n!==LOCAL_SEMI){for(let i=1;i<=9;i++)if(mc[i]>0){give(n,'mat','m'+i,mc[i]);drops.push({kind:'mat',base:'m'+i,qty:mc[i]})}
+        if(cores>0){give(n,'mat','core',cores);drops.push({kind:'mat',base:'core',qty:cores})}}
       a.tokens=tk;a.ts=Date.now();a.gold+=gx;a.kills+=got;
       if(got>0){dqProg(a,'any',0,got);for(let i=1;i<=9;i++)if(zc[i]>0)dqProg(a,'zone',i,zc[i]);if(ec>0)dqProg(a,'elite',0,ec)}
       applyXp(a,xx);wr();

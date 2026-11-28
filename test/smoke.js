@@ -232,6 +232,13 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       ee='';try{await g.API.call('runeRestore',w0)}catch(e){ee=e.message}T(ee==='BAD_ITEM','nothing to restore on a bare weapon');
       edit(keep);await g.API.resume(g.SES.name,g.SES.token);await g.API.call('runeAttach',w0,runes().find(i=>i.base==='all').id);g.derive();}
   }
+  // ---- monster materials ----
+  {
+    const K='rw_local_db_v1',d=JSON.parse(localStorage.getItem(K)),acc=d.acc[g.SES.name];acc.tokens=80;acc.ts=Date.now();acc.level=99;localStorage.setItem(K,JSON.stringify(d));
+    const r=await g.API.call('claim',[{z:9,ml:93,e:false,n:30},{z:1,ml:5,e:true,n:10}]),q=b=>(r.drops.find(x=>x.base===b)||{qty:0}).qty;
+    T(q('m1')>=20&&q('m1')<=40,'elites drop 2-4 materials of their region');T(q('m9')>0&&q('m9')<=30,'normal monsters sometimes drop a material');
+    const it=g.SES.pf.items.find(i=>i.kind==='mat'&&i.base==='m1'),g0=g.SES.pf.gold;await g.API.call('sell',it.id,1);T(g.SES.pf.gold===g0+4,'a monster material sells at its price');
+  }
   // ---- dungeon ----
   {
     const K='rw_local_db_v1';const lv=g.SES.pf.level;
