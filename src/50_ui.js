@@ -101,7 +101,7 @@ function openInventory(){
         if(UARMOR[sel.base])det+='<div class="dim" style="margin-top:6px">'+UARMOR[sel.base].d+'</div>';
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
-        const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
+        const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=!SPECIAL_RUNE[sel.base]&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
         det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'<br>지역: '+runeFrom(sel.base)+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
           +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
@@ -245,7 +245,7 @@ function craftHtml(grid,pick,msg){
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
   h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+rCol(r)+'">'+ic(rIcon(r),rCol(r),24)+'<div style="font-weight:700;color:'+rCol(r)+'">'+rName(r)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?'아홉 지역 룬 각 Ⅱ 이상':isArmorBase(hit.base)?hit.grade+' · '+wStat({kind:'armor',base:hit.base,enh:0}):hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?(hit.min?'아홉 지역 룬 각 Ⅱ 이상':runeDesc(hit.out.split(':')[1],1)):isArmorBase(hit.base)?hit.grade+' · '+wStat({kind:'armor',base:hit.base,enh:0}):hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;

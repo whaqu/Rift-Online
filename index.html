@@ -1447,6 +1447,8 @@ const RECIPES=[
    pattern:['..E..','..R..','.VRV.','..D..','..D..']},
   {id:'angel_hood',base:'helm_10_cloth',grade:'전설',key:{F:'mat:m9',E:'mat:m3',S:'rune:sky',R:'rune:all'},
    pattern:['.FEF.','FSRSF','FR.RF','R...R','.....']},
+  {id:'angel_rune',out:'rune:angel',grade:'룬',key:{F:'mat:m9',S:'rune:sky',R:'rune:all'},
+   pattern:['F.F.F','.RSR.','FSRSF','.RSR.','F.F.F']},
   /* 만물의 룬: the nine region runes, each grade II or higher (min). out = a non-weapon result */
   {id:'rune_all',out:'rune:all',min:2,grade:'룬',key:Object.fromEntries(REGION_RUNE.map((k,i)=>[String(i+1),'rune:'+k])),
    pattern:['.....','.123.','.456.','.789.','.....']}
@@ -1502,12 +1504,15 @@ const RUNES={
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
   forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
   snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'}
+  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'},
+  angel:{name:'대천사 축복의 룬',col:'#fff4c2',d:'대천사의 축복이 깃들여져있다... · 대천사의 날개'}
 };
+/* crafted runes: no grade, cannot be fused upward */
+const SPECIAL_RUNE={all:40000,angel:100000};
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];
 const RUNE_POTION={fire:['atk',3],ice:['def',3],thunder:['spd',3],dark:['hp2',4],holy:['hp3',3],meadow:['hp1',8],crystal:['atk',2],storm:['spd',2],forest:['hp1',8],ember:['atk',3],void:['hp3',3],snow:['def',3],desert:['spd',3],sky:['hp3',4]};
-const runePrice=(b,g)=>b==='all'?40000:400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
+const runePrice=(b,g)=>SPECIAL_RUNE[b]||400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
 function runeBase(k,g){
   g=Math.max(1,g|0);const o={en:{},hp:0,rg:0};const a=(e,v)=>{if(v>0)o.en[e]=(o.en[e]||0)+v};
   switch(k){
@@ -1523,6 +1528,7 @@ function runeBase(k,g){
 function runeFx(s){
   if(!s)return null;const p=String(s).split(':'),k=p[0],g=Math.max(1,Math.min(3,+p[1]||1));
   if(k==='all'){const o={en:{},hp:0,rg:0,aura:true};for(const r of RUNE_KEYS){const q=runeBase(r,2);for(const e in q.en)o.en[e]=(o.en[e]||0)+q.en[e]*2;o.hp+=q.hp*2;o.rg+=q.rg*2}return o}
+  if(k==='angel')return{en:{vamp:3,armor:3},hp:.30,rg:.02,aura:true};
   if(!RUNES[k])return null;const o=runeBase(k,g);o.aura=false;return o;
 }
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
@@ -1561,7 +1567,7 @@ function questText(q){
 const questDone=c=>!!c&&c.p>=c.t;
 /* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
 function runeFrom(k){
-  if(k==='all')return '제작대';
+  if(SPECIAL_RUNE[k])return '제작대';
   const own=REGION_RUNE.includes(k)?[k]:[],ds=own.concat(REGION_RUNE.filter(d=>d!==k&&DGSRV[d][3].includes(k)));
   return ds.map(d=>ZONES[REGION_RUNE.indexOf(d)+1].name).join('·')+' 던전';
 }
@@ -1669,7 +1675,7 @@ function itemIcon(it){
   const c=gcol(it.base);if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
-  if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(it.base==='all'?'':' '+(RUNE_G[it.enh]||''))}
+  if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(SPECIAL_RUNE[it.base]?'':' '+(RUNE_G[it.enh]||''))}
   if(it.kind==='mat'){const m=MATS[it.base];return m?m.name:it.base}
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
   return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
@@ -2404,14 +2410,56 @@ function omniBuild(){
       p.rotation.y=i===4||i===6?0:i===1?-a:t*1.6+i;p.rotation.z=i===6?t*.8:0;
       const k=i===2||i===4?1+Math.sin(t*17+i)*.12:1;p.scale.set(k,k,k)});
   };
-  anim(0,0,0);return{g,anim,pieces,glows:pieces.map(p=>p.userData.glow)};
+  anim(0,0,0);return{g,anim,kind:1,pieces,glows:pieces.map(p=>p.userData.glow)};
+}
+/* 대천사 축복의 룬: great two-jointed feather wings that beat, a halo overhead and drifting feathers (back = -z) */
+function angelBuild(){
+  const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
+  const white=aumat(0xffffff,.96),cream=aumat(0xfff1c8,.92),gold=aumat(0xffd24a,.95),light=aumat(0xfff8e0,.5);
+  const fe=new THREE.ConeGeometry(.13,1,4),bead=new THREE.OctahedronGeometry(.07,0),glows=[];
+  /* one feather from (x,y) pointing at angle a (0 = outward, negative = down) */
+  const feather=(p,sd,x,y,z,a,l,w,mat)=>{const f=add(fe,mat,sd*(x+Math.cos(a)*l/2),y+Math.sin(a)*l/2,z,p);f.scale.set(w,l,.18);f.rotation.z=sd*(a-Math.PI/2);return f};
+  const bone=(p,sd,x1,y1)=>{const a=Math.atan2(y1,x1),l=Math.hypot(x1,y1),b=add(fe,gold,sd*x1/2,y1/2,.06,p);b.scale.set(.55,l*1.12,.6);b.rotation.z=sd*(a-Math.PI/2)};
+  const shine=(p,x,y,sz,op,c)=>{const s=glow(c||0xfff0b0,sz,op);s.position.set(x,y,-.05);p.add(s);glows.push(s)};
+  const wings=[-1,1].map(sd=>{
+    const arm=new THREE.Group();arm.position.set(sd*.2,1.8,-.42);g.add(arm);
+    const tip=new THREE.Group();tip.position.set(sd*1.05,.62,0);arm.add(tip);
+    bone(arm,sd,1.05,.62);bone(tip,sd,1,.3);
+    for(let i=0;i<7;i++){const k=i/6;feather(arm,sd,.12+k*.93,.07+k*.55,-.02*i,-1.5+k*.22,.8+k*.55,1.25,i%2?white:cream);
+      feather(arm,sd,.12+k*.93,.1+k*.55,.05,-1.35+k*.25,.42+k*.2,1.1,white)}
+    for(let i=0;i<9;i++){const k=i/8,a=-1.2+k*1.62,x=Math.min(1,k*1.25),y=x*.3,l=1.35+Math.sin(k*2.6)*.5;
+      feather(tip,sd,x,y,-.03*i,a,l,1.2,i%2?cream:white);
+      feather(tip,sd,x,y+.03,.05,a+.08,l*.48,1,white);
+      add(bead,gold,sd*(x+Math.cos(a)*(l+.07)),y+Math.sin(a)*(l+.07),-.03*i,tip)}
+    shine(arm,sd*.7,0,2.4,.28);shine(tip,sd*.9,.1,2.8,.32);
+    return{arm,tip,sd};
+  });
+  const halo=new THREE.Group();halo.position.set(0,3.15,0);g.add(halo);
+  add(new THREE.TorusGeometry(.42,.055,6,32),gold,0,0,0,halo).rotation.x=Math.PI/2;
+  add(new THREE.TorusGeometry(.55,.014,4,32),light,0,0,0,halo).rotation.x=Math.PI/2;
+  shine(halo,0,0,1.6,.5,0xffd873);
+  const seal=new THREE.Group();g.add(seal);
+  for(const[r,w,m]of[[1.45,.04,gold],[1.2,.016,light]])add(new THREE.TorusGeometry(r,w,4,48),m,0,0,0,seal).rotation.x=Math.PI/2;
+  const falling=[];for(let i=0;i<10;i++){const f=add(fe,i%3?white:cream,0,0,0);falling.push(f)}
+  const anim=(t,face,h)=>{
+    /* a slow, strong beat: the shoulder leads and the wing tip follows late */
+    const w=t*2.7,beat=Math.sin(w+Math.sin(w)*.45),lag=Math.sin(w-1+Math.sin(w-1)*.45);
+    for(const p of wings){p.arm.rotation.z=p.sd*(beat*.36+.04);p.arm.rotation.y=p.sd*(.22-beat*.22);p.tip.rotation.z=p.sd*lag*.46;p.tip.rotation.y=p.sd*(.1-lag*.28)}
+    halo.position.y=3.15+Math.sin(t*2)*.07-beat*.04;halo.rotation.y=t*.9;
+    seal.position.y=.09-h;seal.rotation.y=t*.3;
+    falling.forEach((f,i)=>{const k=(t*.22+i/10)%1,a=i*2.4+t*.35,r=.8+((i*7)%5)*.28,s=Math.sin(k*Math.PI)+.05;
+      f.position.set(Math.cos(a)*r,2.9-k*2.8,Math.sin(a)*r*.8-.35);f.rotation.set(Math.sin(t*2+i)*.8,a,1.57+Math.sin(t*2.4+i)*.7);f.scale.set(.55*s,.34*s,.1)});
+  };
+  anim(0,0,0);return{g,anim,kind:2,pieces:[...wings.map(p=>p.arm),halo,...falling],glows};
 }
 function omniApply(o,on){
-  if(!o||!o.g||!!on===!!o.omni)return;
-  if(on){try{o.omni=omniBuild();o.g.add(o.omni.g)}catch(e){console.error('omni aura',e)}}
-  else{o.g.remove(o.omni.g);o.omni=null}
+  const k=+on||0;
+  if(!o||!o.g||k===(o.omni?o.omni.kind:0))return;
+  if(o.omni){o.g.remove(o.omni.g);o.omni=null}
+  if(k){try{o.omni=k===2?angelBuild():omniBuild();o.g.add(o.omni.g)}catch(e){console.error('rune aura',e)}}
 }
-const myOmni=()=>SES.pf&&SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&String(i.rune||'').startsWith('all:'))?1:0;
+/* which rune aura the equipped weapon shows: 0 none, 1 만물의 룬, 2 대천사 */
+const myOmni=()=>{const w=SES.pf&&SES.pf.items.find(i=>i.kind==='weapon'&&i.eq),k=String(w&&w.rune||'').split(':')[0];return k==='all'?1:k==='angel'?2:0};
 
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 /* 만물의 검 model, built along +y like every blade. 정예의 핵 = the heart in the guard, 천상의 깃 = the feathered crossguard,
@@ -3567,7 +3615,8 @@ function updatePlayerModel(dt){
   if(PM.wau){const g=PM.wau.g,b=PM.body;g.rotation.x=air>0?b.rotation.x:0;g.position.y=air>0?b.position.y:0;g.position.z=air>0?b.position.z:0}
   PM.auraT=(PM.auraT||0)-dt;
   if(PM.auraT<=0){PM.auraT=.6;const w=SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);PM.enh=w?(w.enh||0):0;omniApply(PM,myOmni())}
-  if(PM.omni&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
+  if(PM.omni&&PM.omni.kind===2&&PM.g.visible&&Math.random()<dt*(balOn()?2:7)){const s=Math.random()<.5?-1:1,r=rnd(.5,2.2);emit(P.x+Math.cos(PM.g.rotation.y)*s*r,PM.g.position.y+rnd(1.2,2.6),P.z-Math.sin(PM.g.rotation.y)*s*r,0,rnd(-.5,.2),0,rnd(.5,.9),Math.random()<.5?0xffffff:0xffe08a,0)}
+  if(PM.omni&&PM.omni.kind===1&&PM.g.visible&&Math.random()<dt*(balOn()?3:9)){const i=rnd(0,9)|0,a=PM.animT*.9+i*TAU/9;emit(P.x+Math.cos(a)*2.05,PM.g.position.y+1.1,P.z+Math.sin(a)*2.05,0,rnd(.3,.9),0,rnd(.4,.7),parseInt(OMNI_COL[i].slice(1),16),0)}
   if(PM.enh>=7&&PM.g.visible&&Math.random()<dt*(PM.enh>=15?46:PM.enh>=11?26:12)){
     const a=fy+.9+rnd(-.5,.5),hx=P.x+Math.sin(a)*.8,hz=P.z+Math.cos(a)*.8;
     emit(hx,PM.g.position.y+rnd(.6,2.3),hz,rnd(-.3,.3),rnd(.6,1.4),rnd(-.3,.3),rnd(.5,.9),PM.enh>=15?0xff5a7a:PM.enh>=11?0xffa040:0xffe27a,0);
@@ -6425,7 +6474,7 @@ function openInventory(){
         if(UARMOR[sel.base])det+='<div class="dim" style="margin-top:6px">'+UARMOR[sel.base].d+'</div>';
         if(sel.kind==='armor')det+='<div class="dim" style="margin-top:6px">'+ASETS[aSet(sel.base)].n+' 세트 ('+ASETS[aSet(sel.base)].d+') — 같은 재질을 2·4개 장착하면 세트 효과</div>';
       }else if(sel.kind==='rune'){
-        const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=sel.base!=='all'&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
+        const rr=RUNES[sel.base]||{},ww=myItems().filter(i=>i.kind==='weapon'&&i.eq)[0],canUp=!SPECIAL_RUNE[sel.base]&&sel.enh<3&&sel.qty>=3,pot=RUNE_POTION[sel.base];
         det+='<div class="dim" style="margin:6px 0">'+esc(rr.d||'')+(sel.base==='all'?'':' · '+runeDesc(sel.base,sel.enh))+'<br>지역: '+runeFrom(sel.base)+(REGION_RUNE.includes(sel.base)?'<br>★ '+(REGION_RUNE.indexOf(sel.base)+1)+'등급('+ZONES[REGION_RUNE.indexOf(sel.base)+1].name+') 무기에 넣으면 효과 +'+Math.round((RUNE_MATCH-1)*100)+'%':'')+'</div><div class="row wrap">'
           +(ww?'<button class="btn sm" data-a="rattach" data-v="'+sel.id+'">장착 무기에 장착'+(runeMatch(ww.base,sel.base)?' ★짝':'')+'</button>':'')
           +(canUp?'<button class="btn sm sec" data-a="rfuse" data-v="'+sel.id+'">3개 합성 → '+RUNE_G[sel.enh+1]+'</button>':'')
@@ -6569,7 +6618,7 @@ function craftHtml(grid,pick,msg){
   let h='<div style="display:flex;gap:8px;align-items:flex-start">';
   h+='<div style="width:92px;flex:none"><div class="dim" style="margin-bottom:4px">제작법</div><div class="list" style="max-height:46vh">'+(list.length?list.map(r=>'<div data-a="crec" data-v="'+r.id+'" style="cursor:pointer;padding:6px;margin-bottom:5px;border-radius:8px;text-align:center;font-size:12px;border:1px solid '+rCol(r)+'">'+ic(rIcon(r),rCol(r),24)+'<div style="font-weight:700;color:'+rCol(r)+'">'+rName(r)+'</div><div class="dim">'+r.grade+'</div></div>').join(''):'<div class="dim" style="font-size:11px">재료가 모두 모이면 여기에 나타납니다.</div>')+'</div></div>';
   h+='<div style="flex:1;min-width:0"><div style="display:grid;grid-template-columns:repeat('+CRAFT_N+',1fr);gap:4px;max-width:330px;margin:0 auto">'+grid.map(cell).join('')+'</div>';
-  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?'아홉 지역 룬 각 Ⅱ 이상':isArmorBase(hit.base)?hit.grade+' · '+wStat({kind:'armor',base:hit.base,enh:0}):hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
+  h+='<div class="card" style="margin-top:8px;text-align:center">'+(hit?'<b style="color:'+rCol(hit)+'">'+rName(hit)+'</b> <span class="dim">'+(hit.out?(hit.min?'아홉 지역 룬 각 Ⅱ 이상':runeDesc(hit.out.split(':')[1],1)):isArmorBase(hit.base)?hit.grade+' · '+wStat({kind:'armor',base:hit.base,enh:0}):hit.grade+' · 공격력 '+fmtN(weaponAtk(hit.base,0))+' · '+KCLS[wCls(hit.base)])+'</span>':'<span class="dim">재료를 제작법 모양대로 놓으세요.</span>')
     +'<div class="row" style="justify-content:center;margin-top:6px"><button class="btn" data-a="cmake" '+(can?'':'disabled')+'>제작하기</button><button class="btn sec" data-a="cclear">비우기</button></div><div style="min-height:18px;margin-top:4px">'+msg+'</div></div></div></div>';
   h+='<div class="row wrap" style="margin-top:8px">'+(keys.length?keys.map(k=>'<button class="btn sm '+(pick===k?'':'sec')+'" data-a="cpick" data-v="'+k+'">'+matName(k)+' '+(craftHave(k)-grid.filter(x=>x===k).length)+'</button>').join(''):'<span class="dim">제작 재료가 없습니다.</span>')+'</div>';
   return h;
@@ -7344,7 +7393,7 @@ function onPos(d){
   p.tx=clamp(x,-WORLD_R,1500);p.tz=clamp(z,-WORLD_R,WORLD_R);
   {const du=Array.isArray(d.du)&&typeof d.du[0]==='string'&&typeof d.du[1]==='string'?{id:d.du[0].slice(0,40),vs:d.du[1],hid:!!d.du[2]}:null,ch=(p.du&&p.du.id)!==(du&&du.id);p.du=du;if(ch)UI.renderParty()}p.gl=golemData(d.gl);p.air=airData(d.a);p.tf=f;p.moving=!!d.m;p.hp=+d.h||0;p.dead=!!d.d;
   if(!p.got){p.got=true;p.x=p.tx;p.z=p.tz;p.f=p.tf}
-  if(Array.isArray(d.i)){p.live=true;p.om=!!d.i[4];if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
+  if(Array.isArray(d.i)){p.live=true;p.om=d.i[4]|0;if(applyPeerInfo(p,{lv:d.i[0],cls:d.i[1],job:d.i[2],w:d.i[3]})){UI.renderParty();UI.renderPeers()}}
 }
 const FXCOL={warrior:0xbfe4ff,mage:0x5ee7ff,archer:0x6bffb0,rogue:0xd0b0ff,cleric:0xfff2a0,lancer:0xffd0c0,monk:0xffe0a0,gunner:0xffe27a,summoner:0x6bffd0,darknight:0xb08aff};
 function onFx(d){
@@ -7697,7 +7746,7 @@ async function boot(){
   $('lhelp').textContent=IS_TOUCH?'조이스틱으로 이동, 오른쪽 버튼으로 공격합니다.':'WASD 이동 · 마우스 공격 · Q/E/R 스킬 · F 궁극기(만렙) · Space 대시 · C 마을 귀환';
   hideLoading();showTitle(mode);
 }
-if(window.__RW_TEST)window.__RW={qLineMult,RECIPES,craftMatch,recipeCells,craftHtml,openSmith,applyWeaponLook,makeHeroFor,wCan,wName,craftable,balEntities,openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
+if(window.__RW_TEST)window.__RW={myOmni,omniApply,qLineMult,RECIPES,craftMatch,recipeCells,craftHtml,openSmith,applyWeaponLook,makeHeroFor,wCan,wName,craftable,balEntities,openDaily,openQuest,questMark,questDef,interact,nearNpc,runeFrom,RUNES,keyName,API,errKo,isTyping,qTouchCheck,keyReleased,releaseAll,pushOut,WORLD,hurtPlayer,glidePose,qPlunge,keys,mv,movePlayer,tpPlayers,INV_TABS,teleportTo,startRecall,tickRecall,runEnemyEvent,myGolems,netUpdate,onPos,DU,duelRequest,duelAccept,duelSpectate,duelUpdate,duelQuit,duelShows,onDuelAsk,onDuelYes,onDuelHit,onDuelEnd,dealMob,openParty,NET,ROGUE_VAMP,golemCount,DECOYS,qCharge,qPower,trySkill,golemBuild,SK,tickSkills,byValue,get DGP(){return DGP},get entG(){return entG},CLS,buildPlayerModel,applyWeaponLook,animHeroFor,makeHeroFor,REGION_RUNE,wTier,weaponAtk,sellValue,RUNE_MATCH,WTMOD,wName,weaponRuneFx,runeMatch,runeDesc,wType,zoneAt,GUIDE,guideToggle,guideUpdate,dgClampXZ,netConnect,CLQ,hbOn,applyHB,onCb,onCh,rightClickSkill,effSpd,effAps,JOBS,DG,DGDEF,DGP,openMap,RUNES,dgStart,dgEnter,dgLeave,dgTick,dgRespawn,runeFx,applyMobDmg,startRecall,cancelRecall,GUARD,guardProbe,guardTrip,guardStart,writeSave,TUNE,save,renderer,scene,camera,sun,hemi,mouse,keys,skillOf,tryAttackInput,aimDir,onPos,syncPeers,loadSave,setTouchMode,onLevelUp,netPresence,SK,ACTS,ULT,DECOYS,skReset,tickSkills,skBusy,tickPlayer,removeMob,compactMobs,PB,entG,SES,API,LocalAPI,get P(){return P},get S(){return S},MOBS,UI,NET,frame,enterGame,boot,initLogin,derive,dealMob,flushKills,registerKill,trySkill,doAttack,usePotionKey,openInventory,openShop,openSmith,openJob,openAuction,openParty,openSettings,openGM,showTitle,interact,nearNpc,rebuild:()=>buildWorld(),WORLD,GAT,gatherArc,gatherLine,tickGather,flushGather,MATS,gatLvOf,hurtPlayer,respawn,KB,CLASSES,JOBS,JOB_KIDS,buildPlayerModel,newPlayer,nightK,huntInfo,updateAtmo,makeMobObj,makeHeroFor,animHeroFor,applyWeaponLook,WLOOK,myWeaponBase,openPerks,perkOf,MDEF,DYING,ZONES,WORLD_R,zoneAt,mobLevel,armorBonus,armorName,armorDef,armorHp,wName,wType,sellValue,enhCost,ASLOTS,ASET_KEYS,drawMini,buildWorld};
 else boot();
 
 </script>

@@ -349,14 +349,56 @@ function omniBuild(){
       p.rotation.y=i===4||i===6?0:i===1?-a:t*1.6+i;p.rotation.z=i===6?t*.8:0;
       const k=i===2||i===4?1+Math.sin(t*17+i)*.12:1;p.scale.set(k,k,k)});
   };
-  anim(0,0,0);return{g,anim,pieces,glows:pieces.map(p=>p.userData.glow)};
+  anim(0,0,0);return{g,anim,kind:1,pieces,glows:pieces.map(p=>p.userData.glow)};
+}
+/* 대천사 축복의 룬: great two-jointed feather wings that beat, a halo overhead and drifting feathers (back = -z) */
+function angelBuild(){
+  const g=new THREE.Group(),add=(geo,mat,x,y,z,p)=>mesh(geo,mat,x,y,z,p||g,false);
+  const white=aumat(0xffffff,.96),cream=aumat(0xfff1c8,.92),gold=aumat(0xffd24a,.95),light=aumat(0xfff8e0,.5);
+  const fe=new THREE.ConeGeometry(.13,1,4),bead=new THREE.OctahedronGeometry(.07,0),glows=[];
+  /* one feather from (x,y) pointing at angle a (0 = outward, negative = down) */
+  const feather=(p,sd,x,y,z,a,l,w,mat)=>{const f=add(fe,mat,sd*(x+Math.cos(a)*l/2),y+Math.sin(a)*l/2,z,p);f.scale.set(w,l,.18);f.rotation.z=sd*(a-Math.PI/2);return f};
+  const bone=(p,sd,x1,y1)=>{const a=Math.atan2(y1,x1),l=Math.hypot(x1,y1),b=add(fe,gold,sd*x1/2,y1/2,.06,p);b.scale.set(.55,l*1.12,.6);b.rotation.z=sd*(a-Math.PI/2)};
+  const shine=(p,x,y,sz,op,c)=>{const s=glow(c||0xfff0b0,sz,op);s.position.set(x,y,-.05);p.add(s);glows.push(s)};
+  const wings=[-1,1].map(sd=>{
+    const arm=new THREE.Group();arm.position.set(sd*.2,1.8,-.42);g.add(arm);
+    const tip=new THREE.Group();tip.position.set(sd*1.05,.62,0);arm.add(tip);
+    bone(arm,sd,1.05,.62);bone(tip,sd,1,.3);
+    for(let i=0;i<7;i++){const k=i/6;feather(arm,sd,.12+k*.93,.07+k*.55,-.02*i,-1.5+k*.22,.8+k*.55,1.25,i%2?white:cream);
+      feather(arm,sd,.12+k*.93,.1+k*.55,.05,-1.35+k*.25,.42+k*.2,1.1,white)}
+    for(let i=0;i<9;i++){const k=i/8,a=-1.2+k*1.62,x=Math.min(1,k*1.25),y=x*.3,l=1.35+Math.sin(k*2.6)*.5;
+      feather(tip,sd,x,y,-.03*i,a,l,1.2,i%2?cream:white);
+      feather(tip,sd,x,y+.03,.05,a+.08,l*.48,1,white);
+      add(bead,gold,sd*(x+Math.cos(a)*(l+.07)),y+Math.sin(a)*(l+.07),-.03*i,tip)}
+    shine(arm,sd*.7,0,2.4,.28);shine(tip,sd*.9,.1,2.8,.32);
+    return{arm,tip,sd};
+  });
+  const halo=new THREE.Group();halo.position.set(0,3.15,0);g.add(halo);
+  add(new THREE.TorusGeometry(.42,.055,6,32),gold,0,0,0,halo).rotation.x=Math.PI/2;
+  add(new THREE.TorusGeometry(.55,.014,4,32),light,0,0,0,halo).rotation.x=Math.PI/2;
+  shine(halo,0,0,1.6,.5,0xffd873);
+  const seal=new THREE.Group();g.add(seal);
+  for(const[r,w,m]of[[1.45,.04,gold],[1.2,.016,light]])add(new THREE.TorusGeometry(r,w,4,48),m,0,0,0,seal).rotation.x=Math.PI/2;
+  const falling=[];for(let i=0;i<10;i++){const f=add(fe,i%3?white:cream,0,0,0);falling.push(f)}
+  const anim=(t,face,h)=>{
+    /* a slow, strong beat: the shoulder leads and the wing tip follows late */
+    const w=t*2.7,beat=Math.sin(w+Math.sin(w)*.45),lag=Math.sin(w-1+Math.sin(w-1)*.45);
+    for(const p of wings){p.arm.rotation.z=p.sd*(beat*.36+.04);p.arm.rotation.y=p.sd*(.22-beat*.22);p.tip.rotation.z=p.sd*lag*.46;p.tip.rotation.y=p.sd*(.1-lag*.28)}
+    halo.position.y=3.15+Math.sin(t*2)*.07-beat*.04;halo.rotation.y=t*.9;
+    seal.position.y=.09-h;seal.rotation.y=t*.3;
+    falling.forEach((f,i)=>{const k=(t*.22+i/10)%1,a=i*2.4+t*.35,r=.8+((i*7)%5)*.28,s=Math.sin(k*Math.PI)+.05;
+      f.position.set(Math.cos(a)*r,2.9-k*2.8,Math.sin(a)*r*.8-.35);f.rotation.set(Math.sin(t*2+i)*.8,a,1.57+Math.sin(t*2.4+i)*.7);f.scale.set(.55*s,.34*s,.1)});
+  };
+  anim(0,0,0);return{g,anim,kind:2,pieces:[...wings.map(p=>p.arm),halo,...falling],glows};
 }
 function omniApply(o,on){
-  if(!o||!o.g||!!on===!!o.omni)return;
-  if(on){try{o.omni=omniBuild();o.g.add(o.omni.g)}catch(e){console.error('omni aura',e)}}
-  else{o.g.remove(o.omni.g);o.omni=null}
+  const k=+on||0;
+  if(!o||!o.g||k===(o.omni?o.omni.kind:0))return;
+  if(o.omni){o.g.remove(o.omni.g);o.omni=null}
+  if(k){try{o.omni=k===2?angelBuild():omniBuild();o.g.add(o.omni.g)}catch(e){console.error('rune aura',e)}}
 }
-const myOmni=()=>SES.pf&&SES.pf.items.some(i=>i.kind==='weapon'&&i.eq&&String(i.rune||'').startsWith('all:'))?1:0;
+/* which rune aura the equipped weapon shows: 0 none, 1 만물의 룬, 2 대천사 */
+const myOmni=()=>{const w=SES.pf&&SES.pf.items.find(i=>i.kind==='weapon'&&i.eq),k=String(w&&w.rune||'').split(':')[0];return k==='all'?1:k==='angel'?2:0};
 
 function applyWeaponLook(o,base){HQ++;try{return applyWeaponLook0(o,base)}finally{HQ--}}
 /* 만물의 검 model, built along +y like every blade. 정예의 핵 = the heart in the guard, 천상의 깃 = the feathered crossguard,

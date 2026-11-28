@@ -288,6 +288,16 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       let sv=true;try{g.openSmith();g.UI.handlers.wsel(String(h.id));g.UI.close()}catch(e){sv=false}T(sv,'angel hood opens in the smithy');
     }
     {
+      const r=g.RECIPES.find(r=>r.id==='angel_rune'),d6=JSON.parse(localStorage.getItem(K));
+      for(const[kind,b,qty]of[['mat','m9',8],['rune','sky',4],['rune','all',5]])d6.items.push({id:d6.nid++,owner:me,kind,base:b,enh:1,ench:[],qty,eq:false,listed:false,gone:false});
+      localStorage.setItem(K,JSON.stringify(d6));await g.API.resume(me,g.SES.token);
+      T(g.craftHtml(g.recipeCells(r),null,'').includes('대천사 축복의 룬'),'angel rune is shown on the table');
+      await g.API.call('craft','angel_rune');
+      const a=g.SES.pf.items.find(i=>i.kind==='rune'&&i.base==='angel'),w=g.SES.pf.items.find(i=>i.kind==='weapon'&&i.eq);T(!!a&&!!w,'angel rune is crafted');
+      await g.API.call('runeAttach',w.id,a.id);T(g.myOmni()===2,'angel rune gives the wing aura');
+      const o=g.makeHeroFor('warrior','warrior',0xffffff);g.omniApply(o,2);T(o.omni&&o.omni.kind===2&&o.omni.pieces.length>10,'angel wings are built');o.omni.anim(1.7,0,0);g.omniApply(o,1);T(o.omni.kind===1,'aura swaps');g.omniApply(o,0);T(!o.omni,'aura removed');
+    }
+    {
       const w=g.SES.pf.items.find(i=>i.base==='sword_10_3'),d4=JSON.parse(localStorage.getItem(K));d4.acc[me].gold=150000;localStorage.setItem(K,JSON.stringify(d4));await g.API.resume(me,g.SES.token);
       let e4='';try{await g.API.call('weaponRestore',w.id)}catch(e){e4=e.message}T(e4==='NO_POTION','weapon restore needs a scroll');
       await g.API.call('buy','wr',1);T(g.SES.pf.gold===0,'weapon restore scroll costs 150000');
@@ -496,7 +506,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     T(code(()=>A.gmResetInv('일반유저',u.token))==='NOT_ADMIN'&&code(()=>A.gmPassword('일반유저',u.token,'pw1234','newpass123'))==='NOT_ADMIN','normal account refused');
     await g.API.login('일반유저','pw1234');g.openGM();T(g.UI.modal!=='GM 패널','GM panel refuses normal account');
   }
-  T(Object.keys(g.RUNES).every(k=>{const s=g.runeFrom(k);return s&&!s.includes('undefined')&&(k==='all'||s.endsWith(' 던전'))})&&g.runeFrom('meadow').startsWith('초원')&&g.runeFrom('fire').includes('화염 황무지'),'every rune names its region');
+  T(Object.keys(g.RUNES).every(k=>{const s=g.runeFrom(k);return s&&!s.includes('undefined')&&(k==='all'||k==='angel'||s.endsWith(' 던전'))})&&g.runeFrom('meadow').startsWith('초원')&&g.runeFrom('fire').includes('화염 황무지'),'every rune names its region');
   // NPC quests
   {
     const A=g.LocalAPI,code=fn=>{try{fn();return''}catch(e){return e.message}};

@@ -232,6 +232,8 @@ const RECIPES=[
    pattern:['..E..','..R..','.VRV.','..D..','..D..']},
   {id:'angel_hood',base:'helm_10_cloth',grade:'전설',key:{F:'mat:m9',E:'mat:m3',S:'rune:sky',R:'rune:all'},
    pattern:['.FEF.','FSRSF','FR.RF','R...R','.....']},
+  {id:'angel_rune',out:'rune:angel',grade:'룬',key:{F:'mat:m9',S:'rune:sky',R:'rune:all'},
+   pattern:['F.F.F','.RSR.','FSRSF','.RSR.','F.F.F']},
   /* 만물의 룬: the nine region runes, each grade II or higher (min). out = a non-weapon result */
   {id:'rune_all',out:'rune:all',min:2,grade:'룬',key:Object.fromEntries(REGION_RUNE.map((k,i)=>[String(i+1),'rune:'+k])),
    pattern:['.....','.123.','.456.','.789.','.....']}
@@ -287,12 +289,15 @@ const RUNES={
   meadow:{name:'초원의 룬',col:'#7fd35a',d:'가속 · 재생'},crystal:{name:'수정의 룬',col:'#6ee7ff',d:'치명 · 수호'},storm:{name:'폭풍의 룬',col:'#9aa8ff',d:'폭발 · 연쇄 번개'},
   forest:{name:'묘지의 룬',col:'#7fe0d0',d:'수호 · 흡혈'},ember:{name:'용암의 룬',col:'#ff5a1e',d:'화상 · 치명'},void:{name:'공허의 룬',col:'#c86bff',d:'치명 · 흡혈'},
   snow:{name:'설원의 룬',col:'#bfeaff',d:'수호 · 체력'},desert:{name:'사막의 룬',col:'#ffb85a',d:'화상 · 가속'},sky:{name:'천공의 룬',col:'#fff0b0',d:'연쇄 번개 · 체력 · 재생'},
-  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'}
+  all:{name:'만물의 룬',col:'#ffd24a',d:'여러 룬 속성의 힘 ×2 · 아홉 지역 오라'},
+  angel:{name:'대천사 축복의 룬',col:'#fff4c2',d:'대천사의 축복이 깃들여져있다... · 대천사의 날개'}
 };
+/* crafted runes: no grade, cannot be fused upward */
+const SPECIAL_RUNE={all:40000,angel:100000};
 const RUNE_KEYS=['fire','ice','thunder','dark','holy','meadow','crystal','storm'];
 const RUNE_G=['','Ⅰ','Ⅱ','Ⅲ'];
 const RUNE_POTION={fire:['atk',3],ice:['def',3],thunder:['spd',3],dark:['hp2',4],holy:['hp3',3],meadow:['hp1',8],crystal:['atk',2],storm:['spd',2],forest:['hp1',8],ember:['atk',3],void:['hp3',3],snow:['def',3],desert:['spd',3],sky:['hp3',4]};
-const runePrice=(b,g)=>b==='all'?40000:400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
+const runePrice=(b,g)=>SPECIAL_RUNE[b]||400*Math.pow(3,Math.max(1,Math.min(3,g))-1);
 function runeBase(k,g){
   g=Math.max(1,g|0);const o={en:{},hp:0,rg:0};const a=(e,v)=>{if(v>0)o.en[e]=(o.en[e]||0)+v};
   switch(k){
@@ -308,6 +313,7 @@ function runeBase(k,g){
 function runeFx(s){
   if(!s)return null;const p=String(s).split(':'),k=p[0],g=Math.max(1,Math.min(3,+p[1]||1));
   if(k==='all'){const o={en:{},hp:0,rg:0,aura:true};for(const r of RUNE_KEYS){const q=runeBase(r,2);for(const e in q.en)o.en[e]=(o.en[e]||0)+q.en[e]*2;o.hp+=q.hp*2;o.rg+=q.rg*2}return o}
+  if(k==='angel')return{en:{vamp:3,armor:3},hp:.30,rg:.02,aura:true};
   if(!RUNES[k])return null;const o=runeBase(k,g);o.aura=false;return o;
 }
 const scaleFx=(o,k)=>{for(const e in o.en)o.en[e]*=k;o.hp*=k;o.rg*=k;return o};
@@ -346,7 +352,7 @@ function questText(q){
 const questDone=c=>!!c&&c.p>=c.t;
 /* which region's dungeon a rune comes from (its own region first); drop table: DGSRV */
 function runeFrom(k){
-  if(k==='all')return '제작대';
+  if(SPECIAL_RUNE[k])return '제작대';
   const own=REGION_RUNE.includes(k)?[k]:[],ds=own.concat(REGION_RUNE.filter(d=>d!==k&&DGSRV[d][3].includes(k)));
   return ds.map(d=>ZONES[REGION_RUNE.indexOf(d)+1].name).join('·')+' 던전';
 }
@@ -454,7 +460,7 @@ function itemIcon(it){
   const c=gcol(it.base);if(it.kind==='armor')return ico(ic(aSlot(it.base),c,26),c);return ico(ic(WICON[wCls(it.base)],c,26),c);
 }
 function itemName(it){
-  if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(it.base==='all'?'':' '+(RUNE_G[it.enh]||''))}
+  if(it.kind==='rune'){const r=RUNES[it.base];return (r?r.name:it.base)+(SPECIAL_RUNE[it.base]?'':' '+(RUNE_G[it.enh]||''))}
   if(it.kind==='mat'){const m=MATS[it.base];return m?m.name:it.base}
   if(it.kind==='potion'){const p=POTIONS[it.base];return p?p.name:it.base}
   return (it.kind==='armor'?armorName(it.base):wName(it.base))+(it.enh>0?' +'+it.enh:'');
