@@ -3083,7 +3083,7 @@ function updatePlayerModel(dt){
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
   const cdk=P.hb&&hbOn('my')?1.4:1;
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.qDash>0)P.qDash-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
   for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}
@@ -3969,7 +3969,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다. 12m 안에 적이 없으면 바라보는 쪽(PC는 마우스 쪽)으로 돌진합니다. 돌진 거리 12m, 10레벨마다 +1.5m.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','언제든 연타 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 적의 등 뒤로 순간이동해 급소를 벱니다. 처치하면 바로 다시 쓸 수 있습니다. 12m 안에 적이 없으면 바라보는 쪽(PC는 마우스 쪽)으로 돌진합니다. 돌진 거리 12m, 10레벨마다 +1.5m, 돌진 재사용 1초.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -4233,15 +4233,16 @@ const SK={
   r_q(c){
     const ch=c.charge==null?1:c.charge,m=aimMob(12);
     if(!m){   // nothing in reach: dash where you look (touch) or toward the mouse (PC)
+      if(P.qDash>0)return false;   // short cooldown between dashes only; strikes stay spammable
       let dx=Math.sin(P.face),dz=Math.cos(P.face);
       if(!(IS_TOUCH||mv.on)){const mx=mouse.gx-P.x,mz=mouse.gz-P.z,l=Math.hypot(mx,mz);if(l>.01){dx=mx/l;dz=mz/l}}
       const step=rqRange(),x0=P.x,z0=P.z;
       burst(x0,1.2,z0,14,0x8a6ad0,6,.4,0);blinkTo(x0+dx*step,z0+dz*step);boltFx(x0,z0,P.x,P.z,0x8a6ad0);
-      P.face=Math.atan2(dx,dz);P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;sfx('dash');return;
+      P.face=Math.atan2(dx,dz);P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;P.qDash=1;sfx('dash');return;
     }
     const bx=m.x-Math.sin(m.face||0)*(m.r+1),bz=m.z-Math.cos(m.face||0)*(m.r+1),amb=P.stealth>0;
     burst(P.x,1.2,P.z,14,0x8a6ad0,6,.4,0);boltFx(P.x,P.z,bx,bz,0x8a6ad0);blinkTo(bx,bz);P.face=Math.atan2(m.x-P.x,m.z-P.z);P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
-    sHit(c,m,(amb?10:4.2)*qPower(ch),{kb:4,crit:true,big:true});
+    sHit(c,m,(amb?12.5:5.3)*qPower(ch),{kb:4,crit:true,big:true});
     slashArc(m.x,m.z,P.face+1.6,3,2,c.col,.25);slashArc(m.x,m.z,P.face-1.6,3,2,c.col,.25);sfx('slash');hitStop(.06);netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0});
     act(1.5,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },

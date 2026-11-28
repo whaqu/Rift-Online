@@ -121,7 +121,7 @@ function updatePlayerModel(dt){
 /* ----- per-frame timers / regen ----- */
 function tickPlayer(dt){
   const cdk=P.hb&&hbOn('my')?1.4:1;
-  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
+  P.atkCd-=dt;P.comboT-=dt;if(P.comboT<=0)P.combo=0;P.iframes-=dt;P.spinT-=dt;if(P.qGuard>0)P.qGuard-=dt;if(P.qDash>0)P.qDash-=dt;if(P.golemGuard>0)P.golemGuard-=dt;if(P.dkGuard>0)P.dkGuard-=dt;P.dashCd-=dt*cdk;
   for(const k of['q','e','r','f'])P.cd[k]-=dt*cdk;
   for(const k in P.pot)P.pot[k]-=dt;
   if(P.buff){P.buff.t-=dt;if(P.buff.t<=0)P.buff=null}

@@ -609,6 +609,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       g.MOBS.splice(0);const far=g.makeMobObj(99002,'slime',g.P.x+50,g.P.z,1,false,false,false);if(!g.MOBS.includes(far))g.MOBS.push(far);far.spawning=false;
       const x0=g.P.x,z0=g.P.z,hp0=far.hp;const used=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});const moved=Math.hypot(g.P.x-x0,g.P.z-z0);
       T(used!==false&&moved>5&&far.hp===hp0,'assassin Q dashes when nothing is in range '+moved.toFixed(1));
+      {const x1=g.P.x,z1=g.P.z;far.x=x1+50;far.z=z1;T(g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}})===false&&g.P.x===x1&&g.P.qDash===1,'assassin dash has a short cooldown');g.P.qDash=0;}
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
