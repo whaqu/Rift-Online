@@ -48,7 +48,7 @@ function dealMob(m,base,o){
   if(m.duel){duelHitOut(m,d);if(kk.kb)duelPushOut(kk.kx,kk.kz,kk.kb*.22);return}
   if(m.ghost){m.hp=Math.max(1,m.hp-d);netSendHit(m,d,kk)}
   else applyMobDmg(m,d,kk,SES.name);
-  if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp*dgHealMul();if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
+  if(S.vamp&&!o.noProc){P.vampAcc+=d*S.vamp;if(P.vampAcc>=1){const v=Math.floor(P.vampAcc);P.vampAcc-=v;P.hp=Math.min(S.maxHp,P.hp+v)}}
   if(o.noProc)return;
   if(S.burnLv>0)burnMob(m,effAtk()*.25*S.burnLv);
   if(S.chainP>0&&Math.random()<S.chainP){

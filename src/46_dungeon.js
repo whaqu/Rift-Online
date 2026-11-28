@@ -200,17 +200,11 @@ function dgSpawnAdd(type,x,z,elite){
   if(elite&&def.elite){m.hp=m.maxHp=Math.round(mobHp(m.ml)*m.def.hpM*def.elite.hp);m.dmg*=def.elite.dm}   /* few strong mobs instead of crowds */
   return m;
 }
-/* boss curse (runs on every client for its own player): without a cleric's holy buff it drains hp and cripples healing */
-const dgCurseDef=()=>DG.on&&DG.ph==='boss'&&DGDEF[DG.id]&&DGDEF[DG.id].curse||null;
-const dgHealMul=()=>{const c=dgCurseDef();return c&&!(hbAr()||hbWp())?c.heal:1};
-function dgCurse(dt){
-  const c=dgCurseDef();
-  if(!c||!P||P.dead||P.x<=600){DG.curseT=null;return}
-  if(DG.curseT==null){DG.curseT=c.first;UI.toast('타락의 낙인! 성직자의 홀리 버프가 없으면 버틸 수 없습니다',3500);return}
-  DG.curseT-=dt;if(DG.curseT>0)return;DG.curseT=c.every;
-  const safe=hbAr()||hbWp(),n=Math.max(1,Math.round(S.maxHp*(safe?c.safe:c.pct)));   /* ignores armor, shields and invulnerability */
-  P.hp-=n;dmgNum(P.x,3,P.z,'낙인 -'+n,'hurt');if(!safe){vignette(1);sfx('hurt')}
-  if(P.hp<=0)playerDown();
+/* endgame hit floor: a hit takes at least this share of max hp (scaled by the attack's strength, boss base = def.hit),
+   so high armor / hp cannot ignore it; holy buffs, potions and guard skills still reduce it as usual */
+function dgHitFloor(raw){
+  const def=DG.on&&P&&P.x>600&&DGDEF[DG.id];if(!def||!def.hit)return 0;
+  return S.maxHp*Math.min(.85,def.hit*raw/(mobDmg(def.ml)*def.dmgM));
 }
 function dgBossAI(m,dt,dx,dz,d){
   const bk=m.bk,def=DGDEF[bk],enr=m.hp<m.maxHp*.35,en=enr?1.2:1,cdm=(enr?.7:1)*(def&&def.cdm||1);
@@ -250,7 +244,7 @@ function dgEnter(id){
   const def=DGDEF[id],A=dgBuildArena();
   if(GUIDE.id)guideStop();
   DG.on=true;DG.id=id;DG.zone=Object.assign({},ZONES[def.zid],{name:def.name,lo:def.need,hi:def.need+12});
-  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.curseT=null;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
+  DG.ph='intro';DG.pt=3.5;DG.t=0;DG.wave=0;DG.sub=0;DG.dmg={};DG.deaths=0;DG.boss=null;DG.res=null;DG.begin=Date.now();DG.alive=0;DG.bh=100;DG.lastSt=0;
   DG.leader=NET.party?NET.party.leader:SES.name;
   DG.atmo=def.atmo;DG.shapes=null;
   A.gm.color.setHex(def.fl);A.wm.color.setHex(def.wl);A.pm.color.setHex(def.wl+0x101012);if(A.tm)A.tm.color.setHex(def.wl+0x08080a);A.rm.color.setHex(def.ring);
@@ -300,7 +294,7 @@ async function openPortal(p){
     if(await UI.confirm(def.name+'에 합류할까요?'))dgJoin(p.dg);
     return;
   }
-  const txt=def.name+'\n'+(party?'파티 입장: 레벨 제한 없음':'입장 Lv.'+def.need+' 이상 (파티는 제한 없음)')+' · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)'+(def.curse?'\n⚠ 보스전은 성직자의 홀리 버프가 필수입니다.':'')+'\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
+  const txt=def.name+'\n'+(party?'파티 입장: 레벨 제한 없음':'입장 Lv.'+def.need+' 이상 (파티는 제한 없음)')+' · 웨이브 '+def.waves.length*(def.per||1)+'회 + 보스 · 제한 10분\n피해 기여도 순위에 따라 보상이 달라집니다.\n(1위: 지역 룬 또는 지역 무기 · 2~5위: 골드/물약/룬 확률)'+(def.hit?'\n⚠ 극난이도: 성직자(버퍼) 없이는 클리어가 거의 불가능합니다.':'')+'\n사망은 3회까지 부활합니다.'+(party?'\n파티원에게 입장 알림이 전송됩니다.':'');
   if(!(await UI.confirm(txt)))return;
   dgStart(p.dg);
 }
@@ -520,7 +514,7 @@ function dgUpdate(dt){
     if(P&&P.x>600&&!P.dead&&!DU.on){P.x=SPAWN.x;P.z=SPAWN.z;P.vx=P.vz=0;cam.x=P.x;cam.z=P.z;worldG.visible=true;UI.zone=-1;UI.toast('마을로 돌아왔습니다')}   // safety net: never stay in the arena outside a run
     return;
   }
-  dgScene(dt);dgCurse(dt);
+  dgScene(dt);
   if(DG.ph!=='clear'&&DG.ph!=='fail'&&(NET.party?NET.party.leader:SES.name)!==DG.leader){dgFail('파티 구성이 바뀌어 던전에서 나갑니다');return}
   DGH.t+=dt;if(DGH.t<.2)return;DGH.t=0;
   const def=DGDEF[DG.id];if(!def||!DGH.el)return;
