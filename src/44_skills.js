@@ -16,7 +16,7 @@ const KITDEF={
   archer:[sd('a_q','도탄 화살',6,0x6bffb0,'bow','적과 적 사이를 8번 튕기는 화살을 쏩니다.'),
     sd('a_e','올가미 덫',11,0xffc96a,'star','앞쪽에 덫 3개를 던집니다. 밟으면 묶입니다.'),
     sd('a_f','하늘을 덮는 화살',55,0xbfffd8,'rain','3초 동안 주변의 모든 적에게 화살이 꽂힙니다.')],
-  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적에게 파고드는 공격 사이 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적 뒤로 스며들어 두 번 벱니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
+  rogue:[sd('r_q','암습',3,0xff4a7a,'sword','적에게 파고드는 공격 사이 0.5초 대기. 언제든 사용 가능(게이지가 찰수록 강함, 가득이면 특히 강함). 사용 후 0.8초간 받는 피해 60% 감소. 처치하면 즉시 가득. 12m 안의 적에게 파고들어 두 번 베고 뒤로 넘어갑니다. 누르고 있으면 주변 적들 사이를 미끄러지며 계속 베고, 적이 없으면 미끄러지듯 달립니다. 빠르게 두 번 누르고 꾹 누르면 망토로 활공하고(활공 중에는 공격을 맞지 않음), 활공 중에는 연못·작은 돌·작은 나무를 넘어갑니다. 손을 떼면 바로 내려오고, 내려오다 다시 누르면 다시 떠오릅니다. 적 위에서 다시 누르면 내려찍습니다. 처치하면 바로 다시 쓸 수 있습니다.'),
     sd('r_e','은신',12,0x8a6ad0,'close','모습을 감춰 적의 시선을 끊습니다. 은신 중 첫 공격은 2.5배입니다.'),
     sd('r_f','만월 학살',60,0xff2a6a,'burst','그림자 속에서 주변 적을 차례로 베고 마지막에 일제히 터뜨립니다.')],
   cleric:[sd('c_q','스몰 힐',4,0x9fffd0,'heart','[Lv10] 바라본 파티원을 한 번 더 누르면 치유합니다. 우클릭: 자신 치유.'),
@@ -286,8 +286,8 @@ const SK={
     if(qHopWait()){if(qHeld())P.qRun=true;return false}   // still catching breath between enemies
     P.qRun=false;m.qT=P.qSeq=(P.qSeq||0)+1;
     const ch=c.charge==null?1:c.charge,amb=P.stealth>0,mult=(amb?6.25:2.65)*qPower(ch);
-    // first cut lands behind the target; chained cuts slide straight through it
-    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1,fx=chain?dx/d:-Math.sin(m.face||0),fz=chain?dz/d:-Math.cos(m.face||0),bx=m.x+fx*(m.r+1),bz=m.z+fz*(m.r+1);
+    // dash to the near side, cut twice, then vault over the target and land behind it
+    const dx=m.x-P.x,dz=m.z-P.z,d=Math.hypot(dx,dz)||1,ux=dx/d,uz=dz/d,bx=m.x-ux*(m.r+1),bz=m.z-uz*(m.r+1);
     P.stealth=0;P.iframes=Math.max(P.iframes,.4*ch);P.qGuard=.8;   // chaining Q keeps a 60% damage reduction up
     const cut=(kb,side)=>{if(!alive(m))return;P.face=Math.atan2(m.x-P.x,m.z-P.z);
       const fin=side<0;   // light first cut, heavy second: freeze, shake, white cross and a ring
@@ -297,7 +297,9 @@ const SK={
       netFx('slash',{x:m.x,z:m.z,f:P.face,r:3,a:2,c:0})};
     const glide=(x,z,dur,done)=>{P.face=Math.atan2(x-P.x,z-P.z);P.leap={t:0,dur,x0:P.x,z0:P.z,x1:x,z1:z,h:0,smooth:true,done}};
     act(.3,()=>{emit(P.x,1,P.z,0,0,0,.35,0x8a6ad0,0)});sfx('dash');
-    glide(bx,bz,.17,()=>{cut(0,1.6);glide(P.x,P.z,.08,()=>{cut(2,-1.6);P.qNext=(P.qClock||0)+Q_HOP;P.qMob=m;if(qHeld())P.qRun=true})});
+    glide(bx,bz,.17,()=>{cut(0,1.6);glide(P.x,P.z,.08,()=>{cut(2,-1.6);P.qNext=(P.qClock||0)+Q_HOP;P.qMob=m;
+      const ox=m.x+ux*(m.r+2.2),oz=m.z+uz*(m.r+2.2);sfx('dash',.6);
+      P.leap={t:0,dur:.2,x0:P.x,z0:P.z,x1:ox,z1:oz,h:2.4,done:()=>{if(alive(m))P.face=Math.atan2(m.x-P.x,m.z-P.z);burst(P.x,.2,P.z,6,0x8a6ad0,4,.3,4);if(qHeld())P.qRun=true}}})});
     act(1.8,()=>{if(!m.dead)return;if(m.executed)return true;m.executed=true;P.cd.q=0;dmgNum(P.x,3.2,P.z,'처형','info');return true});
   },
   r_e(c){P.stealth=5;burst(P.x,1.2,P.z,30,0x5a3a8a,7,.8,-1);shockRing(P.x,P.z,3,c.col,.4);sfx('dash');
@@ -790,7 +792,7 @@ const Q_HOP=.5;
 const qHopWait=()=>(P.qNext||0)>(P.qClock||0);
 function qCircle(dt){
   const m=P.qMob;if(!m||m.dead||d2(m.x,m.z,P.x,P.z)>64)return;
-  const dx=P.x-m.x,dz=P.z-m.z,side=(P.qSeq||0)%2?1:-1,a=Math.atan2(dx,dz)+side*4.2*dt,r=lerp(Math.hypot(dx,dz),m.r+1.8,1-Math.exp(-dt*8));
+  const dx=P.x-m.x,dz=P.z-m.z,side=(P.qSeq||0)%2?1:-1,a=Math.atan2(dx,dz)+side*1.4*dt,r=lerp(Math.hypot(dx,dz),m.r+1.8,1-Math.exp(-dt*8));
   blinkTo(m.x+Math.sin(a)*r,m.z+Math.cos(a)*r);P.face=Math.atan2(m.x-P.x,m.z-P.z);
   emit(P.x,.9,P.z,0,.4,0,.3,0xff4a7a,0);
 }
