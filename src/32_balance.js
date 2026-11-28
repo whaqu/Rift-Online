@@ -7,15 +7,14 @@
    3. instanced decor is split into 20-unit chunks; gather nodes are re-pointed to the chunk holding their instance;
    4. every frame, a chunk or prop is drawn only if its box is inside the view frustum and within BAL.rd of the camera.
       Shadow casters just off-screen are still drawn, so shadows near the view do not pop.
-   Post-processing (bloom, grade) is off and the shadow map is 1024 instead of 1536; pixel ratio is capped at 1. */
-const BAL={rd:70,gd:42,nd:26,sn:2,keep:20,cell:24,dcell:10,mcell:40,macro:96,big:150,pad:.5};   // rd: far limit · gd: grass limit (blades shrink away) · nd: mob outlines hidden beyond · sn: shadow map refreshed every sn frames
+   Post-processing (bloom, grade) is off and the shadow map is 1024 instead of 1536; resolution stays the same as normal mode. */
+const BAL={rd:70,gd:66,nd:26,sn:2,keep:20,cell:24,dcell:10,mcell:40,macro:96,big:150,pad:.5};   // rd: far limit · gd: grass limit (blades shrink away) · nd: mob outlines hidden beyond · sn: shadow map refreshed every sn frames
 /* adaptive quality: the game watches its own frame time and steps between 4 levels so a slow PC settles near 60 fps */
 const BQ={lv:0,acc:0,n:0,upAt:0,downAt:0,f:0,hold:[0,0,0,0],
-  L:[{pr:1,rd:70,gd:42,nd:26,sn:2},{pr:1,rd:58,gd:34,nd:22,sn:2},{pr:.85,rd:50,gd:30,nd:20,sn:3},{pr:.72,rd:42,gd:26,nd:16,sn:3}]};
+  L:[{rd:70,gd:66,nd:26,sn:2},{rd:58,gd:56,nd:22,sn:2},{rd:50,gd:52,nd:20,sn:3},{rd:42,gd:46,nd:16,sn:3}]};   // resolution is never lowered; grass stays visible farther
 function balApply(lv){
   BQ.lv=lv;const q=BQ.L[lv];BAL.rd=q.rd;BAL.gd=q.gd;BAL.nd=q.nd;BAL.sn=q.sn;
   GRASS_U.uFade.value.set(q.gd-10,q.gd);
-  if(Math.abs(renderer.getPixelRatio()-q.pr)>.01){renderer.setPixelRatio(q.pr);try{resize()}catch(e){}}
 }
 function balAdapt(ms){
   if(!balOn()||G.mode!=='play'||document.hidden||ms>400)return;   // hitches (tab switch, loading) are not a quality signal
@@ -29,7 +28,7 @@ function balOn(){return !!save.balance}
 /* renderer-level settings that follow the balance flag (no reload needed) */
 function applyGfxMode(){
   const on=balOn();
-  renderer.setPixelRatio(on?BQ.L[BQ.lv].pr:Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,IS_TOUCH?1.5:1.75));   // same resolution with or without balance mode
   const want=on?1024:1536;
   if(sun.shadow.mapSize.x!==want){sun.shadow.mapSize.set(want,want);if(sun.shadow.map){sun.shadow.map.dispose();sun.shadow.map=null}}
   const ty=on?THREE.PCFShadowMap:THREE.PCFSoftShadowMap;       // hard-edged PCF is clearly cheaper on integrated GPUs
