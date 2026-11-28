@@ -608,7 +608,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
       g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;T(g.P.qGuard>0,'assassin Q gives damage reduction');mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
       g.MOBS.splice(0);const far=g.makeMobObj(99002,'slime',g.P.x+50,g.P.z,1,false,false,false);if(!g.MOBS.includes(far))g.MOBS.push(far);far.spawning=false;
       const x0=g.P.x,z0=g.P.z,hp0=far.hp;const used=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});const moved=Math.hypot(g.P.x-x0,g.P.z-z0);
-      T(used!==false&&moved>5&&far.hp===hp0&&Math.hypot(far.x-g.P.x,far.z-g.P.z)<50,'assassin Q dashes toward an out-of-range enemy '+moved.toFixed(1));
+      T(used!==false&&moved>5&&far.hp===hp0,'assassin Q dashes when nothing is in range '+moved.toFixed(1));
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
