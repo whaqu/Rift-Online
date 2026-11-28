@@ -31,7 +31,7 @@ const KITDEF={
   gunner:[sd('g_q','자동 포탑',14,0xffd24a,'gun','알아서 사격하는 포탑을 설치합니다.'),
     sd('g_e','화염 방사',10,0xff7a2a,'flame','조준 방향으로 불길을 2초간 뿜습니다.'),
     sd('g_f','위성 광선',60,0x7fd6ff,'bolt','조준을 따라다니는 광선을 4초간 내리쏩니다.')],
-  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
+  summoner:[sd('s_q','골렘 소환',16,0xc8a860,'people','10레벨마다 골렘 +1. 30레벨부터 철갑 골렘이 지켜 주어 받는 피해 30% 감소. 적의 시선을 끌며 내려치는 골렘을 부릅니다.'),
     sd('s_e','정령 벌떼',9,0x6bffd0,'star','적을 쫓아가는 도깨비불 14개를 풉니다.'),
     sd('s_f','고대 거신',70,0x9fffe8,'burst','거신이 나타나 적진을 네 번 짓밟습니다.')],
   darknight:[sd('d_q','피의 낫',8,0xff3a6a,'swap','돌아오는 거대한 낫을 던져 맞힌 만큼 회복합니다.'),
@@ -97,7 +97,8 @@ function part(g,k,hex,sx,sy,sz,x,y,z,em){const m=new THREE.Mesh(geo(k),em?EM(hex
 function flatRing(g,r,hex,op,y){const m=new THREE.Mesh(shared.ringG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.13;m.scale.set(r,r,r);g.add(m);return m}
 function flatDisc(g,r,hex,op,y){const m=new THREE.Mesh(shared.discG,flatMat(hex,op));m.userData.own=1;m.rotation.x=-Math.PI/2;m.position.y=y||.11;m.scale.set(r,r,r);g.add(m);return m}
 /* summoned stone golem: faceted rocks with joints that overlap (no floating limbs), glowing eyes and core, mossy shoulders */
-function golemBuild(){
+const golemCount=lv=>1+Math.floor((lv||1)/10);
+function golemBuild(armored){
   const g=grp(),stone=M(0x8f8268),dark=M(0x675c48),light=M(0xab9d7e),moss=M(0x5f8a4a),glowM=EM(0x6bffd0,1.4);
   const rock=(p,mat,sx,sy,sz,x,y,z)=>{const m=mesh(shared.golemRock||(shared.golemRock=new THREE.DodecahedronGeometry(.5,0)),mat,x,y,z,p,false);m.scale.set(sx,sy,sz);return m};
   const legs=[-1,1].map(s=>{const l=grp(s*.55,1.45,0,g);rock(l,dark,.85,1.1,.85,0,-.4,0);rock(l,stone,.95,.9,1,0,-.95,.04);rock(l,dark,1.15,.55,1.35,0,-1.25,.16);return l});
@@ -109,6 +110,9 @@ function golemBuild(){
   const arms=[-1,1].map(s=>{const a=grp(s*1.5,3,0,g);rock(a,dark,1.3,1.2,1.3,s*.05,.05,0);rock(a,moss,1,.42,1,s*.08,.6,0);
     rock(a,stone,.6,1.25,.6,s*.35,-.75,0);rock(a,light,.8,1.1,.8,s*.55,-1.55,.15);rock(a,dark,1.25,1.1,1.25,s*.65,-2.2,.3);return a});
   for(let i=0;i<3;i++){const k=mesh(shared.golemShard||(shared.golemShard=new THREE.OctahedronGeometry(.28,0)),glowM,(i-1)*.55,3.2+(i===1?.25:0),-.8,g,false);k.scale.set(.7,1.7,.7);k.rotation.z=(1-i)*.35}
+  if(armored){const iron=M(0xaab6cc,{metalness:.65,roughness:.35}),trim=M(0xe0bc55,{metalness:.6,roughness:.35});   // Lv30+: plated
+    BX(1.7,1.15,.3,iron,0,2.55,.82,g);BX(1.75,.14,.34,trim,0,3.1,.82,g);part(g,'ball',0x6bffd0,.4,.4,.2,0,2.45,1,1.5);BX(1.15,.3,1.05,iron,0,4.3,.35,g);BX(.16,.4,.9,trim,0,4.55,.35,g);
+    for(const a of arms){const s=a.position.x<0?-1:1;BX(1.4,.4,1.45,iron,s*.08,.62,0,a);BX(1.45,.12,1.5,trim,s*.08,.42,0,a);BX(1.35,.7,1.35,iron,s*.65,-2.15,.3,a)}}
   return{g,arms,legs};
 }
 /* run `up(t,dt)` each frame for `life` seconds; `g` is removed afterwards. returning true from up ends early */
@@ -371,15 +375,25 @@ const SK={
   },
   /* 소환사 */
   s_q(c){
-    const{g,arms,legs}=golemBuild();g.position.set(P.x+c.a.x*3,0,P.z+c.a.z*3);
-    const decoy={x:g.position.x,z:g.position.z,pull:.35};DECOYS.push(decoy);
-    let cd=.8,swing=0;
-    act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
-      const m=nearTo(g.position.x,g.position.z,16)||null,tx=m?m.x:P.x,tz=m?m.z:P.z,dx=tx-g.position.x,dz=tz-g.position.z,d=Math.hypot(dx,dz)||1;
-      if(d>(m?m.r+1.8:3.5)){g.position.x+=dx/d*5*dt;g.position.z+=dz/d*5*dt}g.rotation.y=Math.atan2(dx,dz);decoy.x=g.position.x;decoy.z=g.position.z;
-      if(m&&d<m.r+2.6&&cd<=0){cd=1.3;swing=1;const x=g.position.x+dx/d*2,z=g.position.z+dz/d*2;sArea(c,x,z,3,2,{kb:8,freeze:.5,big:true});boom(x,z,3,0xc8a860,.35)}},
-      ()=>{const i=DECOYS.indexOf(decoy);if(i>=0)DECOYS.splice(i,1);burst(g.position.x,2,g.position.z,24,0xc8a860,7,.6,12)},g);
-    boom(g.position.x,g.position.z,2.5,c.col,.4);netFx('nova',{x:g.position.x,z:g.position.z,r:3,c:c.col});
+    /* one golem, plus one per 10 levels. Golems cannot be hit, so from Lv30 their armor protects the summoner instead */
+    const lv=SES.pf.level||1,n=golemCount(lv),armored=lv>=30,size=n>3?.75:1,alive=[];
+    const cx=P.x+c.a.x*3,cz=P.z+c.a.z*3;
+    if(armored)P.golemGuard=12;
+    for(let k=0;k<n;k++){
+      const{g,arms,legs}=golemBuild(armored),an=k/n*TAU,off=n>1?2+n*.22:0;
+      g.position.set(cx+Math.sin(an)*off,0,cz+Math.cos(an)*off);g.scale.setScalar(size);alive.push(g);
+      const decoy={x:g.position.x,z:g.position.z,pull:.35};DECOYS.push(decoy);
+      let cd=.8+k/n*.7,swing=0;
+      act(12,(t,dt)=>{cd-=dt;swing=Math.max(0,swing-dt*3);const step=Math.sin(t*6+k)*.35;arms.forEach((a,i)=>a.rotation.x=-swing*2.4+(i?-step:step)*.4*(1-swing));legs.forEach((l,i)=>l.rotation.x=i?step:-step);
+        const m=nearTo(g.position.x,g.position.z,16)||null,tx=m?m.x:P.x+Math.sin(an)*off,tz=m?m.z:P.z+Math.cos(an)*off,dx=tx-g.position.x,dz=tz-g.position.z,d=Math.hypot(dx,dz)||1;
+        if(d>(m?m.r+1.8:1.5)){g.position.x+=dx/d*5*dt;g.position.z+=dz/d*5*dt}g.rotation.y=Math.atan2(dx,dz);
+        for(const q of alive){if(q===g)continue;const ex=g.position.x-q.position.x,ez=g.position.z-q.position.z,e=Math.hypot(ex,ez);if(e>.01&&e<2.4*size){g.position.x+=ex/e*3*dt;g.position.z+=ez/e*3*dt}}   // don't stack
+        decoy.x=g.position.x;decoy.z=g.position.z;
+        if(m&&d<m.r+2.6&&cd<=0){cd=1.3;swing=1;const x=g.position.x+dx/d*2,z=g.position.z+dz/d*2;sArea(c,x,z,3,2,{kb:8,freeze:.5,big:true});boom(x,z,3,0xc8a860,.35)}},
+        ()=>{const i=DECOYS.indexOf(decoy);if(i>=0)DECOYS.splice(i,1);burst(g.position.x,2,g.position.z,24,0xc8a860,7,.6,12)},g);
+    }
+    if(armored)shockRing(P.x,P.z,3,0xaecbff,.4);
+    boom(cx,cz,2.5,c.col,.4);netFx('nova',{x:cx,z:cz,r:3,c:c.col});
   },
   s_e(c){
     for(let i=0;i<14;i++){
