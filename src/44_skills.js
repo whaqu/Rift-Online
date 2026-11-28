@@ -752,7 +752,7 @@ function qGlideStart(){
 function qGlideStep(dt){
   const G=P.glide;G.t+=dt;G.off=qHeld()?0:G.off+dt;   // let go: float a moment so the plunge press fits in
   if(P.dead||P.stunT>0){P.glide=null;return}
-  if(!G.land&&(G.t>2.5||G.off>.6)){G.land=1e-6;G.from=G.h}
+  if(!G.land&&G.off>.6){G.land=1e-6;G.from=G.h}
   let open;
   if(G.land){   // sink back down softly
     G.land+=dt;const u=Math.min(1,G.land/GLIDE_DOWN),k=u*u*(3-2*u);G.h=G.from*(1-k);open=1-k;

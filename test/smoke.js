@@ -618,7 +618,9 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
         T(!g.P.glide&&!g.P.leap&&v.hp<1e12,'plunge strikes the enemy below');g.keys.q=false;g.P.qRun=false;g.P.glideCd=0;g.MOBS.splice(0);
         {g.P.qLast=null;g.keys.q=true;g.P.qArm=g.P.qClock;for(let i=0;i<6;i++)g.movePlayer(.05);const h0=g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);const h1=g.P.glide.h;
           g.keys.q=false;for(let i=0;i<17;i++)g.movePlayer(.05);const h2=g.P.glide&&g.P.glide.h;for(let i=0;i<8;i++)g.movePlayer(.05);
-          T(h0<h1&&h2>0&&h2<h1&&!g.P.glide,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));g.P.glideCd=0;}g.P.x=x1;g.P.z=z1;}
+          {g.P.qLast=null;g.keys.q=true;g.P.glideCd=0;g.P.qArm=g.P.qClock;for(let i=0;i<120;i++)g.movePlayer(.05);T(g.P.glide&&!g.P.glide.land&&g.P.glide.t>5,'glide has no time limit');
+            const o={body:{rotation:{},position:{}},legL:{rotation:{x:0}},legR:{rotation:{x:0}},armL:{rotation:{x:0,z:0}},armR:{rotation:{x:0,z:0}}};g.glidePose(o,0,1);T(o.legL.rotation.x>0&&o.body.rotation.x>0&&o.armL.rotation.z<0,'glide pose replaces walking');g.keys.q=false;g.P.glide=null;}
+          T(h0<h1&&h2>0&&h2<h1,'glide rises and sinks smoothly '+[h0,h1,h2].map(v=>(+v).toFixed(1)));g.P.glideCd=0;}g.P.x=x1;g.P.z=z1;}
       g.P.leap=null;g.MOBS.splice(0);
       {const x1=g.P.x,z1=g.P.z;g.keys.q=true;const r=g.SK.r_q({atk:1,a:{x:1,z:0},col:0,m:1,sk:{}});for(let i=0;i<5;i++)g.movePlayer(.05);const d=Math.hypot(g.P.x-x1,g.P.z-z1);
         g.keys.q=false;g.movePlayer(.05);T(r===false&&d>1&&!g.P.qRun,'holding assassin Q glides without a target '+d.toFixed(1));}
