@@ -365,13 +365,23 @@ function makeLabel(text,cls){
 
 /* ---------------- input ---------------- */
 const keys={},mouse={x:innerWidth/2,y:innerHeight/2,down:false,gx:0,gz:1},mv={x:0,z:0,on:false,atk:false};
+/* which key name each physical key went down as: the release can carry another name (Korean/English switch, modifiers) */
+const downAs={};
 addEventListener('keydown',e=>{
   if(e.target&&e.target.tagName==='INPUT')return;
-  const k=e.key.toLowerCase();if(k===' '||k==='tab'||k.startsWith('arrow'))e.preventDefault();
+  const k=e.key.toLowerCase();if(e.code)downAs[e.code]=k;if(k===' '||k==='tab'||k.startsWith('arrow'))e.preventDefault();
   if(!keys[k]){keys[k]=true;if(window.onKeyPress)window.onKeyPress(k,e)}
 });
-addEventListener('keyup',e=>{keys[e.key.toLowerCase()]=false});
-addEventListener('blur',()=>{for(const k in keys)keys[k]=false;mouse.down=false});
+function keyReleased(e){keys[String(e.key).toLowerCase()]=false;const k=downAs[e.code];if(k){keys[k]=false;delete downAs[e.code]}if(e.code==='KeyQ')keys.q=false}
+addEventListener('keyup',keyReleased);
+/* drop everything held when the release may never arrive */
+function releaseAll(){for(const k in keys)keys[k]=false;mouse.down=false;mv.q=false;mv.qp=null}
+addEventListener('blur',releaseAll);
+addEventListener('contextmenu',releaseAll);
+addEventListener('visibilitychange',()=>{if(document.hidden)releaseAll()});
+/* safety nets for a held Q button: no finger left on the screen, or the mouse button is already up */
+for(const n of['touchend','touchcancel'])addEventListener(n,e=>{if(e.touches&&e.touches.length===0){mv.q=false;mv.qp=null}},true);
+addEventListener('pointermove',e=>{if(mv.qp!=null&&e.pointerId===mv.qp&&e.buttons===0){mv.q=false;mv.qp=null}},true);
 canvas.addEventListener('mousedown',e=>{if(e.button===0){mouse.down=true;auInit()}else if(e.button===2&&typeof rightClickSkill==='function'){rightClickSkill()}});
 addEventListener('mouseup',e=>{if(e.button===0)mouse.down=false});
 addEventListener('mousemove',e=>{mouse.x=e.clientX;mouse.y=e.clientY});
