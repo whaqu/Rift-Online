@@ -561,7 +561,7 @@ const step=(n,dt)=>{for(let i=0;i<n;i++)g.frame(dt||.016)};
     g.P.cd.q=4;const m={x:g.P.x+2,z:g.P.z,r:1,face:0,hp:1,dead:true,def:{}};
     T(g.golemBuild().legs.length===2,'golem model builds');
     { const keep=g.MOBS.splice(0);const mm=g.makeMobObj(99001,'slime',g.P.x+2,g.P.z,1,false,false,false);if(!g.MOBS.includes(mm))g.MOBS.push(mm);mm.spawning=false;mm.hp=mm.maxHp=1e12;
-      g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
+      g.SK.r_q({atk:1,a:{x:0,z:1},col:0,m:1,sk:{}});g.P.cd.q=4;g.tickSkills(.1);const before=g.P.cd.q;T(g.P.qGuard>0,'assassin Q gives damage reduction');mm.dead=true;g.tickSkills(.1);T(before===4&&g.P.cd.q===0,'assassin Q resets on a kill confirmed late');
       g.MOBS.splice(0);g.MOBS.push(...keep); }
     T(g.CLS.gunner.atk===3.8&&g.CLS.gunner.aps===3.3,'gunner nerf');
     const a={id:1,kind:'weapon',base:'warrior_2',enh:0,ench:[]},b={id:2,kind:'weapon',base:'warrior_5',enh:0,ench:[]},c={id:3,kind:'potion',base:'hp1',qty:99};
