@@ -188,7 +188,7 @@ const LocalAPI=(()=>{
       rd();const a=auth(n,t);const need=(DGSRV[dg]||[])[0];if(!need)E('BAD_ARGS');if(party!==true&&a.level<need)E('LOW_LEVEL');a.dgRun={dg,ts:Date.now()};wr();return{run:1};
     },
     dgEnd(n,t,dg,rank){
-      rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<45000)E('TOO_FAST');a.dgRun=null;
+      rd();const a=auth(n,t);const r=a.dgRun;if(!r||r.dg!==dg)E('NO_RUN');if(Date.now()-r.ts<10000)E('TOO_FAST');a.dgRun=null;
       const rk=clamp(rank|0||5,1,5),[,base,zid,els,pot]=DGSRV[dg],zr=dg;
       const gd=Math.floor(base*[1,.6,.5,.4,.35][rk-1]);a.gold+=gd;const rw=[{t:'gold',n:gd}];
       if(rk===1){
