@@ -190,22 +190,28 @@ function auraBuild(kind,form){
   const halo=(c,y,sz,op)=>{const s=glow(c,sz,op);s.position.set(0,y,0);g.add(s)};
   let anim;
   if(kind==='dark'){
-    /* 크로마이스: void seal on the ground, black blades orbiting, wisps of darkness rising, a red eclipse behind the back */
+    /* 크로마이스: void seal on the ground, black blades orbiting, wisps of darkness rising, wings of darkness on the back */
     const black=aumat(0x14081f,.92),vio=aumat(0x8a2cff,.85),deep=aumat(0x4a0f8a,.7),red=aumat(0xff1f4a,.9);
     const seal=new THREE.Group();seal.position.y=.09;g.add(seal);
     for(const[r,w,m]of[[1.55,.05,deep],[1.25,.02,vio],[.75,.018,red]])add(new THREE.TorusGeometry(r,w,4,48),m,0,0,0,seal).rotation.x=Math.PI/2;
     const spike=new THREE.ConeGeometry(.09,.55,4);
     for(let i=0;i<9;i++){const a=i*TAU/9,s=add(spike,i%3?vio:red,Math.sin(a)*1.35,0,Math.cos(a)*1.35,seal);s.rotation.set(Math.PI/2,a,0,'YXZ');s.scale.z=.15}
-    const ecl=new THREE.Group();ecl.position.set(0,2,-.75);g.add(ecl);
-    add(new THREE.CircleGeometry(.55,32),black,0,0,0,ecl);
-    const rim=add(new THREE.TorusGeometry(.58,.045,5,40),red,0,0,0,ecl),rim2=add(new THREE.TorusGeometry(.8,.018,4,40,Math.PI*1.5),vio,0,0,0,ecl);
+    /* wings of darkness: black blade-feathers with violet spines, spread out from the shoulder blades */
+    const feather=new THREE.ConeGeometry(.11,1,4),spine=new THREE.ConeGeometry(.028,.85,4),ember=new THREE.OctahedronGeometry(.055,0);
+    const wings=[-1,1].map(sd=>{const w=new THREE.Group();w.position.set(sd*.22,1.75,-.45);g.add(w);
+      for(let i=0;i<6;i++){const a=1.05-i*.3,l=1.75-i*.16,x=sd*Math.cos(a),y=Math.sin(a);
+        const fe=add(feather,black,x*l/2,y*l/2,-i*.012,w);fe.scale.set(1.15,l,.2);fe.rotation.z=sd*(a-Math.PI/2);
+        const sp=add(spine,vio,x*l*.55,y*l*.55,.03-i*.012,w);sp.scale.set(1,l,.4);sp.rotation.z=fe.rotation.z;
+        add(ember,i%2?vio:red,x*(l+.1),y*(l+.1),0,w)}
+      return w});
     const bl=new THREE.ConeGeometry(.1,.95,4),core=new THREE.ConeGeometry(.03,.8,4);
     const blades=[0,1,2,3,4].map(()=>{const b=new THREE.Group();g.add(b);add(bl,black,0,0,0,b).scale.z=.3;add(core,vio,0,0,.03,b);return b});
     const wisp=new THREE.OctahedronGeometry(.12,0),wisps=[];
     for(let i=0;i<14;i++)wisps.push(add(wisp,i%4===0?vio:i%2?deep:black,0,0,0));
     halo(0x5a12b0,1.3,4,.5);halo(0x2a0050,.4,3.6,.55);
     anim=t=>{
-      seal.rotation.y=-t*.5;rim.scale.setScalar(1+Math.sin(t*3)*.05);rim2.rotation.z=t*1.6;
+      seal.rotation.y=-t*.5;
+      wings.forEach((w,i)=>{const sd=i?1:-1;w.rotation.y=sd*(.28+Math.sin(t*2)*.2);w.rotation.z=sd*Math.sin(t*2-.6)*.07});
       blades.forEach((b,i)=>{const a=i*TAU/5+t*.9;b.position.set(Math.cos(a)*1.25,1.25+Math.sin(t*2+i*1.3)*.2,Math.sin(a)*1.25);b.rotation.set(Math.PI,-a,0)});
       wisps.forEach((w,i)=>{const k=(t*.3+i/14)%1,a=i*2.4-t*.7,r=.45+.55*((i*7)%5)/5;w.position.set(Math.cos(a)*r,.1+k*2.8,Math.sin(a)*r);const s=Math.sin(k*Math.PI)+.1;w.scale.set(s*.7,s*1.9,s*.7)});
     };
